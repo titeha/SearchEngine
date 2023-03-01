@@ -12,8 +12,6 @@ internal class IndexList<T> where T : struct
 
   #region Свойства
   internal int Count => _indexes.Count;
-
-  private bool IsEmpty => 0 == _indexes.Count;
   #endregion
 
   #region Конструкторы
