@@ -138,9 +138,9 @@ namespace SearchEngine.Properties {
         ///  &lt;key char=&quot;)&quot;&gt;58&lt;/key&gt;
         ///  &lt;key char=&quot;_&quot;&gt;189 [остаток строки не уместился]&quot;;.
         /// </summary>
-        internal static string CommonKeyCoodes {
+        internal static string CommonKeyCodes {
             get {
-                return ResourceManager.GetString("CommonKeyCoodes", resourceCulture);
+                return ResourceManager.GetString("CommonKeyCodes", resourceCulture);
             }
         }
         
