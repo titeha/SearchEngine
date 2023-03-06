@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<keys>
+  <key char="Ё">192</key>
+  <key char="Й">81</key>
+  <key char="Ц">87</key>
+  <key char="У">69</key>
+  <key char="К">82</key>
+  <key char="Е">84</key>
+  <key char="Н">89</key>
+  <key char="Г">85</key>
+  <key char="Ш">73</key>
+  <key char="Щ">79</key>
+  <key char="З">80</key>
+  <key char="Х">219</key>
+  <key char="Ъ">221</key>
+  <key char="Ф">65</key>
+  <key char="Ы">83</key>
+  <key char="В">68</key>
+  <key char="А">70</key>
+  <key char="П">71</key>
+  <key char="Р">72</key>
+  <key char="О">74</key>
+  <key char="Л">75</key>
+  <key char="Д">76</key>
+  <key char="Ж">186</key>
+  <key char="Э">222</key>
+  <key char="Я">90</key>
+  <key char="Ч">88</key>
+  <key char="С">67</key>
+  <key char="М">86</key>
+  <key char="И">66</key>
+  <key char="Т">78</key>
+  <key char="Ь">77</key>
+  <key char="Б">188</key>
+  <key char="Ю">190</key>
+  <key char=".">191</key>
+  <key char='"'>50</key>
+  <key char="№">51</key>
+  <key char=";">52</key>
+  <key char=":">54</key>
+  <key char="?">55</key>
+  <key char=",">191</key>
+</keys>

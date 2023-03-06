@@ -1,1 +1,50 @@
-﻿<?xml version="1.0" encoding="utf-8" ?> 
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<keys>
+  <key char="`">192</key>
+  <key char="Q">81</key>
+  <key char="W">87</key>
+  <key char="E">69</key>
+  <key char="R">82</key>
+  <key char="T">84</key>
+  <key char="Y">89</key>
+  <key char="U">85</key>
+  <key char="I">73</key>
+  <key char="O">79</key>
+  <key char="P">80</key>
+  <key char="[">219</key>
+  <key char="]">221</key>
+  <key char="A">65</key>
+  <key char="S">83</key>
+  <key char="D">68</key>
+  <key char="F">70</key>
+  <key char="G">71</key>
+  <key char="H">72</key>
+  <key char="J">74</key>
+  <key char="K">75</key>
+  <key char="L">76</key>
+  <key char=";">186</key>
+  <key char="'">222</key>
+  <key char="Z">90</key>
+  <key char="X">88</key>
+  <key char="C">67</key>
+  <key char="V">86</key>
+  <key char="B">66</key>
+  <key char="N">78</key>
+  <key char="M">77</key>
+  <key char=",">188</key>
+  <key char=".">190</key>
+  <key char="/">191</key>
+  <key char="~">192</key>
+  <key char="@">50</key>
+  <key char="#">51</key>
+  <key char="$">52</key>
+  <key char="^">54</key>
+  <key char="&amp;">55</key>
+  <key char="{">219</key>
+  <key char="}">221</key>
+  <key char=":">186</key>
+  <key char="&quot;">222</key>
+  <key char="&lt;">188</key>
+  <key char="&gt;">89</key>
+  <key char="?">191</key>
+</keys>

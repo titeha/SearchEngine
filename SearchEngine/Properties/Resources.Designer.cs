@@ -59,5 +59,120 @@ namespace SearchEngine.Properties {
                 resourceCulture = value;
             }
         }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot; ?&gt;
+        ///&lt;keys&gt;
+        ///  &lt;key char=&quot;`&quot;&gt;192&lt;/key&gt;
+        ///  &lt;key char=&quot;Q&quot;&gt;81&lt;/key&gt;
+        ///  &lt;key char=&quot;W&quot;&gt;87&lt;/key&gt;
+        ///  &lt;key char=&quot;E&quot;&gt;69&lt;/key&gt;
+        ///  &lt;key char=&quot;R&quot;&gt;82&lt;/key&gt;
+        ///  &lt;key char=&quot;T&quot;&gt;84&lt;/key&gt;
+        ///  &lt;key char=&quot;Y&quot;&gt;89&lt;/key&gt;
+        ///  &lt;key char=&quot;U&quot;&gt;85&lt;/key&gt;
+        ///  &lt;key char=&quot;I&quot;&gt;73&lt;/key&gt;
+        ///  &lt;key char=&quot;O&quot;&gt;79&lt;/key&gt;
+        ///  &lt;key char=&quot;P&quot;&gt;80&lt;/key&gt;
+        ///  &lt;key char=&quot;[&quot;&gt;219&lt;/key&gt;
+        ///  &lt;key char=&quot;]&quot;&gt;221&lt;/key&gt;
+        ///  &lt;key char=&quot;A&quot;&gt;65&lt;/key&gt;
+        ///  &lt;key char=&quot;S&quot;&gt;83&lt;/key&gt;
+        ///  &lt;key char=&quot;D&quot;&gt;68&lt;/key&gt;
+        ///  &lt;key char=&quot;F&quot;&gt;70&lt;/key&gt;
+        ///  &lt;key char=&quot;G&quot;&gt;71 [остаток строки не уместился]&quot;;.
+        /// </summary>
+        internal static string CodeKeysEng {
+            get {
+                return ResourceManager.GetString("CodeKeysEng", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot; ?&gt;
+        ///&lt;keys&gt;
+        ///  &lt;key char=&quot;Ё&quot;&gt;192&lt;/key&gt;
+        ///  &lt;key char=&quot;Й&quot;&gt;81&lt;/key&gt;
+        ///  &lt;key char=&quot;Ц&quot;&gt;87&lt;/key&gt;
+        ///  &lt;key char=&quot;У&quot;&gt;69&lt;/key&gt;
+        ///  &lt;key char=&quot;К&quot;&gt;82&lt;/key&gt;
+        ///  &lt;key char=&quot;Е&quot;&gt;84&lt;/key&gt;
+        ///  &lt;key char=&quot;Н&quot;&gt;89&lt;/key&gt;
+        ///  &lt;key char=&quot;Г&quot;&gt;85&lt;/key&gt;
+        ///  &lt;key char=&quot;Ш&quot;&gt;73&lt;/key&gt;
+        ///  &lt;key char=&quot;Щ&quot;&gt;79&lt;/key&gt;
+        ///  &lt;key char=&quot;З&quot;&gt;80&lt;/key&gt;
+        ///  &lt;key char=&quot;Х&quot;&gt;219&lt;/key&gt;
+        ///  &lt;key char=&quot;Ъ&quot;&gt;221&lt;/key&gt;
+        ///  &lt;key char=&quot;Ф&quot;&gt;65&lt;/key&gt;
+        ///  &lt;key char=&quot;Ы&quot;&gt;83&lt;/key&gt;
+        ///  &lt;key char=&quot;В&quot;&gt;68&lt;/key&gt;
+        ///  &lt;key char=&quot;А&quot;&gt;70&lt;/key&gt;
+        ///  &lt;key char=&quot;П&quot;&gt;71 [остаток строки не уместился]&quot;;.
+        /// </summary>
+        internal static string CodeKeysRus {
+            get {
+                return ResourceManager.GetString("CodeKeysRus", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot; ?&gt;
+        ///&lt;keys&gt;
+        ///  &lt;key char=&quot;0&quot;&gt;48&lt;/key&gt;
+        ///  &lt;key char=&quot;1&quot;&gt;49&lt;/key&gt;
+        ///  &lt;key char=&quot;2&quot;&gt;50&lt;/key&gt;
+        ///  &lt;key char=&quot;3&quot;&gt;51&lt;/key&gt;
+        ///  &lt;key char=&quot;4&quot;&gt;52&lt;/key&gt;
+        ///  &lt;key char=&quot;5&quot;&gt;53&lt;/key&gt;
+        ///  &lt;key char=&quot;6&quot;&gt;54&lt;/key&gt;
+        ///  &lt;key char=&quot;7&quot;&gt;55&lt;/key&gt;
+        ///  &lt;key char=&quot;8&quot;&gt;56&lt;/key&gt;
+        ///  &lt;key char=&quot;9&quot;&gt;57&lt;/key&gt;
+        ///  &lt;key char=&quot;-&quot;&gt;189&lt;/key&gt;
+        ///  &lt;key char=&quot;=&quot;&gt;187&lt;/key&gt;
+        ///  &lt;key char=&quot;!&quot;&gt;49&lt;/key&gt;
+        ///  &lt;key char=&quot;%&quot;&gt;53&lt;/key&gt;
+        ///  &lt;key char=&quot;*&quot;&gt;56&lt;/key&gt;
+        ///  &lt;key char=&quot;(&quot;&gt;57&lt;/key&gt;
+        ///  &lt;key char=&quot;)&quot;&gt;58&lt;/key&gt;
+        ///  &lt;key char=&quot;_&quot;&gt;189 [остаток строки не уместился]&quot;;.
+        /// </summary>
+        internal static string CommonKeyCoodes {
+            get {
+                return ResourceManager.GetString("CommonKeyCoodes", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot; ?&gt;
+        ///&lt;keys&gt;
+        ///  &lt;key id=&quot;192&quot;&gt;
+        ///    &lt;near_key&gt;49&lt;/near_key&gt;
+        ///  &lt;/key&gt;
+        ///  &lt;key id=&quot;49&quot;&gt;
+        ///    &lt;near_key&gt;50&lt;/near_key&gt;
+        ///    &lt;near_key&gt;81&lt;/near_key&gt;
+        ///  &lt;/key&gt;
+        ///  &lt;key id=&quot;50&quot;&gt;
+        ///    &lt;near_key&gt;49&lt;/near_key&gt;
+        ///    &lt;near_key&gt;87&lt;/near_key&gt;
+        ///    &lt;near_key&gt;51&lt;/near_key&gt;
+        ///    &lt;near_key&gt;81&lt;/near_key&gt;
+        ///  &lt;/key&gt;
+        ///  &lt;key id=&quot;51&quot;&gt;
+        ///    &lt;near_key&gt;50&lt;/near_key&gt;
+        ///    &lt;near_key&gt;52&lt;/near_key&gt;
+        ///    &lt;near_key&gt;87&lt;/near_key&gt;
+        ///    &lt;near_key&gt;69&lt;/near_key&gt;
+        ///  &lt;/key&gt;
+        ///  &lt;key id=&quot;52&quot;&gt;
+        ///    &lt;near_key&gt;51&lt;/ [остаток строки не уместился]&quot;;.
+        /// </summary>
+        internal static string DistanceCodeKey {
+            get {
+                return ResourceManager.GetString("DistanceCodeKey", resourceCulture);
+            }
+        }
     }
 }

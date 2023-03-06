@@ -1,0 +1,308 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<keys>
+  <key id="192">
+    <near_key>49</near_key>
+  </key>
+  <key id="49">
+    <near_key>50</near_key>
+    <near_key>81</near_key>
+  </key>
+  <key id="50">
+    <near_key>49</near_key>
+    <near_key>87</near_key>
+    <near_key>51</near_key>
+    <near_key>81</near_key>
+  </key>
+  <key id="51">
+    <near_key>50</near_key>
+    <near_key>52</near_key>
+    <near_key>87</near_key>
+    <near_key>69</near_key>
+  </key>
+  <key id="52">
+    <near_key>51</near_key>
+    <near_key>53</near_key>
+    <near_key>69</near_key>
+    <near_key>82</near_key>
+  </key>
+  <key id="53">
+    <near_key>52</near_key>
+    <near_key>54</near_key>
+    <near_key>82</near_key>
+    <near_key>84</near_key>
+  </key>
+  <key id="54">
+    <near_key>53</near_key>
+    <near_key>55</near_key>
+    <near_key>84</near_key>
+    <near_key>89</near_key>
+  </key>
+  <key id="55">
+    <near_key>54</near_key>
+    <near_key>56</near_key>
+    <near_key>89</near_key>
+    <near_key>85</near_key>
+  </key>
+  <key id="56">
+    <near_key>55</near_key>
+    <near_key>57</near_key>
+    <near_key>85</near_key>
+    <near_key>73</near_key>
+  </key>
+  <key id="57">
+    <near_key>56</near_key>
+    <near_key>48</near_key>
+    <near_key>73</near_key>
+    <near_key>79</near_key>
+  </key>
+  <key id="48">
+    <near_key>57</near_key>
+    <near_key>189</near_key>
+    <near_key>79</near_key>
+    <near_key>80</near_key>
+  </key>
+  <key id="189">
+    <near_key>48</near_key>
+    <near_key>187</near_key>
+    <near_key>80</near_key>
+    <near_key>219</near_key>
+  </key>
+  <key id="187">
+    <near_key>189</near_key>
+    <near_key>219</near_key>
+    <near_key>221</near_key>
+  </key>
+  <key id="81">
+    <near_key>49</near_key>
+    <near_key>50</near_key>
+    <near_key>87</near_key>
+    <near_key>65</near_key>
+  </key>
+  <key id="87">
+    <near_key>50</near_key>
+    <near_key>51</near_key>
+    <near_key>81</near_key>
+    <near_key>65</near_key>
+    <near_key>83</near_key>
+    <near_key>69</near_key>
+  </key>
+  <key id="69">
+    <near_key>51</near_key>
+    <near_key>52</near_key>
+    <near_key>87</near_key>
+    <near_key>83</near_key>
+    <near_key>68</near_key>
+    <near_key>82</near_key>
+  </key>
+  <key id="82">
+    <near_key>52</near_key>
+    <near_key>53</near_key>
+    <near_key>69</near_key>
+    <near_key>68</near_key>
+    <near_key>70</near_key>
+    <near_key>84</near_key>
+  </key>
+  <key id="84">
+    <near_key>53</near_key>
+    <near_key>54</near_key>
+    <near_key>82</near_key>
+    <near_key>70</near_key>
+    <near_key>71</near_key>
+    <near_key>89</near_key>
+  </key>
+  <key id="89">
+    <near_key>54</near_key>
+    <near_key>55</near_key>
+    <near_key>84</near_key>
+    <near_key>71</near_key>
+    <near_key>72</near_key>
+    <near_key>85</near_key>
+  </key>
+  <key id="85">
+    <near_key>55</near_key>
+    <near_key>56</near_key>
+    <near_key>89</near_key>
+    <near_key>72</near_key>
+    <near_key>74</near_key>
+    <near_key>73</near_key>
+  </key>
+  <key id="73">
+    <near_key>56</near_key>
+    <near_key>57</near_key>
+    <near_key>85</near_key>
+    <near_key>74</near_key>
+    <near_key>75</near_key>
+    <near_key>79</near_key>
+  </key>
+  <key id="79">
+    <near_key>57</near_key>
+    <near_key>48</near_key>
+    <near_key>73</near_key>
+    <near_key>75</near_key>
+    <near_key>76</near_key>
+    <near_key>80</near_key>
+  </key>
+  <key id="80">
+    <near_key>48</near_key>
+    <near_key>189</near_key>
+    <near_key>79</near_key>
+    <near_key>76</near_key>
+    <near_key>186</near_key>
+    <near_key>219</near_key>
+  </key>
+  <key id="219">
+    <near_key>189</near_key>
+    <near_key>187</near_key>
+    <near_key>80</near_key>
+    <near_key>186</near_key>
+    <near_key>222</near_key>
+    <near_key>221</near_key>
+  </key>
+  <key id="221">
+    <near_key>187</near_key>
+    <near_key>219</near_key>
+    <near_key>222</near_key>
+  </key>
+  <key id="65">
+    <near_key>81</near_key>
+    <near_key>87</near_key>
+    <near_key>83</near_key>
+    <near_key>90</near_key>
+  </key>
+  <key id="83">
+    <near_key>87</near_key>
+    <near_key>69</near_key>
+    <near_key>68</near_key>
+    <near_key>88</near_key>
+    <near_key>90</near_key>
+    <near_key>65</near_key>
+  </key>
+  <key id="68">
+    <near_key>69</near_key>
+    <near_key>83</near_key>
+    <near_key>88</near_key>
+    <near_key>67</near_key>
+    <near_key>70</near_key>
+    <near_key>82</near_key>
+  </key>
+  <key id="70">
+    <near_key>82</near_key>
+    <near_key>68</near_key>
+    <near_key>67</near_key>
+    <near_key>86</near_key>
+    <near_key>71</near_key>
+    <near_key>84</near_key>
+  </key>
+  <key id="71">
+    <near_key>84</near_key>
+    <near_key>70</near_key>
+    <near_key>86</near_key>
+    <near_key>66</near_key>
+    <near_key>72</near_key>
+    <near_key>89</near_key>
+  </key>
+  <key id="72">
+    <near_key>89</near_key>
+    <near_key>71</near_key>
+    <near_key>66</near_key>
+    <near_key>78</near_key>
+    <near_key>74</near_key>
+    <near_key>85</near_key>
+  </key>
+  <key id="74">
+    <near_key>85</near_key>
+    <near_key>72</near_key>
+    <near_key>78</near_key>
+    <near_key>77</near_key>
+    <near_key>75</near_key>
+    <near_key>73</near_key>
+  </key>
+  <key id="75">
+    <near_key>73</near_key>
+    <near_key>74</near_key>
+    <near_key>77</near_key>
+    <near_key>188</near_key>
+    <near_key>76</near_key>
+    <near_key>79</near_key>
+  </key>
+  <key id="76">
+    <near_key>79</near_key>
+    <near_key>75</near_key>
+    <near_key>188</near_key>
+    <near_key>190</near_key>
+    <near_key>186</near_key>
+    <near_key>80</near_key>
+  </key>
+  <key id="186">
+    <near_key>80</near_key>
+    <near_key>76</near_key>
+    <near_key>188</near_key>
+    <near_key>191</near_key>
+    <near_key>222</near_key>
+    <near_key>219</near_key>
+  </key>
+  <key id="222">
+    <near_key>221</near_key>
+    <near_key>219</near_key>
+    <near_key>186</near_key>
+    <near_key>191</near_key>
+  </key>
+  <key id="90">
+    <near_key>65</near_key>
+    <near_key>83</near_key>
+    <near_key>88</near_key>
+  </key>
+  <key id="88">
+    <near_key>67</near_key>
+    <near_key>68</near_key>
+    <near_key>83</near_key>
+    <near_key>90</near_key>
+  </key>
+  <key id="67">
+    <near_key>86</near_key>
+    <near_key>70</near_key>
+    <near_key>68</near_key>
+    <near_key>88</near_key>
+  </key>
+  <key id="86">
+    <near_key>66</near_key>
+    <near_key>71</near_key>
+    <near_key>70</near_key>
+    <near_key>67</near_key>
+  </key>
+  <key id="66">
+    <near_key>78</near_key>
+    <near_key>72</near_key>
+    <near_key>71</near_key>
+    <near_key>86</near_key>
+  </key>
+  <key id="78">
+    <near_key>77</near_key>
+    <near_key>74</near_key>
+    <near_key>72</near_key>
+    <near_key>66</near_key>
+  </key>
+  <key id="77">
+    <near_key>188</near_key>
+    <near_key>75</near_key>
+    <near_key>74</near_key>
+    <near_key>78</near_key>
+  </key>
+  <key id="188">
+    <near_key>190</near_key>
+    <near_key>76</near_key>
+    <near_key>75</near_key>
+    <near_key>77</near_key>
+  </key>
+  <key id="190">
+    <near_key>191</near_key>
+    <near_key>186</near_key>
+    <near_key>76</near_key>
+    <near_key>188</near_key>
+  </key>
+  <key id="191">
+    <near_key>222</near_key>
+    <near_key>186</near_key>
+    <near_key>190</near_key>
+  </key>
+</keys>
