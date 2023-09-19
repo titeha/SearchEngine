@@ -21,7 +21,7 @@ public class IndexList<T> where T : struct
 
   public IndexList(T newIndex) : this() => _indexes.Add(newIndex);
 
-  private IndexList(IEnumerable<T> indexes)
+  internal IndexList(IEnumerable<T> indexes)
   {
     _indexes = new(indexes);
     _indexes.Sort();
