@@ -1,5 +1,7 @@
 ﻿using System.Xml.Linq;
 
+using CommonClasses;
+
 using static SearchEngine.Properties.Resources;
 
 namespace SearchEngine;
@@ -19,6 +21,7 @@ public partial class Search<T> where T : struct
   private int _missprintCount;
 
   private SortedList<string, IndexList<T>>? _searchIndex;
+  private SortedSet<string> _searchList;
   #endregion
 
   #region Свойства
@@ -115,12 +118,138 @@ public partial class Search<T> where T : struct
     _isNumberSearch = false;
     _precission = -1;
     _missprintCount = -1;
+    _searchList = new();
   }
 
   public Search(bool isPhonecticSearch) : this() => IsPhoneticSearch = isPhonecticSearch;
   #endregion
 
   #region Методы
+  public SearchResultList<T> Find(string searchString)
+  {
+    static int CalculateDistance(int length, int percent) => length > 1 ? length - (length * percent / 100) : 0;
 
+    SearchResultList<T> searchResult = new();
+
+    DisassemblyString(searchString);
+    foreach (var item in _searchList)
+    {
+      if (IsPhoneticSearch)
+        searchResult.Union(PhoneticFind(item));
+      else if (item.Length == 2 || SearchType.ExactSearch == SearchType)
+        searchResult.Union(ExactSearch(item));
+      else
+        searchResult.Union(FusySearch(item, CalculateDistance(item.Length, PrecissionSearch)));
+    }
+
+    return searchResult;
+  }
+
+  private void DisassemblyString(string source)
+  {
+    string clearedString = source.Trim().ToUpper();
+    _searchList.Clear();
+
+    if (!clearedString.IsNullOrWhiteSpace())
+    {
+      var delimiterArray = CreateIndex.Delimiters.ToCharArray();
+      var values = clearedString.Split(delimiterArray, StringSplitOptions.RemoveEmptyEntries);
+      for (int i = 0, count = values.Length; i < count; i++)
+        if (values[i].Length > 1)
+          _searchList.Add(IsPhoneticSearch ? PhoneticSearch.MetaPhone(values[i]) : values[i]);
+    }
+  }
+
+  private SearchResultList<T> ExactSearch(string searchValue)
+  {
+    SearchResultList<T> searchResult = new();
+    bool origin = SearchLocation.BeginWord == SearchLocation;
+    int sLength = searchValue.Length;
+
+    var result = _searchIndex!.AsParallel().Where(l => l.Key.Length >= sLength)
+                              .Select(i => (Position: i.Key.IndexOf(searchValue), Indexes: i.Value))
+                              .Where(c => c.Position == 0 && origin || !origin && c.Position >= 0)
+                              .Select(r => r.Indexes);
+
+    searchResult[0].UnionIndexes(result);
+
+    return searchResult;
+  }
+
+  private SearchResultList<T> FusySearch(string searchValue, int distance)
+  {
+    SearchResultList<T> searchResult = new();
+    bool origin = SearchLocation.BeginWord == SearchLocation;
+    int sLength = searchValue.Length;
+
+    static int CalculateResult(string searchValue, int sLength, string targetString, bool origin)
+    {
+      int calcResult = 0;
+      int tLength = targetString.Length;
+
+      if (sLength == tLength)
+        calcResult = Levenshtein.DistanceLeventstein(searchValue, targetString);
+      else if (sLength < tLength)
+        if (origin)
+          calcResult = Levenshtein.DistanceLeventstein(searchValue, targetString[..(sLength + 1)]);
+        else
+        {
+          int actualLength = tLength - sLength + 1;
+          int[] distances = new int[actualLength];
+          for (int i = 0; i < actualLength; i++)
+            distances[i] = Levenshtein.DistanceLeventstein(searchValue, targetString[i..(sLength + 1)]);
+
+          calcResult = distances.Min();
+        }
+
+      return calcResult;
+    }
+
+    if (distance == 0)
+      searchResult = ExactSearch(searchValue);
+    else
+    {
+      var result = _searchIndex!.AsParallel()
+                                .Where(s => s.Key.Length >= sLength)
+                                .Select(d => (Distance: CalculateResult(searchValue, sLength, d.Key, origin), Indexes: d.Value))
+                                .Where(r => r.Distance <= distance);
+
+      foreach (var (Distance, Indexes) in result)
+        searchResult[Distance].UnionIndexes(Indexes);
+    }
+
+    return searchResult;
+  }
+
+  private SearchResultList<T> PhoneticFind(string searchValue)
+  {
+    static int CalculateResult(string searchValue, int sLength, string targetString)
+    {
+      int calcResult = 0;
+      if (targetString.IndexOf(searchValue) != 0)
+      {
+        string checkString;
+        if (sLength < targetString.Length)
+          checkString = targetString[..(sLength + 1)];
+        else
+          checkString = searchValue;
+        calcResult = Levenshtein.DistanceLeventstein(searchValue, checkString);
+      }
+      return calcResult;
+    }
+
+    SearchResultList<T> searchResult = new();
+    int sLength = searchValue.Length;
+
+    var searchValues = _searchIndex!.AsParallel()
+                                    .Where(l => l.Key.Length >= sLength)
+                                    .Select(d => (Distance: CalculateResult(searchValue, sLength, d.Key), Indexes: d.Value))
+                                    .Where(r => r.Distance <= 1);
+
+    foreach (var (distance, indexes) in searchValues)
+      searchResult[distance].UnionIndexes(indexes);
+
+    return searchResult;
+  }
   #endregion
 }
