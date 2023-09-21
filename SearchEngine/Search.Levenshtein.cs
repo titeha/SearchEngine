@@ -19,38 +19,38 @@ public partial class Search<T> where T : struct
       if (target.IsNullOrEmpty())
         return source.Length * 2;
 
-      int _targetLength = target.Length;
-      int _sourceLength = source.Length;
-      int[,] _distance = new int[3, _targetLength + 1];
+      int targetLength = target.Length;
+      int sourceLength = source.Length;
+      int[,] distance = new int[3, targetLength + 1];
 
-      for (int j = 1; j < _targetLength; j++)
-        _distance[0, j] = j * 2;
+      for (int j = 1; j < targetLength; j++)
+        distance[0, j] = j * 2;
 
-      int _currentRow = 0;
+      int currentRow = 0;
 
       for (int i = 1; i < source.Length; i++)
       {
-        _currentRow = i % 3;
-        int _previousRow = (i - 1) % 3;
-        _distance[_currentRow, 0] = i * 2;
-        int _compensation = i == _sourceLength ? 1 : 2;
+        currentRow = i % 3;
+        int previousRow = (i - 1) % 3;
+        distance[currentRow, 0] = i * 2;
+        int compensation = i == sourceLength ? 1 : 2;
 
-        for (int j = 1; j <= _targetLength; j++)
+        for (int j = 1; j <= targetLength; j++)
         {
-          _distance[_currentRow, j] = Min(
+          distance[currentRow, j] = Min(
             Min(
-              _distance[_previousRow, j] + _compensation,
-              _distance[_currentRow, j - 1] + _compensation),
-            _distance[_previousRow, j - 1] + CostDistanceSymbol(source, i - 1, target, j - 1));
+              distance[previousRow, j] + compensation,
+              distance[currentRow, j - 1] + compensation),
+            distance[previousRow, j - 1] + CostDistanceSymbol(source, i - 1, target, j - 1));
           if (i > 1
               && j > 1
               && _keyCodesRUEN[source[i - 1]] == _keyCodesRUEN[target[j - 2]]
               && _keyCodesRUEN[source[i - 2]] == _keyCodesRUEN[target[j - 1]])
-            _distance[_currentRow, j] = Min(_distance[_currentRow, j], _distance[(i - 2) % 3, j - 2] + 2);
+            distance[currentRow, j] = Min(distance[currentRow, j], distance[(i - 2) % 3, j - 2] + 2);
         }
       }
 
-      return _distance[_currentRow, _targetLength];
+      return distance[currentRow, targetLength];
     }
 
     private static int CostDistanceSymbol(string source, int sourcePosition, string target, int targetPosition)
@@ -58,12 +58,12 @@ public partial class Search<T> where T : struct
       if (source[sourcePosition] == target[targetPosition])
         return 0;
 
-      int _comparerCode = _keyCodesRUEN[source[sourcePosition]];
-      if (_comparerCode != 0 && _comparerCode == _keyCodesRUEN[target[targetPosition]])
+      int comparerCode = _keyCodesRUEN[source[sourcePosition]];
+      if (comparerCode != 0 && comparerCode == _keyCodesRUEN[target[targetPosition]])
         return 0;
 
-      if (_distanceCodeKey.TryGetValue(_comparerCode, out var _nearKeys))
-        return _nearKeys.Contains(_keyCodesRUEN[target[targetPosition]]) ? 1 : 2;
+      if (_distanceCodeKey.TryGetValue(comparerCode, out var nearKeys))
+        return nearKeys.Contains(_keyCodesRUEN[target[targetPosition]]) ? 1 : 2;
       else
         return 2;
     }
