@@ -48,6 +48,12 @@ public class IndexList<T> where T : struct
 
   public IndexList<T> UnionIndexes(IndexList<T> otherIndexes) => new(_indexes.Union(otherIndexes._indexes));
 
+  public IndexList<T> UnionIndexes(IEnumerable<IndexList<T>> otherIndexes)
+  {
+    var union = otherIndexes.SelectMany(o => o._indexes).Distinct();
+    return new(_indexes.Union(union));
+  }
+
   internal bool Contains(IndexList<T> lookUpSet) => _indexes.Intersect(lookUpSet._indexes) is not null;
   #endregion
 }
