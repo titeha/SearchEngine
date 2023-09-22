@@ -54,6 +54,6 @@ public class IndexList<T> where T : struct
     return new(_indexes.Union(union));
   }
 
-  internal bool Contains(IndexList<T> lookUpSet) => _indexes.Intersect(lookUpSet._indexes) is not null;
+  internal bool Contains(IndexList<T> lookUpSet) => _indexes.Intersect(lookUpSet._indexes)?.Count() > 0;
   #endregion
 }
