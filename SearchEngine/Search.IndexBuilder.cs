@@ -5,7 +5,7 @@ namespace SearchEngine;
 
 public partial class Search<T> where T : struct
 {
-  public partial class CreateIndex
+  internal partial class IndexBuilder
   {
     #region Константа
     public const string Delimiters = " .,()-:;!?\"\\'$_=[]<>/«»“” …";
@@ -22,12 +22,10 @@ public partial class Search<T> where T : struct
     #endregion
 
     #region Конструкторы
-    public CreateIndex(Search<T> search) : this(search, Delimiters) { }
-
-    public CreateIndex(Search<T> search, string delimiters)
+    public IndexBuilder(Search<T> search, string? delimiters = null)
     {
       _search = search;
-      _delimiters = delimiters.ToCharArray();
+      _delimiters = (delimiters ?? Delimiters).ToCharArray();
       _search._searchIndex = new();
     }
     #endregion
@@ -41,50 +39,58 @@ public partial class Search<T> where T : struct
 
     public void BeginCreateIndex() => _isManualCreate = true;
 
-    public void BuildIndex(IEnumerable<ISourceData<T>> sources, string? delimiterString = null)
+    public void BuildIndex(IEnumerable<ISourceData<T>> sources)
     {
       if (_isManualCreate)
         return;
 
-      var delimiterArray = (delimiterString ?? Delimiters).ToCharArray();
       var result = sources.AsParallel()
-                          .Select(s => (s.Id, TextList: s.Text.Split(delimiterArray, StringSplitOptions.RemoveEmptyEntries)))
+                          .WithDegreeOfParallelism(Environment.ProcessorCount)
+                          .Select(s => (s.Id, TextList: s.Text.Split(_delimiters, StringSplitOptions.RemoveEmptyEntries)))
                           .SelectMany(m => m.TextList, (m, v) => (Text: v.ToUpper(), m.Id))
-                          .Where(c => c.Text.Length > 1 && (_hasNumberAndCharacter.IsMatch(c.Text) || _search.IsNumberSearch))
+                          .Where(c => c.Text.Length > 1 && (!_hasNumberAndCharacter.IsMatch(c.Text) || _search.IsNumberSearch))
+                          .AsSequential()
                           .GroupBy(i => i.Text)
                           .Select(g => (Text: g.Key, Indexes: g.Select(r => r.Id)))
                           .OrderBy(o => o.Text);
 
       if (_search.IsPhoneticSearch)
         result = result.AsParallel()
-                       .Select(p => (Text: PhoneticSearch.MetaPhone(p.Text), p.Indexes)) as OrderedParallelQuery<(string Text, IEnumerable<T> Indexes)>;
+                       .WithDegreeOfParallelism(Environment.ProcessorCount)
+                       .Select(p => (Text: PhoneticSearch.MetaPhone(p.Text), p.Indexes))
+                       .AsSequential()
+                       .OrderBy(o => o.Text);
 
       foreach (var (Text, Indexes) in result!)
         _search._searchIndex!.Add(Text, new(Indexes));
     }
 
-    public void BuildIndex(string[] sources, string elementDelimiter, string? delimiterString = null)
+    public void BuildIndex(string[] sources, string elementDelimiter)
     {
       if (_isManualCreate)
         return;
 
-      var delimiterArray = (delimiterString ?? Delimiters).ToCharArray();
       var elementDelimiterArray = (elementDelimiter ?? ";").ToCharArray();
       var result = sources.AsParallel()
+                          .WithDegreeOfParallelism(Environment.ProcessorCount)
                           .Select(s => s.Split(elementDelimiterArray, StringSplitOptions.RemoveEmptyEntries))
                           .Select(i => (Id: ConvertToId(i[0]), Text: i[1]))
-                          .Select(d => (d.Id, TextList: d.Text.Split(delimiterArray, StringSplitOptions.RemoveEmptyEntries)))
+                          .Select(d => (d.Id, TextList: d.Text.Split(_delimiters, StringSplitOptions.RemoveEmptyEntries)))
                           .SelectMany(m => m.TextList, (m, v) => (Text: v.ToUpper(), m.Id))
-                          .Where(c => c.Text.Length > 1 && (_hasNumberAndCharacter.IsMatch(c.Text) || _search.IsNumberSearch))
+                          .Where(c => c.Text.Length > 1 && (!_hasNumberAndCharacter.IsMatch(c.Text) || _search.IsNumberSearch))
+                          .AsSequential()
                           .GroupBy(z => z.Text)
                           .Select(g => (Text: g.Key, Indexes: g.Select(f => f.Id)))
                           .OrderBy(o => o.Text);
 
       if (_search.IsPhoneticSearch)
         result = result.AsParallel()
-                       .Select(p => (Text: PhoneticSearch.MetaPhone(p.Text), p.Indexes)) as OrderedParallelQuery<(string Text, IEnumerable<T> Indexes)>;
+                       .WithDegreeOfParallelism(Environment.ProcessorCount)
+                       .Select(p => (Text: PhoneticSearch.MetaPhone(p.Text), p.Indexes))
+                       .AsSequential()
+                       .OrderBy(o => o.Text);
 
-      foreach (var (Text, Indexes) in result)
+      foreach (var (Text, Indexes) in result!)
         _search._searchIndex!.Add(Text, new(Indexes));
     }
 
@@ -130,7 +136,7 @@ public partial class Search<T> where T : struct
     public event EventHandler<EventArgs>? IndexCreated;
     #endregion
 
-    [GeneratedRegex("(\\D+\\d+)|(\\d+\\D)", RegexOptions.Compiled)]
+    [GeneratedRegex("(\\D+\\d+)|(\\d+\\D)|^\\d+$", RegexOptions.Compiled)]
     private static partial Regex HasNumberAndCharacter();
   }
 }
