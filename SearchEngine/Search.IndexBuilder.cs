@@ -26,7 +26,6 @@ public partial class Search<T> where T : struct
     {
       _search = search;
       _delimiters = (delimiters ?? Delimiters).ToCharArray();
-      _search._searchIndex = new();
     }
     #endregion
 
@@ -55,14 +54,12 @@ public partial class Search<T> where T : struct
                           .OrderBy(o => o.Text);
 
       if (_search.IsPhoneticSearch)
-        result = result.AsParallel()
-                       .WithDegreeOfParallelism(Environment.ProcessorCount)
-                       .Select(p => (Text: PhoneticSearch.MetaPhone(p.Text), p.Indexes))
-                       .AsSequential()
-                       .OrderBy(o => o.Text);
+        result = ConvertToPhonetic(result);
 
       foreach (var (Text, Indexes) in result!)
         _search._searchIndex!.Add(Text, new(Indexes));
+
+      _search.IsIndexComplete = true;
     }
 
     public void BuildIndex(string[] sources, string elementDelimiter)
@@ -84,14 +81,21 @@ public partial class Search<T> where T : struct
                           .OrderBy(o => o.Text);
 
       if (_search.IsPhoneticSearch)
-        result = result.AsParallel()
-                       .WithDegreeOfParallelism(Environment.ProcessorCount)
-                       .Select(p => (Text: PhoneticSearch.MetaPhone(p.Text), p.Indexes))
-                       .AsSequential()
-                       .OrderBy(o => o.Text);
+        result = ConvertToPhonetic(result);
 
       foreach (var (Text, Indexes) in result!)
         _search._searchIndex!.Add(Text, new(Indexes));
+
+      _search.IsIndexComplete = true;
+    }
+
+    private static IOrderedEnumerable<(string Text, IEnumerable<T> Indexes)> ConvertToPhonetic(IOrderedEnumerable<(string Text, IEnumerable<T> Indexes)> result)
+    {
+      return result.AsParallel()
+                   .WithDegreeOfParallelism(Environment.ProcessorCount)
+                   .Select(p => (Text: PhoneticSearch.MetaPhone(p.Text), p.Indexes))
+                   .AsSequential()
+                   .OrderBy(o => o.Text);
     }
 
     private T ConvertToId(string source)
