@@ -20,8 +20,10 @@ public partial class Search<T> where T : struct
   private int _precission;
   private int _missprintCount;
 
-  private SortedList<string, IndexList<T>>? _searchIndex;
+  private protected SortedList<string, IndexList<T>>? _searchIndex;
   private SortedSet<string> _searchList;
+
+  private bool _isIndexComplete;
   #endregion
 
   #region Свойства
@@ -78,6 +80,16 @@ public partial class Search<T> where T : struct
   /// Место поиска
   /// </summary>
   public SearchLocation SearchLocation { get; set; }
+
+  public bool IsIndexComplete
+  {
+    get => _isIndexComplete;
+    set
+    {
+      _isIndexComplete = value;
+      OnCreateIndexComplete();
+    }
+  }
   #endregion
 
   #region Конструкторы
@@ -119,6 +131,8 @@ public partial class Search<T> where T : struct
     _precission = -1;
     _missprintCount = -1;
     _searchList = new();
+    _searchIndex = new();
+    _isIndexComplete = false;
   }
 
   public Search(bool isPhonecticSearch) : this() => IsPhoneticSearch = isPhonecticSearch;
@@ -152,7 +166,7 @@ public partial class Search<T> where T : struct
 
     if (!clearedString.IsNullOrWhiteSpace())
     {
-      var delimiterArray = CreateIndex.Delimiters.ToCharArray();
+      var delimiterArray = IndexBuilder.Delimiters.ToCharArray();
       var values = clearedString.Split(delimiterArray, StringSplitOptions.RemoveEmptyEntries);
       for (int i = 0, count = values.Length; i < count; i++)
         if (values[i].Length > 1)
@@ -251,5 +265,17 @@ public partial class Search<T> where T : struct
 
     return searchResult;
   }
+
+  internal void PrepareIndex()
+  {
+    IsIndexComplete = false;
+    _searchIndex?.Clear();
+  }
+
+  private void OnCreateIndexComplete() => CreateIndexComplete?.Invoke(this, EventArgs.Empty);
+  #endregion Методы  
+
+  #region События
+  public event EventHandler? CreateIndexComplete;
   #endregion
 }
