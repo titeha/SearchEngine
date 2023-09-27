@@ -33,6 +33,18 @@ public class CreateIndexTests
   }
 
   [Fact]
+  public async void Create_dictionary_from_string_array_IsPhoneticSearch_is_on_Search_has_full_dictionary()
+  {
+    TestSearch<int> sut = new(true);
+    const int expectedCount = 5;
+
+    await sut.PrepareIndex(Populating.GetTestPopulatedArrayForPhonetic(), ";");
+
+    Assert.Equal(expectedCount, sut.SearchList.Count);
+    Assert.True(sut.IsIndexComplete);
+  }
+
+  [Fact]
   public async void Create_dictionary_from_ienumerable_ISourceData_IsPhoneticSearch_is_on_Search_has_full_dictionary()
   {
     TestSearch<int> sut = new(true);
@@ -70,15 +82,39 @@ public class CreateIndexTests
   }
 
   [Fact]
-  public async void Create_dictionary_from_string_array_IsPhoneticSearch_is_on_Search_has_full_dictionary()
+  public async void Try_create_index_on_null_object_Exception_throw()
   {
-    TestSearch<int> sut = new(true);
-    const int expectedCount = 5;
+    TestSearch<int>? sut = null;
 
-    await sut.PrepareIndex(Populating.GetTestPopulatedArrayForPhonetic(), ";");
+    await Assert.ThrowsAsync<ArgumentNullException>(() => sut!.PrepareIndex(Enumerable.Empty<ISourceData<int>>()));
+    await Assert.ThrowsAsync<ArgumentNullException>(() => sut!.PrepareIndex(new string[0], string.Empty));
+  }
 
-    Assert.Equal(expectedCount,sut.SearchList.Count);
-    Assert.True(sut.IsIndexComplete);
+  [Fact]
+  public async void Try_create_index_with_empty_source_collection_Search_is_empty()
+  {
+    TestSearch<int> sut = new();
+
+    await sut.PrepareIndex(Enumerable.Empty<ISourceData<int>>());
+
+    Assert.False(sut.IsIndexComplete);
+    Assert.Empty(sut.SearchList);
+
+    await sut.PrepareIndex(new string[0], string.Empty);
+
+    Assert.False(sut.IsIndexComplete);
+    Assert.Empty(sut.SearchList);
+  }
+
+  [Fact]
+  public async void Try_create_index_with_empty_elementDelimiter_parameter_Search_is_empty()
+  {
+    TestSearch<int> sut = new();
+
+    await sut.PrepareIndex(Populating.GetTestPopulatedArray(), string.Empty);
+
+    Assert.False(sut.IsIndexComplete);
+    Assert.Empty(sut.SearchList);
   }
 }
 
