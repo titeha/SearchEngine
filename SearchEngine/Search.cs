@@ -180,8 +180,9 @@ public partial class Search<T> where T : struct
     bool origin = SearchLocation.BeginWord == SearchLocation;
     int sLength = searchValue.Length;
 
-    var result = _searchIndex!.AsParallel().Where(l => l.Key.Length >= sLength)
-                              .Select(i => (Position: i.Key.IndexOf(searchValue), Indexes: i.Value))
+    var result = _searchIndex!.AsParallel()
+                              .Where(l => l.Key.Length >= sLength)
+                              .Select(i => (Position: i.Key.IndexOf(searchValue, StringComparison.OrdinalIgnoreCase), Indexes: i.Value))
                               .Where(c => c.Position == 0 && origin || !origin && c.Position >= 0)
                               .Select(r => r.Indexes);
 
