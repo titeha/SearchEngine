@@ -91,10 +91,7 @@ public partial class Search<T> where T : struct
 
     private static IOrderedEnumerable<(string Text, IEnumerable<T> Indexes)> ConvertToPhonetic(IOrderedEnumerable<(string Text, IEnumerable<T> Indexes)> result)
     {
-      return result.AsParallel()
-                   .WithDegreeOfParallelism(Environment.ProcessorCount)
-                   .Select(p => (Text: PhoneticSearch.MetaPhone(p.Text), p.Indexes))
-                   .AsSequential()
+      return result.Select(p => (Text: PhoneticSearch.MetaPhone(p.Text), p.Indexes))
                    .OrderBy(o => o.Text);
     }
 
