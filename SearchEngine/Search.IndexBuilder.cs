@@ -50,7 +50,7 @@ public partial class Search<T> where T : struct
                           .Where(c => c.Text.Length > 1 && (!_hasNumberAndCharacter.IsMatch(c.Text) || _search.IsNumberSearch))
                           .AsSequential()
                           .GroupBy(i => i.Text)
-                          .Select(g => (Text: g.Key, Indexes: g.Select(r => r.Id)))
+                          .Select(g => (Text: g.Key, Indexes: g.Select(r => r.Id).Distinct()))
                           .OrderBy(o => o.Text);
 
       if (_search.IsPhoneticSearch)
@@ -77,7 +77,7 @@ public partial class Search<T> where T : struct
                           .Where(c => c.Text.Length > 1 && (!_hasNumberAndCharacter.IsMatch(c.Text) || _search.IsNumberSearch))
                           .AsSequential()
                           .GroupBy(z => z.Text)
-                          .Select(g => (Text: g.Key, Indexes: g.Select(f => f.Id)))
+                          .Select(g => (Text: g.Key, Indexes: g.Select(f => f.Id).Distinct()))
                           .OrderBy(o => o.Text);
 
       if (_search.IsPhoneticSearch)
@@ -92,6 +92,10 @@ public partial class Search<T> where T : struct
     private static IOrderedEnumerable<(string Text, IEnumerable<T> Indexes)> ConvertToPhonetic(IOrderedEnumerable<(string Text, IEnumerable<T> Indexes)> result)
     {
       return result.Select(p => (Text: PhoneticSearch.MetaPhone(p.Text), p.Indexes))
+                   .GroupBy(x => x.Text)
+                   .Select(g => (Text: g.Key, Indexes: g.Select(t => t.Indexes)
+                                                        .Aggregate((r, c) => r.Union(c))
+                                                        .Distinct()))
                    .OrderBy(o => o.Text);
     }
 
