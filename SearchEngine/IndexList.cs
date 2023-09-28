@@ -14,6 +14,8 @@ public class IndexList<T> where T : struct
   internal int Count => _indexes.Count;
 
   internal bool IsReadOnly { get; }
+
+  public IEnumerable<T> Items => _indexes;
   #endregion
 
   #region Конструкторы
