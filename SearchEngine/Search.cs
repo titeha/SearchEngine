@@ -177,16 +177,19 @@ public partial class Search<T> where T : struct
   private SearchResultList<T> ExactSearch(string searchValue)
   {
     SearchResultList<T> searchResult = new();
+    searchResult.Items.Add(0, new IndexList<T>());
     bool origin = SearchLocation.BeginWord == SearchLocation;
     int sLength = searchValue.Length;
 
     var result = _searchIndex!.AsParallel()
+                              .WithDegreeOfParallelism(Environment.ProcessorCount)
                               .Where(l => l.Key.Length >= sLength)
                               .Select(i => (Position: i.Key.IndexOf(searchValue, StringComparison.OrdinalIgnoreCase), Indexes: i.Value))
                               .Where(c => c.Position == 0 && origin || !origin && c.Position >= 0)
+                              .AsSequential()
                               .Select(r => r.Indexes);
 
-    searchResult[0].UnionIndexes(result);
+    searchResult.Items[0] = searchResult[0].UnionIndexes(result);
 
     return searchResult;
   }
@@ -206,13 +209,13 @@ public partial class Search<T> where T : struct
         calcResult = Levenshtein.DistanceLeventstein(searchValue, targetString);
       else if (sLength < tLength)
         if (origin)
-          calcResult = Levenshtein.DistanceLeventstein(searchValue, targetString[..(sLength + 1)]);
+          calcResult = Levenshtein.DistanceLeventstein(searchValue, targetString[..(sLength)]);
         else
         {
           int actualLength = tLength - sLength + 1;
           int[] distances = new int[actualLength];
           for (int i = 0; i < actualLength; i++)
-            distances[i] = Levenshtein.DistanceLeventstein(searchValue, targetString[i..(sLength + 1)]);
+            distances[i] = Levenshtein.DistanceLeventstein(searchValue, targetString[i..(sLength)]);
 
           calcResult = distances.Min();
         }
@@ -225,12 +228,17 @@ public partial class Search<T> where T : struct
     else
     {
       var result = _searchIndex!.AsParallel()
+                                .WithDegreeOfParallelism(Environment.ProcessorCount)
                                 .Where(s => s.Key.Length >= sLength)
                                 .Select(d => (Distance: CalculateResult(searchValue, sLength, d.Key, origin), Indexes: d.Value))
-                                .Where(r => r.Distance <= distance);
+                                .Where(r => r.Distance <= distance)
+                                .AsSequential()
+                                .GroupBy(i => i.Distance)
+                                .Select(g => (Distance: g.Key, Indexes: g.Select(x => x.Indexes)
+                                                                         .Aggregate((a, r) => r.UnionIndexes(a))));
 
       foreach (var (Distance, Indexes) in result)
-        searchResult[Distance].UnionIndexes(Indexes);
+        searchResult.Items.Add(Distance, Indexes);
     }
 
     return searchResult;
@@ -257,9 +265,14 @@ public partial class Search<T> where T : struct
     int sLength = searchValue.Length;
 
     var searchValues = _searchIndex!.AsParallel()
+                                    .WithDegreeOfParallelism(Environment.ProcessorCount)
                                     .Where(l => l.Key.Length >= sLength)
                                     .Select(d => (Distance: CalculateResult(searchValue, sLength, d.Key), Indexes: d.Value))
-                                    .Where(r => r.Distance <= 1);
+                                    .Where(r => r.Distance <= 1)
+                                    .AsSequential()
+                                    .GroupBy(v => v.Distance)
+                                    .Select(g => (Distance: g.Key, Indexes: g.Select(i => i.Indexes)
+                                                                             .Aggregate((a, r) => r.UnionIndexes(a))));
 
     foreach (var (distance, indexes) in searchValues)
       searchResult[distance].UnionIndexes(indexes);
