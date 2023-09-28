@@ -28,7 +28,7 @@ public partial class Search<T> where T : struct
 
       int currentRow = 0;
 
-      for (int i = 1; i < source.Length; i++)
+      for (int i = 1; i <= sourceLength; i++)
       {
         currentRow = i % 3;
         int previousRow = (i - 1) % 3;
@@ -41,7 +41,7 @@ public partial class Search<T> where T : struct
             Min(
               distance[previousRow, j] + compensation,
               distance[currentRow, j - 1] + compensation),
-            distance[previousRow, j - 1] + CostDistanceSymbol(source, i - 1, target, j - 1));
+            distance[previousRow, j - 1] + CostDistanceSymbol(source[i - 1], target[j - 1]));
           if (i > 1
               && j > 1
               && _keyCodesRUEN[source[i - 1]] == _keyCodesRUEN[target[j - 2]]
@@ -53,17 +53,18 @@ public partial class Search<T> where T : struct
       return distance[currentRow, targetLength];
     }
 
-    private static int CostDistanceSymbol(string source, int sourcePosition, string target, int targetPosition)
+    private static int CostDistanceSymbol(char source, char target)
     {
-      if (source[sourcePosition] == target[targetPosition])
+      if (source == target)
         return 0;
 
-      int comparerCode = _keyCodesRUEN[source[sourcePosition]];
-      if (comparerCode != 0 && comparerCode == _keyCodesRUEN[target[targetPosition]])
+      int sourceComparerCode = _keyCodesRUEN[source];
+      int targetComparerCode = _keyCodesRUEN[target];
+      if (sourceComparerCode != 0 && sourceComparerCode == targetComparerCode)
         return 0;
 
-      if (_distanceCodeKey.TryGetValue(comparerCode, out var nearKeys))
-        return nearKeys.Contains(_keyCodesRUEN[target[targetPosition]]) ? 1 : 2;
+      if (_distanceCodeKey.TryGetValue(sourceComparerCode, out var nearKeys))
+        return nearKeys.Contains(targetComparerCode) ? 1 : 2;
       else
         return 2;
     }
