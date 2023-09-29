@@ -48,12 +48,21 @@ public class IndexList<T> where T : struct
     }
   }
 
-  public IndexList<T> UnionIndexes(IndexList<T> otherIndexes) => new(_indexes.Intersect(otherIndexes._indexes));
+  public IndexList<T> UnionIndexes(IndexList<T> otherIndexes)
+  {
+    if (_indexes.Any())
+      return new(_indexes.Intersect(otherIndexes._indexes));
+    else
+      return new(otherIndexes._indexes);
+  }
 
   public IndexList<T> UnionIndexes(IEnumerable<IndexList<T>> otherIndexes)
   {
     var union = otherIndexes.SelectMany(o => o._indexes).Distinct();
-    return new(_indexes.Intersect(union));
+    if (_indexes.Any())
+      return new(_indexes.Intersect(union));
+    else
+      return new(union);
   }
 
   internal bool Contains(IndexList<T> lookUpSet) => _indexes.Intersect(lookUpSet._indexes)?.Count() > 0;
