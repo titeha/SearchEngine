@@ -46,9 +46,9 @@ public partial class Search<T> where T : struct
   }
 
   /// <summary>
-  /// Точночть поиска в %
+  /// Точность поиска в %
   /// </summary>
-  public int PrecissionSearch
+  public int PrecisionSearch
   {
     get => _precission;
     set
@@ -61,7 +61,7 @@ public partial class Search<T> where T : struct
   /// <summary>
   /// Допустимое количество опечаток для неточного поиска
   /// </summary>
-  public int AcceptableCountMissprint
+  public int AcceptableCountMisprint
   {
     get => _missprintCount;
     set
@@ -153,7 +153,7 @@ public partial class Search<T> where T : struct
       else if (item.Length == 2 || SearchType.ExactSearch == SearchType)
         searchResult.Union(ExactSearch(item));
       else
-        searchResult.Union(FusySearch(item, CalculateDistance(item.Length, PrecissionSearch)));
+        searchResult.Union(FusySearch(item, CalculateDistance(item.Length, PrecisionSearch)));
     }
 
     return searchResult;
