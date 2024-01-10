@@ -8,7 +8,7 @@ public partial class Search<T> where T : struct
   internal partial class IndexBuilder
   {
     #region Константа
-    public const string Delimiters = " .,()-:;!?\"\\'$_=[]<>/«»“” …";
+    public const string Delimiters = ".,()-:;!?\"\\'$_=[]<>/«»“” …’";
     #endregion
 
     #region Поля
