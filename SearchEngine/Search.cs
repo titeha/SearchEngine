@@ -135,7 +135,7 @@ public partial class Search<T> where T : struct
     _isIndexComplete = false;
   }
 
-  public Search(bool isPhonecticSearch) : this() => IsPhoneticSearch = isPhonecticSearch;
+  public Search(bool isPhoneticSearch) : this() => IsPhoneticSearch = isPhoneticSearch;
   #endregion
 
   #region Методы
