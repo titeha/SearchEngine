@@ -7,7 +7,7 @@ public class SearchResultList<T> where T : struct
   #endregion
 
   #region Свойства
-  public IndexList<T> this[int range] => !Items.ContainsKey(range) ? _emptyList : Items[range];
+  public IndexList<T> this[int range] => !Items.TryGetValue(range, out IndexList<T>? value) ? _emptyList : value;
 
   public SortedList<int, IndexList<T>> Items { get; set; }
 
