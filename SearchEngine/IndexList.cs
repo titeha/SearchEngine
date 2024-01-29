@@ -50,7 +50,7 @@ public class IndexList<T> where T : struct
 
   public IndexList<T> UnionIndexes(IndexList<T> otherIndexes)
   {
-    if (_indexes.Any())
+    if (_indexes.Count > 0)
       return new(_indexes.Intersect(otherIndexes._indexes));
     else
       return new(otherIndexes._indexes);
@@ -59,7 +59,7 @@ public class IndexList<T> where T : struct
   public IndexList<T> UnionIndexes(IEnumerable<IndexList<T>> otherIndexes)
   {
     var union = otherIndexes.SelectMany(o => o._indexes).Distinct();
-    if (_indexes.Any())
+    if (_indexes.Count > 0)
       return new(_indexes.Intersect(union));
     else
       return new(union);

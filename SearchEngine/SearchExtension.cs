@@ -24,7 +24,7 @@ public static class SearchExtension
 
     search!.PrepareIndex();
 
-    if (source?.Any() != true)
+    if (source?.Length == 0)
       return;
 
     if (elementDelimiter.IsNullOrEmpty())
