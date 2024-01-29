@@ -30,7 +30,7 @@ public static class SearchExtension
     if (elementDelimiter.IsNullOrEmpty())
       return;
 
-    await Task.Run(() => new Search<T>.IndexBuilder(search, delimiters).BuildIndex(source, elementDelimiter)).ConfigureAwait(false);
+    await Task.Run(() => new Search<T>.IndexBuilder(search, delimiters).BuildIndex(source!, elementDelimiter)).ConfigureAwait(false);
   }
 
   private static void NullExceptionThrow<T>(Search<T>? search) where T : struct => throw new ArgumentNullException(nameof(search));
