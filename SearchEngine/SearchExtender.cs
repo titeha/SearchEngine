@@ -2,7 +2,7 @@
 
 internal static class SearchExtender
 {
-  public static SortedList<T, V> Concat<T, V>(this SortedList<T, V> source, SortedList<T, V> added) where T : notnull
+  public static SortedList<T, V> Concatenate<T, V>(this SortedList<T, V> source, SortedList<T, V> added) where T : notnull
   {
     SortedList<T, V> result = new(source);
 

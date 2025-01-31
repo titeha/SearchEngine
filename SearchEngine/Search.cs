@@ -21,7 +21,7 @@ public partial class Search<T> where T : struct
   private int _missprintCount;
 
   private protected SortedList<string, IndexList<T>>? _searchIndex;
-  private SortedSet<string> _searchList;
+  private protected SortedSet<string> _searchList;
 
   private bool _isIndexComplete;
   #endregion
@@ -112,7 +112,7 @@ public partial class Search<T> where T : struct
       _codeKeyRus.Add(_sym, _code);
     }
 
-    _keyCodesRUEN = _codeKeyEng.Concat(_codeKeyRus);
+    _keyCodesRUEN = _codeKeyEng.Concatenate(_codeKeyRus);
 
     loadDoc = XDocument.Parse(DistanceCodeKey);
     foreach (XElement item in loadDoc.Root!.Elements("key"))
@@ -141,7 +141,9 @@ public partial class Search<T> where T : struct
   #region Методы
   public SearchResultList<T> Find(string searchString)
   {
-    static int CalculateDistance(int length, int percent) => length > 1 ? length - (length * percent / 100) : 0;
+    static int CalculateDistance(int length, int percent) => length > 1
+      ? length - (length * percent / 100)
+      : 0;
 
     SearchResultList<T> searchResult = new();
 
@@ -159,7 +161,7 @@ public partial class Search<T> where T : struct
     return searchResult;
   }
 
-  private void DisassemblyString(string source)
+  private protected void DisassemblyString(string source)
   {
     string clearedString = source.Trim().ToUpper();
     _searchList.Clear();
@@ -181,13 +183,14 @@ public partial class Search<T> where T : struct
     bool origin = SearchLocation.BeginWord == SearchLocation;
     int sLength = searchValue.Length;
 
-    var result = _searchIndex!.AsParallel()
-                              .WithDegreeOfParallelism(Environment.ProcessorCount)
-                              .Where(l => l.Key.Length >= sLength)
-                              .Select(i => (Position: i.Key.IndexOf(searchValue, StringComparison.OrdinalIgnoreCase), Indexes: i.Value))
-                              .Where(c => c.Position == 0 && origin || !origin && c.Position >= 0)
-                              .AsSequential()
-                              .Select(r => r.Indexes);
+    var result = _searchIndex!
+      .AsParallel()
+      .WithDegreeOfParallelism(Environment.ProcessorCount)
+      .Where(l => l.Key.Length >= sLength)
+      .Select(i => (Position: i.Key.IndexOf(searchValue, StringComparison.OrdinalIgnoreCase), Indexes: i.Value))
+      .Where(c => c.Position == 0 && origin || !origin && c.Position >= 0)
+      .AsSequential()
+      .Select(r => r.Indexes);
 
     searchResult.Items[0] = searchResult[0].UnionIndexes(result);
 
@@ -200,22 +203,23 @@ public partial class Search<T> where T : struct
     bool origin = SearchLocation.BeginWord == SearchLocation;
     int sLength = searchValue.Length;
 
-    static int CalculateResult(string searchValue, int sLength, string targetString, bool origin)
+    static int CalculateResult(string searchValue, string targetString, bool origin)
     {
       int calcResult = 0;
       int tLength = targetString.Length;
+      int sLength = searchValue.Length;
 
       if (sLength == tLength)
         calcResult = Levenshtein.DistanceLeventstein(searchValue, targetString);
       else if (sLength < tLength)
         if (origin)
-          calcResult = Levenshtein.DistanceLeventstein(searchValue, targetString[..(sLength)]);
+          calcResult = Levenshtein.DistanceLeventstein(searchValue, targetString[..sLength]);
         else
         {
           int actualLength = tLength - sLength + 1;
           int[] distances = new int[actualLength];
           for (int i = 0; i < actualLength; i++)
-            distances[i] = Levenshtein.DistanceLeventstein(searchValue, targetString[i..(sLength)]);
+            distances[i] = Levenshtein.DistanceLeventstein(searchValue, targetString[i..sLength]);
 
           calcResult = distances.Min();
         }
@@ -227,15 +231,21 @@ public partial class Search<T> where T : struct
       searchResult = ExactSearch(searchValue);
     else
     {
-      var result = _searchIndex!.AsParallel()
-                                .WithDegreeOfParallelism(Environment.ProcessorCount)
-                                .Where(s => s.Key.Length >= sLength)
-                                .Select(d => (Distance: CalculateResult(searchValue, sLength, d.Key, origin), Indexes: d.Value))
-                                .Where(r => r.Distance <= distance)
-                                .AsSequential()
-                                .GroupBy(i => i.Distance)
-                                .Select(g => (Distance: g.Key, Indexes: g.Select(x => x.Indexes)
-                                                                         .Aggregate((a, r) => r.UnionIndexes(a))));
+      var result = _searchIndex!
+#if !DEBUG
+        .AsParallel()
+        .WithDegreeOfParallelism(Environment.ProcessorCount) 
+#endif
+        .Where(s => s.Key.Length >= sLength)
+        .Select(d => (Distance: CalculateResult(searchValue, d.Key, origin), Indexes: d.Value))
+        .Where(r => r.Distance <= distance)
+#if !DEBUG
+        .AsSequential() 
+#endif
+        .GroupBy(i => i.Distance)
+        .Select(g => (Distance: g.Key, Indexes: g
+          .Select(x => x.Indexes)
+          .Aggregate((a, r) => r.UnionIndexes(a))));
 
       foreach (var (Distance, Indexes) in result)
         searchResult.Items.Add(Distance, Indexes);
@@ -246,10 +256,12 @@ public partial class Search<T> where T : struct
 
   private SearchResultList<T> PhoneticFind(string searchValue)
   {
-    static int CalculateResult(string searchValue, int sLength, string targetString)
+    static int CalculateResult(string searchValue, string targetString)
     {
       int calcResult = 0;
-      if (targetString.IndexOf(searchValue) != 0)
+      int sLength = searchValue.Length;
+
+      if (!targetString.StartsWith(searchValue))
       {
         string checkString;
         if (sLength < targetString.Length)
@@ -262,17 +274,20 @@ public partial class Search<T> where T : struct
     }
 
     SearchResultList<T> searchResult = new();
+    searchResult.Items.Add(0, new());
     int sLength = searchValue.Length;
 
-    var searchValues = _searchIndex!.AsParallel()
-                                    .WithDegreeOfParallelism(Environment.ProcessorCount)
-                                    .Where(l => l.Key.Length >= sLength)
-                                    .Select(d => (Distance: CalculateResult(searchValue, sLength, d.Key), Indexes: d.Value))
-                                    .Where(r => r.Distance <= 1)
-                                    .AsSequential()
-                                    .GroupBy(v => v.Distance)
-                                    .Select(g => (Distance: g.Key, Indexes: g.Select(i => i.Indexes)
-                                                                             .Aggregate((a, r) => r.UnionIndexes(a))));
+    var searchValues = _searchIndex!
+      .AsParallel()
+      .WithDegreeOfParallelism(Environment.ProcessorCount)
+      .Where(l => l.Key.Length >= sLength)
+      .Select(d => (Distance: CalculateResult(searchValue, d.Key), Indexes: d.Value))
+      .Where(r => r.Distance <= 1)
+      .AsSequential()
+      .GroupBy(v => v.Distance)
+      .Select(g => (Distance: g.Key, Indexes: g
+        .Select(i => i.Indexes)
+        .Aggregate((a, r) => r.UnionIndexes(a))));
 
     foreach (var (distance, indexes) in searchValues)
       searchResult[distance].UnionIndexes(indexes);
@@ -287,7 +302,7 @@ public partial class Search<T> where T : struct
   }
 
   private void OnCreateIndexComplete() => CreateIndexComplete?.Invoke(this, EventArgs.Empty);
-  #endregion Методы  
+  #endregion Методы
 
   #region События
   public event EventHandler? CreateIndexComplete;

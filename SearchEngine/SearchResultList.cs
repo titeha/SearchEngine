@@ -15,13 +15,16 @@ public class SearchResultList<T> where T : struct
   #endregion
 
   #region Конструктор
-  public SearchResultList() => Items = new();
+  public SearchResultList() => Items = [];
   #endregion
 
   #region Методы
   internal void Union(SearchResultList<T> secondList)
   {
-    foreach (var item in secondList.Items.Where(value => !Items.TryAdd(value.Key, value.Value)))
+    foreach (var item in secondList
+      .Items
+      .Where(value => !Items.TryAdd(value.Key, value.Value))
+      .ToList())
       Items[item.Key] = Items[item.Key].UnionIndexes(item.Value);
   }
   #endregion

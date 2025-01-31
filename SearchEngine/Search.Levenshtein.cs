@@ -1,4 +1,6 @@
-﻿using CommonClasses;
+﻿// Ignore Spelling: Leventstein
+
+using CommonClasses;
 
 using static System.Math;
 

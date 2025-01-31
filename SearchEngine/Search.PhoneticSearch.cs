@@ -9,29 +9,29 @@ public partial class Search<T> where T : struct
   internal static class PhoneticSearch
   {
     #region Структуры для анализа слов
-    private static readonly List<char> _consonantRus = new() { 'Т', 'С', 'В', 'К', 'Д', 'П', 'Г', 'З', 'Б', 'Ч', 'Х', 'Ж', 'Ш', 'Ц', 'Щ', 'Ф' }; // Буквы расставлены в порядке частоты появления
+    private static readonly List<char> _consonantRus = ['Т', 'С', 'В', 'К', 'Д', 'П', 'Г', 'З', 'Б', 'Ч', 'Х', 'Ж', 'Ш', 'Ц', 'Щ', 'Ф']; // Буквы расставлены в порядке частоты появления
 
     private static readonly SortedList<char, char> _consonantRusPair = new()
-  {
-   {'Б','П' },
-   {'В','Ф' },
-   {'Г','К' },
-   {'Д','Т' },
-   {'З','C' }
-  };
+    {
+      { 'Б', 'П' },
+      { 'В', 'Ф' },
+      { 'Г', 'К' },
+      { 'Д', 'Т' },
+      { 'З', 'C' }
+    };
 
     private static readonly SortedList<char, char> _vovelsRusPair = new()
-  {
-   {'Е','И' },
-   {'Ё','И' },
-   {'О','А' },
-   {'Ы','А' },
-   {'Э','И' },
-   {'Ю','У' },
-   {'Я','А' }
-  };
+    {
+      {'Е','И' },
+      {'Ё','И' },
+      {'О','А' },
+      {'Ы','А' },
+      {'Э','И' },
+      {'Ю','У' },
+      {'Я','А' }
+    };
 
-    private static readonly List<char> _vovelsEng = new() { 'E', 'A', 'O', 'I', 'U', 'Y' }; // Буквы расставлены в порядке частоты появления
+    private static readonly List<char> _vovelsEng = ['E', 'A', 'O', 'I', 'U', 'Y']; // Буквы расставлены в порядке частоты появления
     #endregion
 
     internal static string MetaPhone(string source) => source.GetCharSet() switch
@@ -43,7 +43,7 @@ public partial class Search<T> where T : struct
 
     private static string MetaPhoneRus(string original)
     {
-      StringBuilder source = new StringBuilder(original.ToUpper()).Replace("Ь", null).Replace("Ъ", null);
+      var source = new StringBuilder(original.ToUpper()).Replace("Ь", null).Replace("Ъ", null);
       StringBuilder resultString = new(source.Length);
       char current;
 
@@ -119,7 +119,7 @@ public partial class Search<T> where T : struct
             break;
         }
 
-        if ('B' == resultString[^1] && resultString[^2] == 'M')
+        if (resultString[^1] == 'B' && resultString[^2] == 'M')
           resultString.Remove(resultString.Length - 1, 1);
 
         char previous = ' ';

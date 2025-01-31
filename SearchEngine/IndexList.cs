@@ -53,7 +53,10 @@ public class IndexList<T> where T : struct
     if (_indexes.Count > 0)
       return new(_indexes.Intersect(otherIndexes._indexes));
     else
-      return new(otherIndexes._indexes);
+    {
+      _indexes.AddRange(otherIndexes._indexes);
+      return new(_indexes);
+    }
   }
 
   public IndexList<T> UnionIndexes(IEnumerable<IndexList<T>> otherIndexes)
@@ -62,7 +65,10 @@ public class IndexList<T> where T : struct
     if (_indexes.Count > 0)
       return new(_indexes.Intersect(union));
     else
-      return new(union);
+    {
+      _indexes.AddRange(union);
+      return new(_indexes);
+    }
   }
 
   internal bool Contains(IndexList<T> lookUpSet) => _indexes.Intersect(lookUpSet._indexes)?.Count() > 0;

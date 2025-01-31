@@ -50,15 +50,15 @@ public class IndexListTests
     otherIndexList.TryAddValue(2);
 
     IndexList<int> resultIndexList = testIndexList.UnionIndexes(otherIndexList);
-    const string expectedResultString = "1,2,4,5,7,8,9";
-    const int expectedElementCount = 7;
+    const string expectedResultString = "1,2,4";
+    const int expectedElementCount = 3;
 
     Assert.Equal(expectedElementCount, resultIndexList.Count);
     Assert.Equal(expectedResultString, resultIndexList.ToString());
   }
 
   [Fact]
-  public void Union_empty_list_with_list_contains_elements_Returns_list_like_senond_list()
+  public void Union_empty_list_with_list_contains_elements_Returns_empty_list()
   {
     IndexList<int> testIndexList = new();
     IndexList<int> emptyIndexList = new();
@@ -66,8 +66,8 @@ public class IndexListTests
     testIndexList.TryAddValue(7);
     testIndexList.TryAddValue(2);
     testIndexList.TryAddValue(14);
-    const string expectedResultString = "2,7,14";
-    const int expectedElementCount = 3;
+    const string expectedResultString = "";
+    const int expectedElementCount = 0;
     IndexList<int> resultIndexList = testIndexList.UnionIndexes(emptyIndexList);
 
     Assert.Equal(expectedElementCount, resultIndexList.Count);
@@ -96,8 +96,8 @@ public class IndexListTests
     addedIndexes[1].TryAddValue(15);
     addedIndexes[1].TryAddValue(27);
     addedIndexes[1].TryAddValue(115);
-    const int expectedElementCount = 10;
-    const string expectedResultString = "1,2,3,4,5,7,9,15,27,115";
+    const int expectedElementCount = 2;
+    const string expectedResultString = "5,7";
 
     IndexList<int> resultIndexes = testIndexList.UnionIndexes(addedIndexes);
 

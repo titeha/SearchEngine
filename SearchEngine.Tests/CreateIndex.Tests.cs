@@ -1,4 +1,4 @@
-﻿using System.Dynamic;
+﻿// Ignore Spelling: ienumerable
 
 namespace SearchEngine.Tests;
 
@@ -13,7 +13,7 @@ public class CreateIndexTests
 
     await sut.PrepareIndex(Populating.GetTestPopulatedList());
 
-    Assert.Equal(expectedCount, sut.SearchList.Count);
+    Assert.Equal(expectedCount, sut.SearchIndex.Count);
     Assert.True(sut.IsIndexComplete);
   }
 
@@ -28,7 +28,7 @@ public class CreateIndexTests
 
     await sut.PrepareIndex(Populating.GetTestPopulatedList());
 
-    Assert.Equal(expectedCount, sut.SearchList.Count);
+    Assert.Equal(expectedCount, sut.SearchIndex.Count);
     Assert.True(sut.IsIndexComplete);
   }
 
@@ -40,7 +40,7 @@ public class CreateIndexTests
 
     await sut.PrepareIndex(Populating.GetTestPopulatedArrayForPhonetic(), ";");
 
-    Assert.Equal(expectedCount, sut.SearchList.Count);
+    Assert.Equal(expectedCount, sut.SearchIndex.Count);
     Assert.True(sut.IsIndexComplete);
   }
 
@@ -52,7 +52,7 @@ public class CreateIndexTests
 
     await sut.PrepareIndex(Populating.GetTestPopulatedListForPhonetic());
 
-    Assert.Equal(expectedCount, sut.SearchList.Count);
+    Assert.Equal(expectedCount, sut.SearchIndex.Count);
     Assert.True(sut.IsIndexComplete);
   }
 
@@ -64,20 +64,22 @@ public class CreateIndexTests
 
     await sut.PrepareIndex(Populating.GetTestPopulatedArray(), ";", " ");
 
-    Assert.Equal(expectedCount, sut.SearchList.Count);
+    Assert.Equal(expectedCount, sut.SearchIndex.Count);
     Assert.True(sut.IsIndexComplete);
   }
 
   [Fact]
   public async void Create_dictionary_from_string_array_IsNumericSearch_is_on_Search_has_full_directory()
   {
-    TestSearch<int> sut = new();
-    sut.IsNumberSearch = true;
+    TestSearch<int> sut = new()
+    {
+      IsNumberSearch = true
+    };
     const int expectedCount = 14;
 
     await sut.PrepareIndex(Populating.GetTestPopulatedArray(), ";");
 
-    Assert.Equal(expectedCount, sut.SearchList.Count);
+    Assert.Equal(expectedCount, sut.SearchIndex.Count);
     Assert.True(sut.IsIndexComplete);
   }
 
@@ -86,8 +88,8 @@ public class CreateIndexTests
   {
     TestSearch<int>? sut = null;
 
-    await Assert.ThrowsAsync<ArgumentNullException>(() => sut!.PrepareIndex(Enumerable.Empty<ISourceData<int>>()));
-    await Assert.ThrowsAsync<ArgumentNullException>(() => sut!.PrepareIndex(new string[0], string.Empty));
+    await Assert.ThrowsAsync<ArgumentNullException>(() => sut!.PrepareIndex([]));
+    await Assert.ThrowsAsync<ArgumentNullException>(() => sut!.PrepareIndex(Array.Empty<string>(), string.Empty));
   }
 
   [Fact]
@@ -98,12 +100,12 @@ public class CreateIndexTests
     await sut.PrepareIndex(Enumerable.Empty<ISourceData<int>>());
 
     Assert.False(sut.IsIndexComplete);
-    Assert.Empty(sut.SearchList);
+    Assert.Empty(sut.SearchIndex);
 
     await sut.PrepareIndex(new string[0], string.Empty);
 
     Assert.False(sut.IsIndexComplete);
-    Assert.Empty(sut.SearchList);
+    Assert.Empty(sut.SearchIndex);
   }
 
   [Fact]
@@ -114,43 +116,47 @@ public class CreateIndexTests
     await sut.PrepareIndex(Populating.GetTestPopulatedArray(), string.Empty);
 
     Assert.False(sut.IsIndexComplete);
-    Assert.Empty(sut.SearchList);
+    Assert.Empty(sut.SearchIndex);
   }
 }
 
 public class TestSearch<T> : Search<T> where T : struct
 {
-  public TestSearch() : base() { }
+  public TestSearch() { }
 
   public TestSearch(bool isPhoneticSearch) : base(isPhoneticSearch) { }
 
-  public SortedList<string, IndexList<T>> SearchList => _searchIndex!;
+  public SortedList<string, IndexList<T>> SearchIndex => _searchIndex!;
+
+  public SortedSet<string> SearchList=> _searchList!;
+
+  public void SearchDisassembling(string source) => DisassemblyString(source);
 }
 
 internal static class Populating
 {
   public static IEnumerable<ISourceData<int>> GetTestPopulatedList()
   {
-    return new List<ISourceData<int>>
-    {
+    return
+    [
       new Test<int> { Id = 1, Text = "Check the process" },
       new Test<int> { Id = 2, Text = "Process is ready" },
       new Test<int> { Id = 3, Text = "Process simple work" },
       new Test<int> { Id = 4, Text = "Thread number is 123AB" },
       new Test<int> { Id = 5, Text = "The date is 19.09.2023" }
-    };
+    ];
   }
 
   public static string[] GetTestPopulatedArray()
   {
-    return new string[]
-    {
+    return
+    [
       "1;Check the process",
       "2;Process is ready",
       "3;Process simple work",
       "4;Thread number is 123AB",
       "5;The date is 19.09.2023"
-    };
+    ];
   }
 
   public static IEnumerable<ISourceData<int>> GetTestPopulatedListForPhonetic()
@@ -167,14 +173,14 @@ internal static class Populating
 
   public static string[] GetTestPopulatedArrayForPhonetic()
   {
-    return new string[]
-    {
+    return
+    [
       "1;Фима",
       "2;Егор",
       "3;Забабонова",
       "4;Гоголадзе",
       "5;Терентьев"
-    };
+    ];
   }
 }
 
