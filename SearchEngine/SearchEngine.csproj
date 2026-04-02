@@ -35,6 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Ti-Soft.Results" Version="2.0.0" />
     <PackageReference Include="Ti-Soft.StringFunctions" Version="2.0.0" />
   </ItemGroup>
 
