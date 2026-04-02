@@ -1,6 +1,6 @@
 ﻿using System.Xml.Linq;
 
-using CommonClasses;
+using StringFunctions;
 
 using static SearchEngine.Properties.Resources;
 
@@ -155,7 +155,9 @@ public partial class Search<T> where T : struct
       else if (item.Length == 2 || SearchType.ExactSearch == SearchType)
         searchResult.Union(ExactSearch(item));
       else
-        searchResult.Union(FusySearch(item, CalculateDistance(item.Length, PrecisionSearch)));
+        searchResult.Union(FusySearch(item, AcceptableCountMisprint >= 0
+          ? AcceptableCountMisprint
+          : CalculateDistance(item.Length, PrecisionSearch)));
     }
 
     return searchResult;
@@ -234,13 +236,13 @@ public partial class Search<T> where T : struct
       var result = _searchIndex!
 #if !DEBUG
         .AsParallel()
-        .WithDegreeOfParallelism(Environment.ProcessorCount) 
+        .WithDegreeOfParallelism(Environment.ProcessorCount)
 #endif
         .Where(s => s.Key.Length >= sLength)
         .Select(d => (Distance: CalculateResult(searchValue, d.Key, origin), Indexes: d.Value))
         .Where(r => r.Distance <= distance)
 #if !DEBUG
-        .AsSequential() 
+        .AsSequential()
 #endif
         .GroupBy(i => i.Distance)
         .Select(g => (Distance: g.Key, Indexes: g
@@ -295,7 +297,7 @@ public partial class Search<T> where T : struct
     return searchResult;
   }
 
-  internal void PrepareIndex()
+  internal void IndexPreparing()
   {
     IsIndexComplete = false;
     _searchIndex?.Clear();

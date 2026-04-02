@@ -1,6 +1,6 @@
 ﻿// Ignore Spelling: Leventstein
 
-using CommonClasses;
+using StringFunctions;
 
 using static System.Math;
 

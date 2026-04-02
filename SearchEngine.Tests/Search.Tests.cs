@@ -1,12 +1,5 @@
 ﻿// Ignore Spelling: Fusy
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml;
-
 namespace SearchEngine.Tests;
 
 public class SearchTests
@@ -94,6 +87,46 @@ public class SearchTests
   }
 
   [Fact]
+  public void IndexBuilderFromText_ShouldBuildIndexCorrectly()
+  {
+    var search = new TestSearch<int>();
+    var sources = new string[3]
+    {
+      "1;Привет, как дела?",
+      "2;Привет, как твои дела?",
+      "3;Здравствуйте!"
+    };
+
+    var indexBuilder = new Search<int>.IndexBuilder(search);
+
+    indexBuilder.BuildIndex(sources, ";");
+
+    Assert.True(search.IsIndexComplete);
+    Assert.NotNull(search.SearchIndex);
+    Assert.Equal(5, search.SearchIndex.Count);
+  }
+
+  [Fact]
+  public void IndexBuilderFromTuple_ShouldBuildIndexCorrectly()
+  {
+    var search = new TestSearch<int>();
+    var sources = new List<(string, int)>()
+    {
+      ("Привет, как дела?", 1),
+      ("Привет, как твои дела?", 2),
+      ("Здравствуйте!", 3)
+    };
+
+    var indexBuilder = new Search<int>.IndexBuilder(search);
+
+    indexBuilder.BuildIndex(sources);
+
+    Assert.True(search.IsIndexComplete);
+    Assert.NotNull(search.SearchIndex);
+    Assert.Equal(5, search.SearchIndex.Count);
+  }
+
+  [Fact]
   public void PropertiesTest()
   {
     const int precision = 50;
@@ -150,5 +183,149 @@ public class SearchTests
     sut.IsIndexComplete = true;
 
     Assert.True(eventRaised);
+  }
+
+  [Fact]
+  public void BuildIndex_WithEmptySources_ShouldNotAddAnyItems()
+  {
+    var search = new TestSearch<int>();
+    var indexBuilder = new Search<int>.IndexBuilder(search);
+
+    indexBuilder.BuildIndex(Enumerable.Empty<ISourceData<int>>());
+
+    Assert.True(search.IsIndexComplete);
+    Assert.Empty(search.SearchIndex);
+  }
+
+  [Fact]
+  public void BuildIndex_WithEmptyStringsInArray_ShouldIgnoreEmptyStrings()
+  {
+    var search = new TestSearch<int>();
+    var sources = new string[]
+    {
+        "1;Привет, как дела?",
+        "2;;", // Пустая строка
+        "3;Здравствуйте!"
+    };
+
+    var indexBuilder = new Search<int>.IndexBuilder(search);
+
+    indexBuilder.BuildIndex(sources, ";");
+
+    Assert.True(search.IsIndexComplete);
+    Assert.Equal(4, search.SearchIndex.Count); // Только "Привет", "как", "дела", "Здравствуйте"
+  }
+
+  [Fact]
+  public void BuildIndex_WithCustomDelimiters_ShouldSplitTextCorrectly()
+  {
+    var search = new TestSearch<int>();
+    var sources = new List<ISourceData<int>>
+    {
+        new Test<int> { Id = 1, Text = "Привет-как-дела?" },
+        new Test<int> { Id = 2, Text = "Привет-как-твои-дела?" },
+        new Test<int> { Id = 3, Text = "Здравствуйте!" }
+    };
+
+    var indexBuilder = new Search<int>.IndexBuilder(search, delimiters: "-");
+
+    indexBuilder.BuildIndex(sources);
+
+    Assert.True(search.IsIndexComplete);
+    Assert.Equal(5, search.SearchIndex.Count); // "Привет", "как", "дела", "твои", "Здравствуйте"
+  }
+
+  [Fact]
+  public void BuildIndex_WithForceParallel_ShouldProcessInParallel()
+  {
+    var search = new TestSearch<int>()
+    {
+      IsNumberSearch = true
+    };
+    var sources = Enumerable.Range(1, 1000)
+        .Select(i => new Test<int> { Id = i, Text = $"Text{i}" });
+
+    var indexBuilder = new Search<int>.IndexBuilder(search, parallelProcessingThreshold: 100);
+
+    indexBuilder.BuildIndex(sources);
+
+    Assert.True(search.IsIndexComplete);
+    Assert.Equal(1000, search.SearchIndex.Count);
+  }
+
+  [Fact]
+  public void BuildIndex_WithPhoneticSearch_ShouldConvertTextToPhonetic()
+  {
+    var search = new TestSearch<int>(true);
+    var sources = new List<ISourceData<int>>
+    {
+        new Test<int> { Id = 1, Text = "Привет" },
+        new Test<int> { Id = 2, Text = "Превет" }, // Опечатка
+        new Test<int> { Id = 3, Text = "Здравствуйте" }
+    };
+
+    var indexBuilder = new Search<int>.IndexBuilder(search);
+
+    indexBuilder.BuildIndex(sources);
+
+    Assert.True(search.IsIndexComplete);
+    Assert.Equal(2, search.SearchIndex.Count); // "Привет" и "Здравствуйте" (фонетически)
+  }
+
+  [Fact]
+  public void BuildIndex_WithNumberSearch_ShouldIncludeNumbers()
+  {
+    var search = new TestSearch<int> { IsNumberSearch = true };
+    var sources = new List<ISourceData<int>>
+    {
+        new Test<int> { Id = 1, Text = "Text 123" },
+        new Test<int> { Id = 2, Text = "Text 456" },
+        new Test<int> { Id = 3, Text = "Text ABC" }
+    };
+
+    var indexBuilder = new Search<int>.IndexBuilder(search);
+
+    indexBuilder.BuildIndex(sources);
+
+    Assert.True(search.IsIndexComplete);
+    Assert.Equal(4, search.SearchIndex.Count); // "Text", "123", "456", "ABC"
+  }
+
+  [Fact]
+  public void BuildIndex_WithNullSources_ShouldThrowException()
+  {
+    var search = new TestSearch<int>();
+    var indexBuilder = new Search<int>.IndexBuilder(search);
+
+    Assert.Throws<ArgumentNullException>(() => indexBuilder.BuildIndex((IEnumerable<ISourceData<int>>)null!));
+    Assert.Throws<ArgumentNullException>(() => indexBuilder.BuildIndex(null!, ";"));
+    Assert.Throws<ArgumentNullException>(() => indexBuilder.BuildIndex((IEnumerable<(string, int)>)null!));
+  }
+
+  [Fact]
+  public void BuildIndex_WithEmptyTuples_ShouldNotAddAnyItems()
+  {
+    var search = new TestSearch<int>();
+    var indexBuilder = new Search<int>.IndexBuilder(search);
+
+    indexBuilder.BuildIndex(Enumerable.Empty<(string, int)>());
+
+    Assert.True(search.IsIndexComplete);
+    Assert.Empty(search.SearchIndex);
+  }
+
+  [Fact]
+  public void BuildIndex_WithCustomParallelThreshold_ShouldProcessCorrectly()
+  {
+    var search = new TestSearch<int>() { IsNumberSearch = true };
+    var sources = Enumerable.Range(1, 100)
+        .Select(i => new Test<int> { Id = i, Text = $"Text{i}" });
+
+    var indexBuilder = new Search<int>.IndexBuilder(search, parallelProcessingThreshold: 50);
+
+    indexBuilder.BuildIndex(sources);
+
+    Assert.True(search.IsIndexComplete);
+    Assert.Equal(100, search.SearchIndex.Count);
   }
 }

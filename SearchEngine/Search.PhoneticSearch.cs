@@ -1,7 +1,5 @@
 ﻿using System.Text;
 
-using CommonClasses;
-
 namespace SearchEngine;
 
 public partial class Search<T> where T : struct
@@ -169,7 +167,7 @@ public partial class Search<T> where T : struct
                 if (!_vovelsEng.Contains(_second) || i < resultString.Length - 2)
                   resultString.Remove(i, 1);
               }
-              else if ('N' == _next && i < resultString.Length - 2 || resultString.IndexOf("NED", resultString.Length - 3) > 0)
+              else if ('N' == _next && i < resultString.Length - 2 || HasNedEnding(resultString))
                 resultString.Remove(i, 1);
               else if ('I' == _next || 'E' == _next || 'Y' == _next)
                 resultString[i] = 'J';
@@ -221,6 +219,16 @@ public partial class Search<T> where T : struct
       }
 
       return resultString.ToString();
+    }
+
+    private static bool HasNedEnding(StringBuilder source)
+    {
+      int length = source.Length;
+
+      return length > 3
+          && source[length - 3] == 'N'
+          && source[length - 2] == 'E'
+          && source[length - 1] == 'D';
     }
   }
 }

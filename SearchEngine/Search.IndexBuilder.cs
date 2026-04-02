@@ -1,92 +1,160 @@
-﻿using System.Reflection;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
+
+using StringFunctions;
 
 namespace SearchEngine;
 
 public partial class Search<T> where T : struct
 {
-  internal partial class IndexBuilder(Search<T> search, string? delimiters = null)
+  internal partial class IndexBuilder(Search<T> search, string? delimiters = null, int parallelProcessingThreshold = 10_000)
   {
     #region Константа
     public const string Delimiters = ".,()-:;!?\"\\'$_=[]<>/«»“” …’\t";
     #endregion
 
     #region Поля
-    private readonly char[] _delimiters = (delimiters ?? Delimiters).ToCharArray();
+    private readonly char[] _delimiters = (delimiters!.IsNullOrEmpty() ? Delimiters : delimiters)!.ToCharArray();
 
     private readonly Search<T> _search = search;
 
-    private bool _isManualCreate;
-
+#if NET7_0_OR_GREATER
+    [GeneratedRegex("(\\D+\\d+)|(\\d+\\D)|^\\d+$", RegexOptions.Compiled)]
+    private static partial Regex HasNumberAndCharacter();
     private readonly Regex _hasNumberAndCharacter = HasNumberAndCharacter();
+#else
+    private static readonly Regex _hasNumberAndCharacter = new("(\\D+\\d+)|(\\d+\\D)|^\\d+$", RegexOptions.Compiled);
+#endif
 
+    private readonly int _parallelProcessingThreshold = parallelProcessingThreshold;
     #endregion
 
     #region Методы
-    public void AddToIndex(string word, T index)
+    public void BuildIndex(IEnumerable<ISourceData<T>> sources, bool forceParallel = false)
     {
-      if (_isManualCreate)
-        ProcessingLine(word, index);
+      var result = ProcessSource(
+        sources,
+        s => (s.Id, s.Text),
+        s => s.Text,
+        forceParallel);
+
+      if (_search.IsPhoneticSearch)
+        result = ConvertToPhonetic(result);
+
+      AddToIndex(result);
+      NotifyIndexCreated();
     }
 
-    public void BeginCreateIndex() => _isManualCreate = true;
-
-    public void BuildIndex(IEnumerable<ISourceData<T>> sources)
+    public void BuildIndex(string[] sources, string elementDelimiter, bool forceParallel = false)
     {
-      if (_isManualCreate)
-        return;
+      var elementDelimiterArray = (elementDelimiter.IsNullOrEmpty() ? ";" : elementDelimiter).ToCharArray();
 
-      var result = sources
+      var result = ProcessSource(
+        sources, s =>
+        {
+          var parts = s.Split(elementDelimiterArray, StringSplitOptions.RemoveEmptyEntries);
+          if (parts.Length < 2)
+            return null;
+
+#if NET7_0_OR_GREATER
+            if (!TryConvertToId(parts[0].AsSpan(), out T id))
+#else
+            if(!TryConvertToId(parts[0], out T id))
+#endif
+            return null;
+
+            return (Id: id, Text: parts[1]);
+          },
+        s => s.Text,
+        forceParallel);
+
+      if (_search.IsPhoneticSearch)
+        result = ConvertToPhonetic(result);
+
+      AddToIndex(result);
+      NotifyIndexCreated();
+
+    }
+
+    public void BuildIndex(IEnumerable<(string Text, T Index)> source, bool forceParallel = false)
+    {
+      var result = ProcessSource(
+        source,
+        s => (s.Index, s.Text),
+        s => s.Text,
+        forceParallel);
+
+      if (_search.IsPhoneticSearch)
+        result = ConvertToPhonetic(result);
+
+      AddToIndex(result);
+      NotifyIndexCreated();
+    }
+
+    private IOrderedEnumerable<(string Text, IEnumerable<T> Indexes)> ProcessSource<TInput>(
+      IEnumerable<TInput> source,
+      Func<TInput, (T Id, string Text)?> idAndTextSelector,
+      Func<(T Id, string Text), string> textSelector,
+      bool forceParallel = false)
+    {
+      bool useParallelProcessing = forceParallel || ShouldUseParallelProcessing(source);
+
+      return useParallelProcessing ? ProcessSourceParallel(source, idAndTextSelector, textSelector) : ProcessSourceSequental(source, idAndTextSelector, textSelector);
+    }
+
+    private IOrderedEnumerable<(string Text, IEnumerable<T> Indexes)> ProcessSourceSequental<TInput>(
+      IEnumerable<TInput> source,
+      Func<TInput, (T Id, string Text)?> idAndTextSelector,
+      Func<(T Id, string Text), string> textSelector)
+    {
+      return source
+        .Select(idAndTextSelector)
+        .Where(x => x.HasValue)
+        .Select(x => x!.Value)
+        .Select(s => (s.Id, TextList: textSelector(s).Split(_delimiters, StringSplitOptions.RemoveEmptyEntries)))
+        .SelectMany(m => m.TextList, (m, v) => (Text: v.ToUpper(), m.Id))
+        .Where(c => c.Text.Length > 1 && (!_hasNumberAndCharacter.IsMatch(c.Text) || _search.IsNumberSearch))
+        .GroupBy(i => i.Text)
+        .Select(g => (Text: g.Key, Indexes: g.Select(r => r.Id).Distinct()))
+        .OrderBy(o => o.Text);
+    }
+
+    private IOrderedEnumerable<(string Text, IEnumerable<T> Indexes)> ProcessSourceParallel<TInput>(
+      IEnumerable<TInput> source,
+      Func<TInput, (T Id, string Text)?> idAndTextSelector,
+      Func<(T Id, string Text), string> textSelector)
+    {
+      return source
         .AsParallel()
-        .WithDegreeOfParallelism(Environment.ProcessorCount)
-        .Select(s => (s.Id, TextList: s.Text.Split(_delimiters, StringSplitOptions.RemoveEmptyEntries)))
+        .WithDegreeOfParallelism((int)(Environment.ProcessorCount * .75))
+        .Select(idAndTextSelector)
+        .Where(x => x.HasValue)
+        .Select(x => x!.Value)
+        .Select(s => (s.Id, TextList: textSelector(s).Split(_delimiters, StringSplitOptions.RemoveEmptyEntries)))
         .SelectMany(m => m.TextList, (m, v) => (Text: v.ToUpper(), m.Id))
         .Where(c => c.Text.Length > 1 && (!_hasNumberAndCharacter.IsMatch(c.Text) || _search.IsNumberSearch))
         .AsSequential()
         .GroupBy(i => i.Text)
-        .Select(g => (Text: g.Key, Indexes: g
-          .Select(r => r.Id)
-          .Distinct()))
+        .Select(g => (Text: g.Key, Indexes: g.Select(r => r.Id).Distinct()))
         .OrderBy(o => o.Text);
-
-      if (_search.IsPhoneticSearch)
-        result = ConvertToPhonetic(result);
-
-      foreach (var (Text, Indexes) in result!)
-        _search._searchIndex!.Add(Text, new(Indexes));
-
-      _search.IsIndexComplete = true;
-      IndexCreated?.Invoke(this, EventArgs.Empty);
     }
 
-    public void BuildIndex(string[] sources, string elementDelimiter)
+    private bool ShouldUseParallelProcessing<TInput>(IEnumerable<TInput> sources)
     {
-      if (_isManualCreate)
-        return;
+      if (sources.TryGetNonEnumeratedCount(out var count))
+        return count > _parallelProcessingThreshold;
 
-      var elementDelimiterArray = (elementDelimiter ?? ";").ToCharArray();
-      var result = sources
-        .AsParallel()
-        .WithDegreeOfParallelism(Environment.ProcessorCount)
-        .Select(s => s.Split(elementDelimiterArray, StringSplitOptions.RemoveEmptyEntries))
-        .Select(i => (Id: ConvertToId(i[0]), Text: i[1]))
-        .Select(d => (d.Id, TextList: d.Text.Split(_delimiters, StringSplitOptions.RemoveEmptyEntries)))
-        .SelectMany(m => m.TextList, (m, v) => (Text: v.ToUpper(), m.Id))
-        .Where(c => c.Text.Length > 1 && (!_hasNumberAndCharacter.IsMatch(c.Text) || _search.IsNumberSearch))
-        .AsSequential()
-        .GroupBy(z => z.Text)
-        .Select(g => (Text: g.Key, Indexes: g.Select(f => f.Id).Distinct()))
-        .OrderBy(o => o.Text);
+      return sources.Count() > _parallelProcessingThreshold;
+    }
 
-      if (_search.IsPhoneticSearch)
-        result = ConvertToPhonetic(result);
-
-      foreach (var (Text, Indexes) in result!)
+    private void AddToIndex(IOrderedEnumerable<(string Text, IEnumerable<T> Indexes)> result)
+    {
+      foreach (var (Text, Indexes) in result)
         _search._searchIndex!.Add(Text, new(Indexes));
 
       _search.IsIndexComplete = true;
-      IndexCreated?.Invoke(this, EventArgs.Empty);
     }
+
+    private void NotifyIndexCreated() => IndexCreated?.Invoke(this, EventArgs.Empty);
 
     private static IOrderedEnumerable<(string Text, IEnumerable<T> Indexes)> ConvertToPhonetic(IOrderedEnumerable<(string Text, IEnumerable<T> Indexes)> result)
     {
@@ -100,53 +168,15 @@ public partial class Search<T> where T : struct
         .OrderBy(o => o.Text);
     }
 
-    private static T ConvertToId(string source)
-    {
-      Type type = typeof(T);
-
-      if (type.IsPrimitive)
-      {
-        MethodInfo tryParseMethod = type.GetMethod("TryParse", new[] { typeof(string), type.MakeByRefType() })!;
-
-        if (tryParseMethod != null)
-        {
-          object[] parameters = [source, null!];
-          bool success = (bool)tryParseMethod.Invoke(null, parameters)!;
-
-          if (success)
-            return (T)parameters[1];
-        }
-      }
-
-      return default;
-    }
-
-    public void EndCreateIndex()
-    {
-      _isManualCreate = false;
-      IndexCreated?.Invoke(this, EventArgs.Empty);
-    }
-
-    private void ProcessingLine(string source, T index)
-    {
-      string[] sources = source.Trim().ToUpper().Split(_delimiters, StringSplitOptions.RemoveEmptyEntries);
-      for (int i = 0, _count = sources.Length; i < _count; i++)
-        if (sources[i].Length > 1 && (_hasNumberAndCharacter.IsMatch(sources[i]) || _search.IsNumberSearch))
-          AddWord(_search.IsPhoneticSearch ? PhoneticSearch.MetaPhone(sources[i]) : sources[i], index);
-    }
-
-    private void AddWord(string word, T index)
-    {
-      if (!_search._searchIndex!.TryAdd(word, new(index)))
-        _search._searchIndex![word].TryAddValue(index);
-    }
+#if NET7_0_OR_GREATER
+    private static bool TryConvertToId(ReadOnlySpan<char> source, out T value) => DefaultIdParser<T>.TryParse(source, out value);
+#else
+    private static bool TryConvertToId(string source, out T value) => DefaultIdParser<T>.TryParse(source, out value);
+#endif
     #endregion
 
     #region Событие
     public event EventHandler<EventArgs>? IndexCreated;
     #endregion
-
-    [GeneratedRegex("(\\D+\\d+)|(\\d+\\D)|^\\d+$", RegexOptions.Compiled)]
-    private static partial Regex HasNumberAndCharacter();
   }
 }
