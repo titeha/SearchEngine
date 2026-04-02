@@ -1,146 +1,189 @@
-﻿using StringFunctions;
+﻿using ResultType;
 
 namespace SearchEngine;
 
 /// <summary>
-/// Предоставляет методы расширения для подготовки поискового индекса в классе <see cref="Search{T}"/>.
+/// Методы расширения для подготовки поискового индекса.
 /// </summary>
 public static class SearchExtension
 {
   /// <summary>
-  /// Подготавливает поисковый индекс для указанных исходных данных.
+  /// Подготавливает индекс из коллекции объектов-источников.
   /// </summary>
-  /// <typeparam name="T">Тип индекса. Должен быть типом значения.</typeparam>
-  /// <param name="search">Экземпляр <see cref="Search{T}"/>, для которого подготавливается индекс.</param>
-  /// <param name="source">Исходные данные для индексации.</param>
-  /// <param name="delimiters">Разделители, используемые для разделения текста. Если null, используются разделители по умолчанию.</param>
-  /// <param name="forceParallel">Принудительно использовать параллельную обработку. По умолчанию <c>false</c>.</param>
-  /// <param name="parallelProcessingThreshold">Минимальное количество элементов для включения параллельной обработки. По умолчанию 10 000.</param>
-  /// <exception cref="ArgumentNullException">Выбрасывается, если <paramref name="search"/> равен null.</exception>
-  /// <exception cref="ArgumentException">Выбрасывается, если <paramref name="source"/> равен null или пуст.</exception>
+  /// <typeparam name="T">Тип идентификатора записи.</typeparam>
+  /// <param name="search">Экземпляр поискового движка.</param>
+  /// <param name="source">Источник данных.</param>
+  /// <param name="delimiters">Пользовательский набор разделителей слов.</param>
+  /// <returns>Асинхронная операция подготовки индекса.</returns>
+  /// <exception cref="ArgumentNullException">
+  /// Генерируется, если <paramref name="search"/> равен <see langword="null"/>.
+  /// </exception>
   public static async Task PrepareIndex<T>(
-    this Search<T> search,
-    IEnumerable<ISourceData<T>> source,
-    string? delimiters = null,
-    bool forceParallel = false,
-    int parallelProcessingThreshold = 10_000) where T : struct => await PrepareIndexInternal(
-      search,
-      source,
-      delimiters,
-      parallelProcessingThreshold,
-      (builder, src) => builder.BuildIndex(src, forceParallel));
-
-  /// <summary>
-  /// Подготавливает поисковый индекс для указанных исходных данных, представленных в виде массива строк.
-  /// </summary>
-  /// <typeparam name="T">Тип индекса. Должен быть типом значения.</typeparam>
-  /// <param name="search">Экземпляр <see cref="Search{T}"/>, для которого подготавливается индекс.</param>
-  /// <param name="source">Исходные данные для индексации, представленные в виде массива строк.</param>
-  /// <param name="elementDelimiter">Разделитель, используемый для разделения каждой строки на элементы.</param>
-  /// <param name="delimiters">Разделители, используемые для разделения текста. Если null, используются разделители по умолчанию.</param>
-  /// <param name="forceParallel">Принудительно использовать параллельную обработку. По умолчанию <c>false</c>.</param>
-  /// <param name="parallelProcessingThreshold">Минимальное количество элементов для включения параллельной обработки. По умолчанию 10 000.</param>
-  /// <exception cref="ArgumentNullException">Выбрасывается, если <paramref name="search"/> равен null.</exception>
-  /// <exception cref="ArgumentException">Выбрасывается, если <paramref name="source"/> равен null, пуст или <paramref name="elementDelimiter"/> равен null или пуст.</exception>
-  public static async Task PrepareIndex<T>(
-    this Search<T> search,
-    string[] source,
-    string elementDelimiter,
-    string? delimiters = null,
-    bool forceParallel = false,
-    int parallelProcessingThreshold = 10_000) where T : struct
+      this Search<T> search,
+      IEnumerable<ISourceData<T>> source,
+      string? delimiters = null)
+      where T : struct
   {
-    if (elementDelimiter.IsNullOrEmpty())
+    if (search is null)
+      ThrowArgumentNull(nameof(search));
+
+    await search!.PrepareIndex(source, delimiters);
+
+    if (source?.Any() != true)
       return;
 
-    await PrepareIndexInternal(
-      search,
-      source,
-      delimiters,
-      parallelProcessingThreshold,
-      (builder, src) => builder.BuildIndex(src, elementDelimiter, forceParallel));
+    await Task.Run(() => new Search<T>.IndexBuilder(search!, delimiters).BuildIndex(source))
+        .ConfigureAwait(false);
   }
 
   /// <summary>
-  /// Подготавливает поисковый индекс для указанных исходных данных, представленных в виде коллекции кортежей.
+  /// Подготавливает индекс из массива строк, содержащих идентификатор и текст.
   /// </summary>
-  /// <typeparam name="T">Тип индекса. Должен быть типом значения.</typeparam>
-  /// <param name="search">Экземпляр <see cref="Search{T}"/>, для которого подготавливается индекс.</param>
-  /// <param name="source">Исходные данные для индексации, представленные в виде коллекции кортежей.</param>
-  /// <param name="delimiters">Разделители, используемые для разделения текста. Если null, используются разделители по умолчанию.</param>
-  /// <param name="forceParallel">Принудительно использовать параллельную обработку. По умолчанию <c>false</c>.</param>
-  /// <param name="parallelProcessingThreshold">Минимальное количество элементов для включения параллельной обработки. По умолчанию 10 000.</param>
-  /// <exception cref="ArgumentNullException">Выбрасывается, если <paramref name="search"/> равен null.</exception>
-  /// <exception cref="ArgumentException">Выбрасывается, если <paramref name="source"/> равен null или пуст.</exception>
+  /// <typeparam name="T">Тип идентификатора записи.</typeparam>
+  /// <param name="search">Экземпляр поискового движка.</param>
+  /// <param name="source">Источник данных.</param>
+  /// <param name="elementDelimiter">Разделитель между идентификатором и текстом.</param>
+  /// <param name="delimiters">Пользовательский набор разделителей слов.</param>
+  /// <returns>Асинхронная операция подготовки индекса.</returns>
+  /// <exception cref="ArgumentNullException">
+  /// Генерируется, если <paramref name="search"/> равен <see langword="null"/>.
+  /// </exception>
   public static async Task PrepareIndex<T>(
-    this Search<T> search,
-    IEnumerable<(string Text, T Index)> source,
-    string? delimiters = null,
-    bool forceParallel = false,
-    int parallelProcessingThreshold = 10_000) where T : struct => await PrepareIndexInternal(
-      search,
-      source,
-      delimiters,
-      parallelProcessingThreshold,
-      (builder, src) => builder.BuildIndex(src, forceParallel));
-
-  /// <summary>
-  /// Внутренний метод для обработки общей логики подготовки поискового индекса.
-  /// </summary>
-  /// <typeparam name="TInput">Тип исходных данных.</typeparam>
-  /// <typeparam name="T">Тип индекса. Должен быть типом значения.</typeparam>
-  /// <param name="search">Экземпляр <see cref="Search{T}"/>, для которого подготавливается индекс.</param>
-  /// <param name="source">Исходные данные для индексации.</param>
-  /// <param name="delimiters">Разделители, используемые для разделения текста. Если null, используются разделители по умолчанию.</param>
-  /// <param name="forceParallel">Принудительно использовать параллельную обработку.</param>
-  /// <param name="parallelProcessingThreshold">Минимальное количество элементов для включения параллельной обработки.</param>
-  /// <param name="buildAction">Действие для построения индекса с использованием <see cref="Search{T}.IndexBuilder"/>.</param>
-  /// <exception cref="ArgumentNullException">Выбрасывается, если <paramref name="search"/> равен null.</exception>
-  /// <exception cref="ArgumentException">Выбрасывается, если <paramref name="source"/> равен null или пуст.</exception>
-  private static async Task PrepareIndexInternal<TInput, T>(
-    Search<T> search,
-    TInput source,
-    string? delimiters,
-    int parallelProcessingThreshold,
-    Action<Search<T>.IndexBuilder, TInput> buildAction) where T : struct
+      this Search<T> search,
+      string[] source,
+      string elementDelimiter,
+      string? delimiters = null)
+      where T : struct
   {
-    if (search == null)
-      NullExceptionThrow(search);
+    if (search is null)
+      ThrowArgumentNull(nameof(search));
 
-    search!.IndexPreparing();
+    await search!.PrepareIndex(source, delimiters!);
 
-    if (source == null || IsEmpty<TInput, T>(source))
+    if (source?.Length == 0)
       return;
 
-    await Task.Run(() =>
-    {
-      var builder = new Search<T>.IndexBuilder(search, delimiters, parallelProcessingThreshold);
-      buildAction(builder, source);
-    }).ConfigureAwait(false);
+    if (string.IsNullOrWhiteSpace(elementDelimiter))
+      return;
+
+    await Task.Run(() => new Search<T>.IndexBuilder(search, delimiters).BuildIndex(source!, elementDelimiter))
+        .ConfigureAwait(false);
   }
 
   /// <summary>
-  /// Выбрасывает исключение <see cref="ArgumentNullException"/>, если <paramref name="search"/> равен null.
+  /// Подготавливает индекс из коллекции объектов-источников и возвращает результат операции.
   /// </summary>
-  /// <typeparam name="T">Тип индекса. Должен быть типом значения.</typeparam>
-  /// <param name="search">Экземпляр <see cref="Search{T}"/> для проверки.</param>
-  /// <exception cref="ArgumentNullException">Выбрасывается, если <paramref name="search"/> равен null.</exception>
-  private static void NullExceptionThrow<T>(Search<T>? search) where T : struct => throw new ArgumentNullException(nameof(search));
-
-  /// <summary>
-  /// Проверяет, являются ли исходные данные пустыми.
-  /// </summary>
-  /// <typeparam name="TInput">Тип исходных данных.</typeparam>
-  /// <param name="source">Исходные данные для проверки.</param>
-  /// <returns><c>true</c>, если исходные данные пусты; иначе <c>false</c>.</returns>
-  private static bool IsEmpty<TInput, T>(TInput source) where T: struct
+  /// <typeparam name="T">Тип идентификатора записи.</typeparam>
+  /// <param name="search">Экземпляр поискового движка.</param>
+  /// <param name="source">Источник данных.</param>
+  /// <param name="delimiters">Пользовательский набор разделителей слов.</param>
+  /// <returns>
+  /// Успешный результат, если индекс подготовлен; иначе описание ошибки.
+  /// </returns>
+  /// <exception cref="ArgumentNullException">
+  /// Генерируется, если <paramref name="search"/> равен <see langword="null"/>.
+  /// </exception>
+  public static async Task<UnitResult<SearchError>> PrepareIndexResult<T>(
+      this Search<T> search,
+      IEnumerable<ISourceData<T>> source,
+      string? delimiters = null)
+      where T : struct
   {
-    return source switch
+    if (search is null)
+      ThrowArgumentNull(nameof(search));
+
+    if (source?.Any() != true)
+      return UnitResult.Failure(
+                new SearchError(
+                    SearchErrorCode.InvalidSourceRecord,
+                    "Источник данных пуст или не содержит элементов."))!;
+
+    try
     {
-      IEnumerable<ISourceData<T>> enumerable => !enumerable.Any(),
-      string[] array => array.Length == 0,
-      IEnumerable<(string Text, int Index)> enumerable => !enumerable.Any(),
-      _ => throw new NotSupportedException($"Не поддерживаемый тип: {typeof(TInput)}")
-    };
+      await search!.PrepareIndex(source, delimiters).ConfigureAwait(false);
+      return UnitResult.Success<SearchError>()!;
+    }
+    catch (Exception exception) when (!IsCriticalException(exception))
+    {
+      return UnitResult.Failure(
+          new SearchError(
+              SearchErrorCode.IndexBuildFailed,
+              "Во время подготовки поискового индекса произошла ошибка.",
+              exception))!;
+    }
   }
+
+  /// <summary>
+  /// Подготавливает индекс из массива строк и возвращает результат операции.
+  /// </summary>
+  /// <typeparam name="T">Тип идентификатора записи.</typeparam>
+  /// <param name="search">Экземпляр поискового движка.</param>
+  /// <param name="source">Источник данных.</param>
+  /// <param name="elementDelimiter">Разделитель между идентификатором и текстом.</param>
+  /// <param name="delimiters">Пользовательский набор разделителей слов.</param>
+  /// <returns>
+  /// Успешный результат, если индекс подготовлен; иначе описание ошибки.
+  /// </returns>
+  /// <exception cref="ArgumentNullException">
+  /// Генерируется, если <paramref name="search"/> равен <see langword="null"/>.
+  /// </exception>
+  public static async Task<UnitResult<SearchError>> PrepareIndexResult<T>(
+      this Search<T> search,
+      string[] source,
+      string elementDelimiter,
+      string? delimiters = null)
+      where T : struct
+  {
+    if (search is null)
+      ThrowArgumentNull(nameof(search));
+
+    if (source is null || source.Length == 0)
+      return UnitResult.Failure(
+                new SearchError(
+                    SearchErrorCode.InvalidSourceRecord,
+                    "Источник данных пуст или не содержит элементов."))!;
+
+    if (string.IsNullOrWhiteSpace(elementDelimiter))
+      return UnitResult.Failure(
+                new SearchError(
+                    SearchErrorCode.InvalidDelimitedSourceFormat,
+                    "Не задан разделитель между идентификатором и текстом."))!;
+
+    try
+    {
+      await search!.PrepareIndex(source, elementDelimiter, delimiters).ConfigureAwait(false);
+      return UnitResult.Success<SearchError>()!;
+    }
+    catch (Exception exception) when (!IsCriticalException(exception))
+    {
+      return UnitResult.Failure(
+          new SearchError(
+              SearchErrorCode.IndexBuildFailed,
+              "Во время подготовки поискового индекса произошла ошибка.",
+              exception))!;
+    }
+  }
+
+  /// <summary>
+  /// Генерирует исключение о недопустимом значении аргумента.
+  /// </summary>
+  /// <param name="paramName">Имя параметра.</param>
+  private static void ThrowArgumentNull(string paramName) =>
+      throw new ArgumentNullException(paramName);
+
+  /// <summary>
+  /// Определяет, относится ли исключение к критическим.
+  /// </summary>
+  /// <param name="exception">Проверяемое исключение.</param>
+  /// <returns>
+  /// <see langword="true"/>, если исключение критическое;
+  /// иначе <see langword="false"/>.
+  /// </returns>
+  private static bool IsCriticalException(Exception exception) =>
+      exception is OutOfMemoryException
+      or StackOverflowException
+      or AccessViolationException
+      or AppDomainUnloadedException
+      or BadImageFormatException
+      or CannotUnloadAppDomainException;
 }
