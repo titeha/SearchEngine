@@ -10,7 +10,7 @@ public class PrepareIndexResultTests
   {
     TestSearch<int> sut = new();
 
-    var result = await sut.PrepareIndexResult(Enumerable.Empty<ISourceData<int>>());
+    var result = await sut.PrepareIndexResult([]);
 
     Assert.True(result.IsFailure);
     Assert.Equal(SearchErrorCode.InvalidSourceRecord, result.Error!.Code);
