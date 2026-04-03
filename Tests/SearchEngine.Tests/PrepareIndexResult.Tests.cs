@@ -10,13 +10,13 @@ public class PrepareIndexResultTests
   {
     TestSearch<int> sut = new();
 
-    var result = await sut.PrepareIndexResult([]);
+    var result = await sut.PrepareIndexResult(Enumerable.Empty<ISourceData<int>>());
 
     Assert.True(result.IsFailure);
     Assert.Equal(SearchErrorCode.InvalidSourceRecord, result.Error!.Code);
     Assert.Equal("Источник данных пуст или не содержит элементов.", result.Error.Message);
     Assert.False(sut.IsIndexComplete);
-    Assert.Empty(sut.SearchList);
+    Assert.Empty(sut.SearchIndex);
   }
 
   [Fact]
@@ -30,7 +30,7 @@ public class PrepareIndexResultTests
     Assert.Equal(SearchErrorCode.InvalidDelimitedSourceFormat, result.Error!.Code);
     Assert.Equal("Не задан разделитель между идентификатором и текстом.", result.Error.Message);
     Assert.False(sut.IsIndexComplete);
-    Assert.Empty(sut.SearchList);
+    Assert.Empty(sut.SearchIndex);
   }
 
   [Fact]
@@ -42,7 +42,7 @@ public class PrepareIndexResultTests
 
     Assert.True(result.IsSuccess);
     Assert.True(sut.IsIndexComplete);
-    Assert.Equal(10, sut.SearchList.Count);
+    Assert.Equal(10, sut.SearchIndex.Count);
   }
 
   [Fact]
@@ -54,6 +54,6 @@ public class PrepareIndexResultTests
 
     Assert.True(result.IsSuccess);
     Assert.True(sut.IsIndexComplete);
-    Assert.Equal(10, sut.SearchList.Count);
+    Assert.Equal(10, sut.SearchIndex.Count);
   }
 }

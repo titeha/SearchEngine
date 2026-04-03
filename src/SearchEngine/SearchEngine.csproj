@@ -8,7 +8,7 @@
     <Copyright>Artemy Sobolev</Copyright>
     <Version>1.1.6</Version>
     <RepositoryUrl>https://github.com/titeha/SearchEngine/tree/master/SearchEngine</RepositoryUrl>
-    <BaseOutputPath>..\bin\</BaseOutputPath>
+    <BaseOutputPath>..\..\bin\</BaseOutputPath>
     <Authors>Artemy Sobolev</Authors>
     <TieredPGO>true</TieredPGO>
     <LangVersion>latest</LangVersion>
@@ -28,10 +28,6 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="$(AssemblyName).Tests" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="..\.editorconfig" Link=".editorconfig" />
   </ItemGroup>
 
   <ItemGroup>

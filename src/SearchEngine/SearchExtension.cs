@@ -19,21 +19,21 @@ public static class SearchExtension
   /// Генерируется, если <paramref name="search"/> равен <see langword="null"/>.
   /// </exception>
   public static async Task PrepareIndex<T>(
-      this Search<T> search,
-      IEnumerable<ISourceData<T>> source,
-      string? delimiters = null)
-      where T : struct
+    this Search<T> search,
+    IEnumerable<ISourceData<T>> source,
+    string? delimiters = null)
+    where T : struct
   {
     if (search is null)
       ThrowArgumentNull(nameof(search));
 
-    await search!.PrepareIndex(source, delimiters);
+    search!.IndexPreparing();
 
     if (source?.Any() != true)
       return;
 
-    await Task.Run(() => new Search<T>.IndexBuilder(search!, delimiters).BuildIndex(source))
-        .ConfigureAwait(false);
+    await Task.Run(() => new Search<T>.IndexBuilder(search, delimiters).BuildIndex(source))
+      .ConfigureAwait(false);
   }
 
   /// <summary>
@@ -49,25 +49,25 @@ public static class SearchExtension
   /// Генерируется, если <paramref name="search"/> равен <see langword="null"/>.
   /// </exception>
   public static async Task PrepareIndex<T>(
-      this Search<T> search,
-      string[] source,
-      string elementDelimiter,
-      string? delimiters = null)
-      where T : struct
+    this Search<T> search,
+    string[] source,
+    string elementDelimiter,
+    string? delimiters = null)
+    where T : struct
   {
     if (search is null)
       ThrowArgumentNull(nameof(search));
 
-    await search!.PrepareIndex(source, delimiters!);
+    search!.IndexPreparing();
 
-    if (source?.Length == 0)
+    if (source is null || source.Length == 0)
       return;
 
     if (string.IsNullOrWhiteSpace(elementDelimiter))
       return;
 
-    await Task.Run(() => new Search<T>.IndexBuilder(search, delimiters).BuildIndex(source!, elementDelimiter))
-        .ConfigureAwait(false);
+    await Task.Run(() => new Search<T>.IndexBuilder(search, delimiters).BuildIndex(source, elementDelimiter))
+      .ConfigureAwait(false);
   }
 
   /// <summary>
@@ -84,32 +84,36 @@ public static class SearchExtension
   /// Генерируется, если <paramref name="search"/> равен <see langword="null"/>.
   /// </exception>
   public static async Task<UnitResult<SearchError>> PrepareIndexResult<T>(
-      this Search<T> search,
-      IEnumerable<ISourceData<T>> source,
-      string? delimiters = null)
-      where T : struct
+    this Search<T> search,
+    IEnumerable<ISourceData<T>> source,
+    string? delimiters = null)
+    where T : struct
   {
     if (search is null)
       ThrowArgumentNull(nameof(search));
 
     if (source?.Any() != true)
       return UnitResult.Failure(
-                new SearchError(
-                    SearchErrorCode.InvalidSourceRecord,
-                    "Источник данных пуст или не содержит элементов."))!;
+              new SearchError(
+                SearchErrorCode.InvalidSourceRecord,
+                "Источник данных пуст или не содержит элементов."))!;
 
     try
     {
-      await search!.PrepareIndex(source, delimiters).ConfigureAwait(false);
+      search!.IndexPreparing();
+
+      await Task.Run(() => new Search<T>.IndexBuilder(search, delimiters).BuildIndex(source))
+        .ConfigureAwait(false);
+
       return UnitResult.Success<SearchError>()!;
     }
     catch (Exception exception) when (!IsCriticalException(exception))
     {
       return UnitResult.Failure(
-          new SearchError(
-              SearchErrorCode.IndexBuildFailed,
-              "Во время подготовки поискового индекса произошла ошибка.",
-              exception))!;
+        new SearchError(
+          SearchErrorCode.IndexBuildFailed,
+          "Во время подготовки поискового индекса произошла ошибка.",
+          exception))!;
     }
   }
 
@@ -121,12 +125,8 @@ public static class SearchExtension
   /// <param name="source">Источник данных.</param>
   /// <param name="elementDelimiter">Разделитель между идентификатором и текстом.</param>
   /// <param name="delimiters">Пользовательский набор разделителей слов.</param>
-  /// <param name="forceParallel">
-  /// Признак принудительного включения параллельной обработки.
-  /// </param>
-  /// <param name="parallelProcessingThreshold">
-  /// Порог количества элементов для включения параллельной обработки.
-  /// </param>
+  /// <param name="forceParallel">Признак принудительного включения параллельной обработки.</param>
+  /// <param name="parallelProcessingThreshold">Порог количества элементов для включения параллельной обработки.</param>
   /// <returns>
   /// Успешный результат, если индекс подготовлен; иначе описание ошибки.
   /// </returns>
@@ -134,34 +134,34 @@ public static class SearchExtension
   /// Генерируется, если <paramref name="search"/> равен <see langword="null"/>.
   /// </exception>
   public static async Task<UnitResult<SearchError>> PrepareIndexResult<T>(
-      this Search<T> search,
-      string[] source,
-      string elementDelimiter,
-      string? delimiters = null,
-      bool forceParallel = false,
-      int parallelProcessingThreshold = 10_000)
-      where T : struct
+    this Search<T> search,
+    string[] source,
+    string elementDelimiter,
+    string? delimiters = null,
+    bool forceParallel = false,
+    int parallelProcessingThreshold = 10_000)
+    where T : struct
   {
     if (search is null)
       ThrowArgumentNull(nameof(search));
 
     if (source is null || source.Length == 0)
       return UnitResult.Failure(
-                new SearchError(
-                    SearchErrorCode.InvalidSourceRecord,
-                    "Источник данных пуст или не содержит элементов."))!;
+              new SearchError(
+                SearchErrorCode.InvalidSourceRecord,
+                "Источник данных пуст или не содержит элементов."))!;
 
     if (string.IsNullOrWhiteSpace(elementDelimiter))
       return UnitResult.Failure(
-                new SearchError(
-                    SearchErrorCode.InvalidDelimitedSourceFormat,
-                    "Не задан разделитель между идентификатором и текстом."))!;
+              new SearchError(
+                SearchErrorCode.InvalidDelimitedSourceFormat,
+                "Не задан разделитель между идентификатором и текстом."))!;
 
     if (!TryParseDelimitedSource(
-            source,
-            elementDelimiter,
-            out List<(string Text, T Index)> parsedSource,
-            out SearchError? error))
+          source,
+          elementDelimiter,
+          out List<(string Text, T Index)> parsedSource,
+          out SearchError? error))
       return UnitResult.Failure(error!)!;
 
     try
@@ -179,10 +179,10 @@ public static class SearchExtension
     catch (Exception exception) when (!IsCriticalException(exception))
     {
       return UnitResult.Failure(
-          new SearchError(
-              SearchErrorCode.IndexBuildFailed,
-              "Во время подготовки поискового индекса произошла ошибка.",
-              exception))!;
+        new SearchError(
+          SearchErrorCode.IndexBuildFailed,
+          "Во время подготовки поискового индекса произошла ошибка.",
+          exception))!;
     }
   }
 
@@ -199,11 +199,11 @@ public static class SearchExtension
   /// иначе <see langword="false"/>.
   /// </returns>
   private static bool TryParseDelimitedSource<T>(
-      IEnumerable<string> source,
-      string elementDelimiter,
-      out List<(string Text, T Index)> parsedSource,
-      out SearchError? error)
-      where T : struct
+    IEnumerable<string> source,
+    string elementDelimiter,
+    out List<(string Text, T Index)> parsedSource,
+    out SearchError? error)
+    where T : struct
   {
     parsedSource = new();
     int lineNumber = 0;
@@ -213,10 +213,10 @@ public static class SearchExtension
       lineNumber++;
 
       if (!TryParseDelimitedSourceRecord(
-              sourceRecord,
-              elementDelimiter,
-              out (string Text, T Index) parsedRecord,
-              out SearchError? itemError))
+            sourceRecord,
+            elementDelimiter,
+            out (string Text, T Index) parsedRecord,
+            out SearchError? itemError))
       {
         error = itemError! with
         {
@@ -247,19 +247,19 @@ public static class SearchExtension
   /// иначе <see langword="false"/>.
   /// </returns>
   private static bool TryParseDelimitedSourceRecord<T>(
-      string? sourceRecord,
-      string elementDelimiter,
-      out (string Text, T Index) parsedRecord,
-      out SearchError? error)
-      where T : struct
+    string? sourceRecord,
+    string elementDelimiter,
+    out (string Text, T Index) parsedRecord,
+    out SearchError? error)
+    where T : struct
   {
     parsedRecord = (string.Empty, default);
 
     if (string.IsNullOrWhiteSpace(sourceRecord))
     {
       error = new SearchError(
-          SearchErrorCode.InvalidSourceRecord,
-          "Строка источника пуста.");
+        SearchErrorCode.InvalidSourceRecord,
+        "Строка источника пуста.");
       return false;
     }
 
@@ -268,8 +268,8 @@ public static class SearchExtension
     if (delimiterPosition < 0)
     {
       error = new SearchError(
-          SearchErrorCode.InvalidDelimitedSourceFormat,
-          "В строке не найден разделитель между идентификатором и текстом.");
+        SearchErrorCode.InvalidDelimitedSourceFormat,
+        "В строке не найден разделитель между идентификатором и текстом.");
       return false;
     }
 
@@ -279,24 +279,24 @@ public static class SearchExtension
     if (string.IsNullOrWhiteSpace(idPart))
     {
       error = new SearchError(
-          SearchErrorCode.InvalidDelimitedSourceFormat,
-          "Не указан идентификатор записи.");
+        SearchErrorCode.InvalidDelimitedSourceFormat,
+        "Не указан идентификатор записи.");
       return false;
     }
 
     if (string.IsNullOrWhiteSpace(textPart))
     {
       error = new SearchError(
-          SearchErrorCode.InvalidDelimitedSourceFormat,
-          "Не указан текст записи.");
+        SearchErrorCode.InvalidDelimitedSourceFormat,
+        "Не указан текст записи.");
       return false;
     }
 
     if (!DefaultIdParser<T>.TryParse(idPart, out T id))
     {
       error = new SearchError(
-          SearchErrorCode.InvalidIdFormat,
-          $"Не удалось преобразовать идентификатор \"{idPart}\" к типу {typeof(T).Name}.");
+        SearchErrorCode.InvalidIdFormat,
+        $"Не удалось преобразовать идентификатор \"{idPart}\" к типу {typeof(T).Name}.");
       return false;
     }
 
@@ -310,7 +310,7 @@ public static class SearchExtension
   /// </summary>
   /// <param name="paramName">Имя параметра.</param>
   private static void ThrowArgumentNull(string paramName) =>
-      throw new ArgumentNullException(paramName);
+    throw new ArgumentNullException(paramName);
 
   /// <summary>
   /// Определяет, относится ли исключение к критическим.
@@ -321,7 +321,7 @@ public static class SearchExtension
   /// иначе <see langword="false"/>.
   /// </returns>
   private static bool IsCriticalException(Exception exception) =>
-      exception is OutOfMemoryException
+    exception is OutOfMemoryException
       or StackOverflowException
       or AccessViolationException
       or AppDomainUnloadedException

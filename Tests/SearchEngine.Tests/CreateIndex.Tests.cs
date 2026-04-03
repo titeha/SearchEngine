@@ -5,7 +5,7 @@ namespace SearchEngine.Tests;
 public class CreateIndexTests
 {
   [Fact]
-  public async void Create_dictionary_from_ienumerable_ISourceData_IsNumericSearch_is_off_Search_has_full_dictionary()
+  public async Task Create_dictionary_from_ienumerable_ISourceData_IsNumericSearch_is_off_Search_has_full_dictionary()
   {
     TestSearch<int> sut = new();
 
@@ -18,7 +18,7 @@ public class CreateIndexTests
   }
 
   [Fact]
-  public async void Create_dictionary_from_ienumerable_ISourceData_IsNumericSearch_is_on_Search_has_full_dictionary()
+  public async Task Create_dictionary_from_ienumerable_ISourceData_IsNumericSearch_is_on_Search_has_full_dictionary()
   {
     TestSearch<int> sut = new()
     {
@@ -33,7 +33,7 @@ public class CreateIndexTests
   }
 
   [Fact]
-  public async void Create_dictionary_from_string_array_IsPhoneticSearch_is_on_Search_has_full_dictionary()
+  public async Task Create_dictionary_from_string_array_IsPhoneticSearch_is_on_Search_has_full_dictionary()
   {
     TestSearch<int> sut = new(true);
     const int expectedCount = 5;
@@ -45,7 +45,7 @@ public class CreateIndexTests
   }
 
   [Fact]
-  public async void Create_dictionary_from_ienumerable_ISourceData_IsPhoneticSearch_is_on_Search_has_full_dictionary()
+  public async Task Create_dictionary_from_ienumerable_ISourceData_IsPhoneticSearch_is_on_Search_has_full_dictionary()
   {
     TestSearch<int> sut = new(true);
     const int expectedCount = 5;
@@ -57,7 +57,7 @@ public class CreateIndexTests
   }
 
   [Fact]
-  public async void Create_dictionary_from_string_array_IsNumericSearch_is_off_Search_has_full_dictionary()
+  public async Task Create_dictionary_from_string_array_IsNumericSearch_is_off_Search_has_full_dictionary()
   {
     TestSearch<int> sut = new();
     const int expectedCount = 10;
@@ -69,7 +69,7 @@ public class CreateIndexTests
   }
 
   [Fact]
-  public async void Create_dictionary_from_string_array_IsNumericSearch_is_on_Search_has_full_directory()
+  public async Task Create_dictionary_from_string_array_IsNumericSearch_is_on_Search_has_full_directory()
   {
     TestSearch<int> sut = new()
     {
@@ -84,7 +84,7 @@ public class CreateIndexTests
   }
 
   [Fact]
-  public async void Try_create_index_on_null_object_Exception_throw()
+  public async Task Try_create_index_on_null_object_Exception_throw()
   {
     TestSearch<int>? sut = null;
 
@@ -94,7 +94,7 @@ public class CreateIndexTests
   }
 
   [Fact]
-  public async void Try_create_index_with_empty_source_collection_Search_is_empty()
+  public async Task Try_create_index_with_empty_source_collection_Search_is_empty()
   {
     TestSearch<int> sut = new();
 
@@ -110,7 +110,7 @@ public class CreateIndexTests
   }
 
   [Fact]
-  public async void Try_create_index_with_empty_elementDelimiter_parameter_Search_is_empty()
+  public async Task Try_create_index_with_empty_elementDelimiter_parameter_Search_is_empty()
   {
     TestSearch<int> sut = new();
 
@@ -121,7 +121,7 @@ public class CreateIndexTests
   }
 
   [Fact]
-  public async void Create_dictionary_with_empty_delimiters_Search_has_full_dictionary()
+  public async Task Create_dictionary_with_empty_delimiters_Search_has_full_dictionary()
   {
     TestSearch<int> sut = new();
     const int expectedCount = 10;
@@ -133,7 +133,7 @@ public class CreateIndexTests
   }
 
   [Fact]
-  public async void Create_dictionary_with_custom_delimiters_Search_has_full_dictionary()
+  public async Task Create_dictionary_with_custom_delimiters_Search_has_full_dictionary()
   {
     TestSearch<int> sut = new();
     const int expectedCount = 10;
@@ -146,7 +146,7 @@ public class CreateIndexTests
   }
 
   [Fact]
-  public async void Create_dictionary_with_force_parallel_processing_Search_has_full_dictionary()
+  public async Task Create_dictionary_with_force_parallel_processing_Search_has_full_dictionary()
   {
     TestSearch<int> sut = new();
     const int expectedCount = 10;
@@ -158,7 +158,7 @@ public class CreateIndexTests
   }
 
   [Fact]
-  public async void Create_dictionary_with_large_data_Search_has_full_dictionary()
+  public async Task Create_dictionary_with_large_data_Search_has_full_dictionary()
   {
     TestSearch<int> sut = new()
     {
@@ -176,7 +176,7 @@ public class CreateIndexTests
   }
 
   [Fact]
-  public async void Create_dictionary_from_tuples_Search_has_full_dictionary()
+  public async Task Create_dictionary_from_tuples_Search_has_full_dictionary()
   {
     TestSearch<int> sut = new();
     const int expectedCount = 10;
@@ -208,7 +208,7 @@ public class CreateIndexTests
   }
 
   [Fact]
-  public async void Create_dictionary_from_empty_string_array_Search_is_empty()
+  public async Task Create_dictionary_from_empty_string_array_Search_is_empty()
   {
     TestSearch<int> sut = new();
 

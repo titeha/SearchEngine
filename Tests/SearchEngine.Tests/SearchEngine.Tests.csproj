@@ -20,10 +20,11 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Ti-Soft.Results" Version="2.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SearchEngine\SearchEngine.csproj" />
+    <ProjectReference Include="..\..\src\SearchEngine\SearchEngine.csproj" />
   </ItemGroup>
 
 </Project>
