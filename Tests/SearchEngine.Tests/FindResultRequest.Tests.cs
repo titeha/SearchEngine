@@ -60,21 +60,56 @@ public class FindResultRequestTests
   }
 
   [Fact]
-  public async Task FindResult_С_Параметрами_ДолженВернутьОшибку_ЕслиРежимAnyTermПокаНеПоддерживается()
+  public async Task FindResult_С_Параметрами_РежимAnyTerm_ДолженВозвращатьОбъединениеПоСловам()
   {
     TestSearch<int> sut = new();
     await sut.PrepareIndex(Populating.GetTestPopulatedList());
 
     var result = sut.FindResult(
-      "process ready",
+      "process date",
       new SearchRequest
       {
-        MatchMode = QueryMatchMode.AnyTerm
+        MatchMode = QueryMatchMode.AnyTerm,
+        SearchType = SearchType.ExactSearch,
+        SearchLocation = SearchLocation.BeginWord,
+        PrecisionSearch = 100,
+        AcceptableCountMisprint = 0
       });
 
-    Assert.True(result.IsFailure);
-    Assert.Equal(SearchErrorCode.InvalidSearchRequest, result.Error!.Code);
-    Assert.Equal("Режим AnyTerm пока не поддерживается.", result.Error.Message);
+    Assert.True(result.IsSuccess);
+    Assert.True(result.Value!.IsHasIndex);
+
+    Assert.True(ContainsId(result.Value, 1));
+    Assert.True(ContainsId(result.Value, 2));
+    Assert.True(ContainsId(result.Value, 3));
+    Assert.True(ContainsId(result.Value, 5));
+    Assert.False(ContainsId(result.Value, 4));
+  }
+
+  [Fact]
+  public async Task FindResult_С_Параметрами_РежимAnyTerm_ДолженИспользоватьЛучшуюДистанциюБезДубликатов()
+  {
+    TestSearch<int> sut = new();
+    await sut.PrepareIndex(Populating.GetTestPopulatedList());
+
+    var result = sut.FindResult(
+      "process proces",
+      new SearchRequest
+      {
+        MatchMode = QueryMatchMode.AnyTerm,
+        AcceptableCountMisprint = 1
+      });
+
+    Assert.True(result.IsSuccess);
+    Assert.True(result.Value!.IsHasIndex);
+
+    Assert.True(ContainsId(result.Value, 1));
+    Assert.True(ContainsId(result.Value, 2));
+    Assert.True(ContainsId(result.Value, 3));
+
+    Assert.Equal(1, CountOccurrences(result.Value, 1));
+    Assert.Equal(1, CountOccurrences(result.Value, 2));
+    Assert.Equal(1, CountOccurrences(result.Value, 3));
   }
 
   [Fact]
@@ -102,7 +137,7 @@ public class FindResultRequestTests
     await sut.PrepareIndex(Populating.GetTestPopulatedList());
 
     var result = sut.FindResult(
-      "process",
+      "process ready",
       new SearchRequest
       {
         MatchMode = QueryMatchMode.AllTerms,
@@ -114,9 +149,9 @@ public class FindResultRequestTests
 
     Assert.True(result.IsSuccess);
     Assert.True(result.Value!.IsHasIndex);
-    Assert.True(ContainsId(result.Value, 1));
     Assert.True(ContainsId(result.Value, 2));
-    Assert.True(ContainsId(result.Value, 3));
+    Assert.False(ContainsId(result.Value, 1));
+    Assert.False(ContainsId(result.Value, 3));
   }
 
   /// <summary>
@@ -130,17 +165,28 @@ public class FindResultRequestTests
   private static bool ContainsId(SearchResultList<int> result, int id)
   {
     foreach (var bucket in result.Items)
-    {
-      string[] parts = bucket.Value
-        .ToString()
-        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-      if (parts.Any(x => x == id.ToString()))
-      {
-        return true;
-      }
-    }
+      foreach (int item in bucket.Value.Items)
+        if (item == id)
+          return true;
 
     return false;
+  }
+
+  /// <summary>
+  /// Подсчитывает количество вхождений идентификатора в результатах поиска.
+  /// </summary>
+  /// <param name="result">Результат поиска.</param>
+  /// <param name="id">Идентификатор записи.</param>
+  /// <returns>Количество найденных вхождений.</returns>
+  private static int CountOccurrences(SearchResultList<int> result, int id)
+  {
+    int count = 0;
+
+    foreach (var bucket in result.Items)
+      foreach (int item in bucket.Value.Items)
+        if (item == id)
+          count++;
+
+    return count;
   }
 }
