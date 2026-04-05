@@ -1,7 +1,5 @@
 ﻿using ResultType;
 
-using StringFunctions;
-
 namespace SearchEngine;
 
 /// <summary>
@@ -32,7 +30,7 @@ public partial class Search<T> where T : struct
   /// </returns>
   public Result<SearchResultList<T>, SearchError> FindResult(string searchString, SearchRequest? request)
   {
-    if (searchString.IsNullOrWhiteSpace())
+    if (string.IsNullOrWhiteSpace(searchString))
       return Result.Failure<SearchResultList<T>, SearchError>(
               new SearchError(
                 SearchErrorCode.EmptyQuery,
@@ -58,12 +56,10 @@ public partial class Search<T> where T : struct
       DisassemblyString(searchString);
 
       if (_searchList.Count == 0)
-      {
         return Result.Failure<SearchResultList<T>, SearchError>(
-          new SearchError(
-            SearchErrorCode.QueryHasNoSearchableTerms,
-            "Поисковый запрос не содержит пригодных для поиска слов."));
-      }
+                  new SearchError(
+                    SearchErrorCode.QueryHasNoSearchableTerms,
+                    "Поисковый запрос не содержит пригодных для поиска слов."));
 
       SearchType searchType = request?.SearchType ?? SearchType;
       SearchLocation searchLocation = request?.SearchLocation ?? SearchLocation;
@@ -145,12 +141,29 @@ public partial class Search<T> where T : struct
   /// <returns>Результат поиска.</returns>
   private SearchResultList<T> ExecuteAllTermsSearch(IEnumerable<string> searchItems)
   {
-    SearchResultList<T> searchResult = new();
+    Dictionary<T, int>? commonDistances = null;
 
     foreach (string item in searchItems)
-      searchResult.Union(ExecuteSingleItemSearch(item));
+    {
+      Dictionary<T, int> itemDistances = ExtractBestDistances(ExecuteSingleItemSearch(item));
 
-    return searchResult;
+      if (commonDistances is null)
+      {
+        commonDistances = itemDistances;
+        continue;
+      }
+
+      foreach (T index in commonDistances.Keys.ToArray())
+        if (itemDistances.TryGetValue(index, out int itemDistance))
+          commonDistances[index] += itemDistance;
+        else
+          commonDistances.Remove(index);
+
+      if (commonDistances.Count == 0)
+        break;
+    }
+
+    return BuildSearchResult(commonDistances ?? new Dictionary<T, int>());
   }
 
   /// <summary>
@@ -163,18 +176,10 @@ public partial class Search<T> where T : struct
     Dictionary<T, int> bestDistances = new();
 
     foreach (string item in searchItems)
-    {
-      SearchResultList<T> itemResult = ExecuteSingleItemSearch(item);
-
-      foreach (var bucket in itemResult.Items)
-      {
-        int distance = bucket.Key;
-
-        foreach (T index in bucket.Value.Items)
-          if (!bestDistances.TryGetValue(index, out int currentDistance) || distance < currentDistance)
-            bestDistances[index] = distance;
-      }
-    }
+      foreach (var pair in ExtractBestDistances(ExecuteSingleItemSearch(item)))
+        if (!bestDistances.TryGetValue(pair.Key, out int currentDistance) ||
+                    pair.Value < currentDistance)
+          bestDistances[pair.Key] = pair.Value;
 
     return BuildSearchResult(bestDistances);
   }
@@ -200,24 +205,38 @@ public partial class Search<T> where T : struct
   }
 
   /// <summary>
-  /// Создаёт результат поиска из набора лучших дистанций по найденным идентификаторам.
+  /// Извлекает для каждого идентификатора лучшую дистанцию из результата поиска.
   /// </summary>
-  /// <param name="bestDistances">
-  /// Набор идентификаторов и их лучших дистанций.
-  /// </param>
+  /// <param name="searchResult">Результат поиска по одному слову.</param>
+  /// <returns>Набор идентификаторов и их минимальных дистанций.</returns>
+  private static Dictionary<T, int> ExtractBestDistances(SearchResultList<T> searchResult)
+  {
+    Dictionary<T, int> distances = new();
+
+    foreach (var bucket in searchResult.Items)
+      foreach (T index in bucket.Value.Items)
+        if (!distances.TryGetValue(index, out int currentDistance) ||
+                    bucket.Key < currentDistance)
+          distances[index] = bucket.Key;
+
+    return distances;
+  }
+
+  /// <summary>
+  /// Создаёт результат поиска из набора дистанций по найденным идентификаторам.
+  /// </summary>
+  /// <param name="distances">Набор идентификаторов и их дистанций.</param>
   /// <returns>Результат поиска.</returns>
-  private static SearchResultList<T> BuildSearchResult(IReadOnlyDictionary<T, int> bestDistances)
+  private static SearchResultList<T> BuildSearchResult(IReadOnlyDictionary<T, int> distances)
   {
     SearchResultList<T> searchResult = new();
 
-    foreach (var group in bestDistances
+    foreach (var group in distances
       .GroupBy(x => x.Value)
       .OrderBy(x => x.Key))
-    {
       searchResult.Items.Add(
-        group.Key,
-        new IndexList<T>(group.Select(x => x.Key)));
-    }
+              group.Key,
+              new IndexList<T>(group.Select(x => x.Key)));
 
     return searchResult;
   }

@@ -97,6 +97,7 @@ public class FindResultRequestTests
       new SearchRequest
       {
         MatchMode = QueryMatchMode.AnyTerm,
+        SearchType = SearchType.NearSearch,
         AcceptableCountMisprint = 1
       });
 
@@ -110,6 +111,53 @@ public class FindResultRequestTests
     Assert.Equal(1, CountOccurrences(result.Value, 1));
     Assert.Equal(1, CountOccurrences(result.Value, 2));
     Assert.Equal(1, CountOccurrences(result.Value, 3));
+  }
+
+  [Fact]
+  public async Task FindResult_С_Параметрами_РежимAllTerms_ДолженВозвращатьТолькоОбщиеИдентификаторы_ЕслиОдноСловоНайденоНеточно()
+  {
+    TestSearch<int> sut = new();
+    await sut.PrepareIndex(Populating.GetTestPopulatedList());
+
+    var result = sut.FindResult(
+      "procwss ready",
+      new SearchRequest
+      {
+        MatchMode = QueryMatchMode.AllTerms,
+        SearchType = SearchType.NearSearch,
+        SearchLocation = SearchLocation.BeginWord,
+        AcceptableCountMisprint = 1
+      });
+
+    Assert.True(result.IsSuccess);
+    Assert.True(result.Value!.IsHasIndex);
+
+    Assert.True(ContainsId(result.Value, 2));
+    Assert.False(ContainsId(result.Value, 1));
+    Assert.False(ContainsId(result.Value, 3));
+    Assert.True(ContainsIdAtDistance(result.Value, 1, 2));
+  }
+
+  [Fact]
+  public async Task FindResult_С_Параметрами_РежимAllTerms_ДолженСуммироватьЛучшуюДистанциюПоВсемСловам()
+  {
+    TestSearch<int> sut = new();
+    await sut.PrepareIndex(Populating.GetTestPopulatedList());
+
+    var result = sut.FindResult(
+      "procwss readu",
+      new SearchRequest
+      {
+        MatchMode = QueryMatchMode.AllTerms,
+        SearchType = SearchType.NearSearch,
+        SearchLocation = SearchLocation.BeginWord,
+        AcceptableCountMisprint = 1
+      });
+
+    Assert.True(result.IsSuccess);
+    Assert.True(result.Value!.IsHasIndex);
+    Assert.True(ContainsIdAtDistance(result.Value, 2, 2));
+    Assert.Single(result.Value.Items[2].Items);
   }
 
   [Fact]
@@ -168,6 +216,28 @@ public class FindResultRequestTests
       foreach (int item in bucket.Value.Items)
         if (item == id)
           return true;
+
+    return false;
+  }
+
+  /// <summary>
+  /// Проверяет, находится ли идентификатор в корзине с указанной дистанцией.
+  /// </summary>
+  /// <param name="result">Результат поиска.</param>
+  /// <param name="distance">Дистанция поиска.</param>
+  /// <param name="id">Искомый идентификатор.</param>
+  /// <returns>
+  /// <see langword="true"/>, если идентификатор найден в нужной корзине;
+  /// иначе <see langword="false"/>.
+  /// </returns>
+  private static bool ContainsIdAtDistance(SearchResultList<int> result, int distance, int id)
+  {
+    if (!result.Items.TryGetValue(distance, out IndexList<int>? bucket))
+      return false;
+
+    foreach (int item in bucket.Items)
+      if (item == id)
+        return true;
 
     return false;
   }
