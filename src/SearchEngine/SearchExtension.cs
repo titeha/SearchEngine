@@ -5,7 +5,7 @@ namespace SearchEngine;
 /// <summary>
 /// Методы расширения для подготовки поискового индекса.
 /// </summary>
-public static class SearchExtension
+public static partial class SearchExtension
 {
   /// <summary>
   /// Подготавливает индекс из коллекции объектов-источников.
