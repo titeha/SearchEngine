@@ -1,66 +1,145 @@
-using FluentAssertions;
-using ResultType;
-
 namespace SearchEngine.Tests;
 
+/// <summary>
+/// Тесты совместимого безопасного API поиска.
+/// </summary>
 public class TryFindTests
 {
-    private sealed record SourceItem<T>(T Id, string Text) : ISourceData<T> where T : struct;
+  [Fact]
+  public void TryFind_С_Null_ДолженВернутьОшибкуNullSearchString()
+  {
+    TestSearch<int> sut = new();
 
-    [Fact]
-    public void TryFind_With_Null_String_Returns_Failure()
+    var result = sut.TryFind(null);
+
+    Assert.True(result.IsFailure);
+    Assert.Equal(SearchEngineErrorCode.NullSearchString, result.Error.Code);
+    Assert.Equal("Поисковая строка не может быть null.", result.Error.Message);
+  }
+
+  [Fact]
+  public void TryFind_С_ПробельнойСтрокой_ДолженВернутьУспехСПустымРезультатом()
+  {
+    TestSearch<int> sut = new();
+
+    var result = sut.TryFind(" ");
+
+    Assert.True(result.IsSuccess);
+    Assert.False(result.Value!.IsHasIndex);
+    Assert.Empty(result.Value.Items);
+  }
+
+  [Fact]
+  public void TryFind_БезПодготовленногоИндекса_ДолженВернутьОшибкуIndexNotBuilt()
+  {
+    TestSearch<int> sut = new();
+
+    var result = sut.TryFind("process");
+
+    Assert.True(result.IsFailure);
+    Assert.Equal(SearchEngineErrorCode.IndexNotBuilt, result.Error.Code);
+    Assert.Equal(
+      "Индекс ещё не подготовлен. Выполните PrepareIndex перед поиском.",
+      result.Error.Message);
+  }
+
+  [Fact]
+  public async Task TryFind_ПослеПодготовкиИндекса_ДолженВернутьУспешныйРезультат()
+  {
+    TestSearch<int> sut = new()
     {
-        var search = new Search<int>();
+      SearchType = SearchType.ExactSearch
+    };
 
-        Result<SearchResultList<int>, SearchEngineError> result = search.TryFind(null);
+    await sut.PrepareIndex(Populating.GetTestPopulatedList());
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be(SearchEngineErrorCode.NullSearchString);
-    }
+    var result = sut.TryFind("process");
 
-    [Fact]
-    public void TryFind_With_Whitespace_String_Returns_Empty_Success()
-    {
-        var search = new Search<int>();
+    Assert.True(result.IsSuccess);
+    Assert.True(result.Value!.IsHasIndex);
+    Assert.True(ContainsId(result.Value, 1));
+    Assert.True(ContainsId(result.Value, 2));
+    Assert.True(ContainsId(result.Value, 3));
+  }
 
-        Result<SearchResultList<int>, SearchEngineError> result = search.TryFind("   ");
+  [Fact]
+  public async Task TryFind_С_Параметрами_РежимAnyTerm_ДолженВернутьОбъединениеПоСловам()
+  {
+    TestSearch<int> sut = new();
 
-        result.IsSuccess.Should().BeTrue();
-        result.Value.IsHasIndex.Should().BeFalse();
-    }
+    await sut.PrepareIndex(Populating.GetTestPopulatedList());
 
-    [Fact]
-    public void TryFind_Without_Index_Returns_Failure()
-    {
-        var search = new Search<int>();
+    var result = sut.TryFind(
+      "process date",
+      new SearchRequest
+      {
+        MatchMode = QueryMatchMode.AnyTerm,
+        SearchType = SearchType.ExactSearch,
+        SearchLocation = SearchLocation.BeginWord,
+        PrecisionSearch = 100,
+        AcceptableCountMisprint = 0
+      });
 
-        Result<SearchResultList<int>, SearchEngineError> result = search.TryFind("APPLE");
+    Assert.True(result.IsSuccess);
+    Assert.True(result.Value!.IsHasIndex);
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be(SearchEngineErrorCode.IndexNotBuilt);
-    }
+    Assert.True(ContainsId(result.Value, 1));
+    Assert.True(ContainsId(result.Value, 2));
+    Assert.True(ContainsId(result.Value, 3));
+    Assert.True(ContainsId(result.Value, 5));
+    Assert.False(ContainsId(result.Value, 4));
+  }
 
-    [Fact]
-    public async Task TryFind_After_PrepareIndex_Returns_Success_Result()
-    {
-        var search = new Search<int>
-        {
-            SearchType = SearchType.ExactSearch
-        };
+  [Fact]
+  public async Task TryFind_С_Параметрами_РежимSoftAllTerms_ДолженВернутьОшибкуInvalidSearchRequest()
+  {
+    TestSearch<int> sut = new();
 
-        var data = new[]
-        {
-            new SourceItem<int>(1, "Apple route"),
-            new SourceItem<int>(2, "Banana recipe"),
-            new SourceItem<int>(3, "Cherry pie")
-        };
+    await sut.PrepareIndex(Populating.GetTestPopulatedList());
 
-        await search.PrepareIndex(data);
+    var result = sut.TryFind(
+      "process ready",
+      new SearchRequest
+      {
+        MatchMode = QueryMatchMode.SoftAllTerms
+      });
 
-        Result<SearchResultList<int>, SearchEngineError> result = search.TryFind("APPLE");
+    Assert.True(result.IsFailure);
+    Assert.Equal(SearchEngineErrorCode.InvalidSearchRequest, result.Error.Code);
+    Assert.Equal("Режим SoftAllTerms пока не поддерживается.", result.Error.Message);
+  }
 
-        result.IsSuccess.Should().BeTrue();
-        result.Value.IsHasIndex.Should().BeTrue();
-        result.Value[0].Items.Should().Contain(1);
-    }
+  [Fact]
+  public async Task TryFind_С_ЗапросомБезПригодныхСлов_ДолженВернутьОшибкуQueryHasNoSearchableTerms()
+  {
+    TestSearch<int> sut = new();
+
+    await sut.PrepareIndex(Populating.GetTestPopulatedList());
+
+    var result = sut.TryFind("a i");
+
+    Assert.True(result.IsFailure);
+    Assert.Equal(SearchEngineErrorCode.QueryHasNoSearchableTerms, result.Error.Code);
+    Assert.Equal(
+      "Поисковый запрос не содержит пригодных для поиска слов.",
+      result.Error.Message);
+  }
+
+  /// <summary>
+  /// Проверяет, содержится ли идентификатор в результатах поиска.
+  /// </summary>
+  /// <param name="result">Результат поиска.</param>
+  /// <param name="id">Искомый идентификатор.</param>
+  /// <returns>
+  /// <see langword="true"/>, если идентификатор найден; иначе <see langword="false"/>.
+  /// </returns>
+  private static bool ContainsId(SearchResultList<int> result, int id)
+  {
+    foreach (var bucket in result.Items)
+      foreach (int item in bucket.Value.Items)
+        if (item == id)
+          return true;
+
+    return false;
+  }
 }
