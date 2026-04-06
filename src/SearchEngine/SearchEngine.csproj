@@ -12,6 +12,25 @@
     <Authors>Artemy Sobolev</Authors>
     <TieredPGO>true</TieredPGO>
     <LangVersion>latest</LangVersion>
+    <PackageId>Ti-Soft.SearchEngine</PackageId>
+    <Title>Ti-Soft.SearchEngine</Title>
+    <Description>Библиотека для организации нечёткого и фонетического поиска по строкам БД на русском языке.</Description>
+    <Authors>Artemy Sobolev</Authors>
+
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/titeha/SearchEngine</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PackageRequireLecenseAcceptanec>false</PackageRequireLecenseAcceptanec>
+    <PackageTags>search;fuzzy-search;phonetic-search;database;db;ru;typo-tolerance</PackageTags>
+
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -48,6 +67,10 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
