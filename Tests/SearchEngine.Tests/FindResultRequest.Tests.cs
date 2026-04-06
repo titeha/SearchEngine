@@ -161,7 +161,7 @@ public class FindResultRequestTests
   }
 
   [Fact]
-  public async Task FindResult_С_Параметрами_ДолженВернутьОшибку_ЕслиРежимSoftAllTermsПокаНеПоддерживается()
+  public async Task FindResult_С_Параметрами_РежимSoftAllTerms_ДолженСтавитьПолноеСовпадениеВышеЧастичных()
   {
     TestSearch<int> sut = new();
     await sut.PrepareIndex(Populating.GetTestPopulatedList());
@@ -170,12 +170,48 @@ public class FindResultRequestTests
       "process ready",
       new SearchRequest
       {
-        MatchMode = QueryMatchMode.SoftAllTerms
+        MatchMode = QueryMatchMode.SoftAllTerms,
+        SearchType = SearchType.ExactSearch,
+        SearchLocation = SearchLocation.BeginWord,
+        PrecisionSearch = 100,
+        AcceptableCountMisprint = 0
       });
 
-    Assert.True(result.IsFailure);
-    Assert.Equal(SearchErrorCode.InvalidSearchRequest, result.Error!.Code);
-    Assert.Equal("Режим SoftAllTerms пока не поддерживается.", result.Error.Message);
+    Assert.True(result.IsSuccess);
+    Assert.True(result.Value!.IsHasIndex);
+
+    Assert.True(ContainsIdAtDistance(result.Value, 0, 2));
+    Assert.True(ContainsIdAtDistance(result.Value, 1, 1));
+    Assert.True(ContainsIdAtDistance(result.Value, 1, 3));
+    Assert.False(ContainsId(result.Value, 4));
+    Assert.False(ContainsId(result.Value, 5));
+  }
+
+  [Fact]
+  public async Task FindResult_С_Параметрами_РежимSoftAllTerms_ДолженВозвращатьЧастичныеСовпадения_ЕслиПолногоНет()
+  {
+    TestSearch<int> sut = new();
+    await sut.PrepareIndex(Populating.GetTestPopulatedList());
+
+    var result = sut.FindResult(
+      "process absent",
+      new SearchRequest
+      {
+        MatchMode = QueryMatchMode.SoftAllTerms,
+        SearchType = SearchType.ExactSearch,
+        SearchLocation = SearchLocation.BeginWord,
+        PrecisionSearch = 100,
+        AcceptableCountMisprint = 0
+      });
+
+    Assert.True(result.IsSuccess);
+    Assert.True(result.Value!.IsHasIndex);
+
+    Assert.True(ContainsIdAtDistance(result.Value, 1, 1));
+    Assert.True(ContainsIdAtDistance(result.Value, 1, 2));
+    Assert.True(ContainsIdAtDistance(result.Value, 1, 3));
+    Assert.False(ContainsId(result.Value, 4));
+    Assert.False(ContainsId(result.Value, 5));
   }
 
   [Fact]

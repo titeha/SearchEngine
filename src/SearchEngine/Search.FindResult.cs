@@ -121,6 +121,7 @@ public partial class Search<T> where T : struct
       {
         QueryMatchMode.AllTerms => ExecuteAllTermsSearch(searchItems),
         QueryMatchMode.AnyTerm => ExecuteAnyTermSearch(searchItems),
+        QueryMatchMode.SoftAllTerms => ExecuteSoftAllTermsSearch(searchItems),
         _ => throw new InvalidOperationException(
           $"Режим {matchMode} не поддерживается текущей реализацией поиска.")
       };
@@ -185,6 +186,34 @@ public partial class Search<T> where T : struct
   }
 
   /// <summary>
+  /// Выполняет поиск в мягком режиме:
+  /// полные совпадения выше частичных, а внутри группы
+  /// результаты ранжируются по суммарной дистанции.
+  /// </summary>
+  /// <param name="searchItems">Слова поискового запроса.</param>
+  /// <returns>Результат поиска.</returns>
+  private SearchResultList<T> ExecuteSoftAllTermsSearch(IEnumerable<string> searchItems)
+  {
+    List<string> searchTerms = searchItems.ToList();
+    Dictionary<T, SearchRank> ranks = new();
+
+    foreach (string item in searchTerms)
+      foreach (var pair in ExtractBestDistances(ExecuteSingleItemSearch(item)))
+        if (ranks.TryGetValue(pair.Key, out SearchRank currentRank))
+        {
+          ranks[pair.Key] = currentRank with
+          {
+            MatchedTerms = currentRank.MatchedTerms + 1,
+            TotalDistance = currentRank.TotalDistance + pair.Value
+          };
+        }
+        else
+          ranks[pair.Key] = new SearchRank(1, pair.Value);
+
+    return BuildSoftAllTermsResult(ranks, searchTerms.Count);
+  }
+
+  /// <summary>
   /// Выполняет поиск по одному слову.
   /// </summary>
   /// <param name="item">Искомое слово.</param>
@@ -242,6 +271,36 @@ public partial class Search<T> where T : struct
   }
 
   /// <summary>
+  /// Создаёт результат поиска для мягкого режима.
+  /// Значение корзины представляет составной ранг:
+  /// сначала учитывается количество совпавших слов,
+  /// затем суммарная дистанция.
+  /// </summary>
+  /// <param name="ranks">Набор рангов по найденным идентификаторам.</param>
+  /// <param name="termsCount">Количество слов в запросе.</param>
+  /// <returns>Результат поиска.</returns>
+  private static SearchResultList<T> BuildSoftAllTermsResult(
+    IReadOnlyDictionary<T, SearchRank> ranks,
+    int termsCount)
+  {
+    if (ranks.Count == 0 || termsCount == 0)
+      return new SearchResultList<T>();
+
+    int maxObservedDistance = ranks.Max(x => x.Value.TotalDistance);
+    int missingTermPenalty = maxObservedDistance + 1;
+
+    Dictionary<T, int> scores = new();
+
+    foreach (var pair in ranks)
+    {
+      int missingTerms = termsCount - pair.Value.MatchedTerms;
+      scores[pair.Key] = pair.Value.TotalDistance + missingTerms * missingTermPenalty;
+    }
+
+    return BuildSearchResult(scores);
+  }
+
+  /// <summary>
   /// Проверяет корректность параметров поискового запроса.
   /// </summary>
   /// <param name="request">Параметры поиска.</param>
@@ -274,14 +333,6 @@ public partial class Search<T> where T : struct
       return false;
     }
 
-    if (request.MatchMode == QueryMatchMode.SoftAllTerms)
-    {
-      error = new SearchError(
-        SearchErrorCode.InvalidSearchRequest,
-        "Режим SoftAllTerms пока не поддерживается.");
-      return false;
-    }
-
     error = null;
     return true;
   }
@@ -293,7 +344,7 @@ public partial class Search<T> where T : struct
   /// <param name="percent">Точность поиска в процентах.</param>
   /// <returns>Допустимая дистанция.</returns>
   private static int CalculateDistance(int length, int percent) =>
-    length > 1 ? length - length * percent / 100 : 0;
+    length > 1 ? length - (length * percent / 100) : 0;
 
   /// <summary>
   /// Определяет, относится ли исключение к критическим,
@@ -311,4 +362,11 @@ public partial class Search<T> where T : struct
     or AppDomainUnloadedException
     or BadImageFormatException
     or CannotUnloadAppDomainException;
+
+  /// <summary>
+  /// Внутренний ранг результата для мягкого режима поиска.
+  /// </summary>
+  /// <param name="MatchedTerms">Количество совпавших слов.</param>
+  /// <param name="TotalDistance">Суммарная дистанция.</param>
+  private readonly record struct SearchRank(int MatchedTerms, int TotalDistance);
 }

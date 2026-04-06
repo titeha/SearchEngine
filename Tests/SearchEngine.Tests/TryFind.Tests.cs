@@ -91,7 +91,7 @@ public class TryFindTests
   }
 
   [Fact]
-  public async Task TryFind_С_Параметрами_РежимSoftAllTerms_ДолженВернутьОшибкуInvalidSearchRequest()
+  public async Task TryFind_С_Параметрами_РежимSoftAllTerms_ДолженСтавитьПолноеСовпадениеВышеЧастичных()
   {
     TestSearch<int> sut = new();
 
@@ -101,12 +101,19 @@ public class TryFindTests
       "process ready",
       new SearchRequest
       {
-        MatchMode = QueryMatchMode.SoftAllTerms
+        MatchMode = QueryMatchMode.SoftAllTerms,
+        SearchType = SearchType.ExactSearch,
+        SearchLocation = SearchLocation.BeginWord,
+        PrecisionSearch = 100,
+        AcceptableCountMisprint = 0
       });
 
-    Assert.True(result.IsFailure);
-    Assert.Equal(SearchEngineErrorCode.InvalidSearchRequest, result.Error.Code);
-    Assert.Equal("Режим SoftAllTerms пока не поддерживается.", result.Error.Message);
+    Assert.True(result.IsSuccess);
+    Assert.True(result.Value!.IsHasIndex);
+
+    Assert.True(ContainsIdAtDistance(result.Value, 0, 2));
+    Assert.True(ContainsIdAtDistance(result.Value, 1, 1));
+    Assert.True(ContainsIdAtDistance(result.Value, 1, 3));
   }
 
   [Fact]
@@ -139,6 +146,28 @@ public class TryFindTests
       foreach (int item in bucket.Value.Items)
         if (item == id)
           return true;
+
+    return false;
+  }
+
+  /// <summary>
+  /// Проверяет, находится ли идентификатор в корзине с указанной дистанцией.
+  /// </summary>
+  /// <param name="result">Результат поиска.</param>
+  /// <param name="distance">Дистанция поиска.</param>
+  /// <param name="id">Искомый идентификатор.</param>
+  /// <returns>
+  /// <see langword="true"/>, если идентификатор найден в нужной корзине;
+  /// иначе <see langword="false"/>.
+  /// </returns>
+  private static bool ContainsIdAtDistance(SearchResultList<int> result, int distance, int id)
+  {
+    if (!result.Items.TryGetValue(distance, out IndexList<int>? bucket))
+      return false;
+
+    foreach (int item in bucket.Items)
+      if (item == id)
+        return true;
 
     return false;
   }
