@@ -51,7 +51,8 @@ public class TryFindTests
       SearchType = SearchType.ExactSearch
     };
 
-    await sut.PrepareIndex(Populating.GetTestPopulatedList());
+    var prepareResult = await sut.PrepareIndexResult(Populating.GetTestPopulatedList());
+    Assert.True(prepareResult.IsSuccess);
 
     var result = sut.TryFind("process");
 
@@ -67,7 +68,8 @@ public class TryFindTests
   {
     TestSearch<int> sut = new();
 
-    await sut.PrepareIndex(Populating.GetTestPopulatedList());
+    var prepareResult = await sut.PrepareIndexResult(Populating.GetTestPopulatedList());
+    Assert.True(prepareResult.IsSuccess);
 
     var result = sut.TryFind(
       "process date",
@@ -95,7 +97,8 @@ public class TryFindTests
   {
     TestSearch<int> sut = new();
 
-    await sut.PrepareIndex(Populating.GetTestPopulatedList());
+    var prepareResult = await sut.PrepareIndexResult(Populating.GetTestPopulatedList());
+    Assert.True(prepareResult.IsSuccess);
 
     var result = sut.TryFind(
       "process ready",
@@ -121,7 +124,8 @@ public class TryFindTests
   {
     TestSearch<int> sut = new();
 
-    await sut.PrepareIndex(Populating.GetTestPopulatedList());
+    var prepareResult = await sut.PrepareIndexResult(Populating.GetTestPopulatedList());
+    Assert.True(prepareResult.IsSuccess);
 
     var result = sut.TryFind("a i");
 

@@ -139,6 +139,7 @@ public partial class Search<T> where T : struct
   #endregion
 
   #region Методы
+  [Obsolete("Используйте FindResult(...) или TryFind(...). Legacy API без Result устарел и будет удалён в следующем мажорном релизе.", false)]
   public SearchResultList<T> Find(string searchString)
   {
     static int CalculateDistance(int length, int percent) => length > 1
@@ -221,7 +222,7 @@ public partial class Search<T> where T : struct
           int actualLength = tLength - sLength + 1;
           int[] distances = new int[actualLength];
           for (int i = 0; i < actualLength; i++)
-            distances[i] = Levenshtein.DistanceLeventstein(searchValue, targetString[i..sLength]);
+            distances[i] = Levenshtein.DistanceLeventstein(searchValue, targetString[i..(i + sLength)]);
 
           calcResult = distances.Min();
         }
@@ -292,7 +293,7 @@ public partial class Search<T> where T : struct
         .Aggregate((a, r) => r.UnionIndexes(a))));
 
     foreach (var (distance, indexes) in searchValues)
-      searchResult[distance].UnionIndexes(indexes);
+      searchResult.Items[distance] = indexes;
 
     return searchResult;
   }

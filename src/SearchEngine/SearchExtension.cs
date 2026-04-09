@@ -18,6 +18,7 @@ public static partial class SearchExtension
   /// <exception cref="ArgumentNullException">
   /// Генерируется, если <paramref name="search"/> равен <see langword="null"/>.
   /// </exception>
+  [Obsolete("Используйте PrepareIndexResult(...) или TryPrepareIndex(...). Legacy API без Result устарел и будет удалён в следующем мажорном релизе.", false)]
   public static async Task PrepareIndex<T>(
     this Search<T> search,
     IEnumerable<ISourceData<T>> source,
@@ -48,6 +49,7 @@ public static partial class SearchExtension
   /// <exception cref="ArgumentNullException">
   /// Генерируется, если <paramref name="search"/> равен <see langword="null"/>.
   /// </exception>
+  [Obsolete("Используйте PrepareIndexResult(...) или TryPrepareIndex(...). Legacy API без Result устарел и будет удалён в следующем мажорном релизе.", false)]
   public static async Task PrepareIndex<T>(
     this Search<T> search,
     string[] source,

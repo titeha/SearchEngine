@@ -46,24 +46,34 @@ public partial class Search<T> where T : struct
 
     public void BuildIndex(string[] sources, string elementDelimiter, bool forceParallel = false)
     {
-      var elementDelimiterArray = (elementDelimiter.IsNullOrEmpty() ? ";" : elementDelimiter).ToCharArray();
+      string actualDelimiter = elementDelimiter.IsNullOrEmpty() ? ";" : elementDelimiter;
 
       var result = ProcessSource(
-        sources, s =>
+        sources,
+        s =>
         {
-          var parts = s.Split(elementDelimiterArray, StringSplitOptions.RemoveEmptyEntries);
-          if (parts.Length < 2)
+          if (string.IsNullOrWhiteSpace(s))
+            return null;
+
+          int delimiterPosition = s.IndexOf(actualDelimiter, StringComparison.Ordinal);
+          if (delimiterPosition < 0)
+            return null;
+
+          string idPart = s[..delimiterPosition].Trim();
+          string textPart = s[(delimiterPosition + actualDelimiter.Length)..].Trim();
+
+          if (string.IsNullOrWhiteSpace(idPart) || string.IsNullOrWhiteSpace(textPart))
             return null;
 
 #if NET7_0_OR_GREATER
-            if (!TryConvertToId(parts[0].AsSpan(), out T id))
+          if (!TryConvertToId(idPart.AsSpan(), out T id))
 #else
-            if(!TryConvertToId(parts[0], out T id))
+          if (!TryConvertToId(idPart, out T id))
 #endif
             return null;
 
-            return (Id: id, Text: parts[1]);
-          },
+          return (Id: id, Text: textPart);
+        },
         s => s.Text,
         forceParallel);
 
@@ -72,7 +82,6 @@ public partial class Search<T> where T : struct
 
       AddToIndex(result);
       NotifyIndexCreated();
-
     }
 
     public void BuildIndex(IEnumerable<(string Text, T Index)> source, bool forceParallel = false)

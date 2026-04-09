@@ -1,4 +1,6 @@
 ﻿// Ignore Spelling: Fusy
+#pragma warning disable CS0618 // Legacy API intentionally covered by compatibility tests.
+
 
 namespace SearchEngine.Tests;
 
@@ -329,3 +331,5 @@ public class SearchTests
     Assert.Equal(100, search.SearchIndex.Count);
   }
 }
+
+#pragma warning restore CS0618

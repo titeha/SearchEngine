@@ -1,4 +1,6 @@
 ﻿// Ignore Spelling: ienumerable
+#pragma warning disable CS0618 // Legacy API intentionally covered by compatibility tests.
+
 
 namespace SearchEngine.Tests;
 
@@ -301,3 +303,5 @@ public record Test<T> : ISourceData<T> where T : struct
 
   public required string Text { get; init; } = string.Empty;
 }
+
+#pragma warning restore CS0618

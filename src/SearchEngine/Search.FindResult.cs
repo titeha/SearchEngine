@@ -194,7 +194,7 @@ public partial class Search<T> where T : struct
   /// <returns>Результат поиска.</returns>
   private SearchResultList<T> ExecuteSoftAllTermsSearch(IEnumerable<string> searchItems)
   {
-    List<string> searchTerms = searchItems.ToList();
+    List<string> searchTerms = [.. searchItems];
     Dictionary<T, SearchRank> ranks = new();
 
     foreach (string item in searchTerms)
@@ -317,6 +317,32 @@ public partial class Search<T> where T : struct
       return true;
     }
 
+    if (!Enum.IsDefined(request.MatchMode))
+    {
+      error = new SearchError(
+        SearchErrorCode.InvalidSearchRequest,
+        "Режим объединения слов запроса имеет недопустимое значение.");
+      return false;
+    }
+
+    if (request.SearchType.HasValue &&
+        !Enum.IsDefined(request.SearchType.Value))
+    {
+      error = new SearchError(
+        SearchErrorCode.InvalidSearchRequest,
+        "Тип поискового механизма имеет недопустимое значение.");
+      return false;
+    }
+
+    if (request.SearchLocation.HasValue &&
+        !Enum.IsDefined(request.SearchLocation.Value))
+    {
+      error = new SearchError(
+        SearchErrorCode.InvalidSearchRequest,
+        "Место поиска имеет недопустимое значение.");
+      return false;
+    }
+
     if (request.PrecisionSearch is < 0 or > 100)
     {
       error = new SearchError(
@@ -344,7 +370,7 @@ public partial class Search<T> where T : struct
   /// <param name="percent">Точность поиска в процентах.</param>
   /// <returns>Допустимая дистанция.</returns>
   private static int CalculateDistance(int length, int percent) =>
-    length > 1 ? length - (length * percent / 100) : 0;
+    length > 1 ? length - length * percent / 100 : 0;
 
   /// <summary>
   /// Определяет, относится ли исключение к критическим,
