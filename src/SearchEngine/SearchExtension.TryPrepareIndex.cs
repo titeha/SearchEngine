@@ -32,13 +32,20 @@ public static partial class SearchExtension
       return Task.FromResult(
               UnitResult.Failure(SearchEngineError.SourceIsNull()));
 
-    ISourceData<T>[] materializedSource = source as ISourceData<T>[] ?? source.ToArray();
+    try
+    {
+      ISourceData<T>[] materializedSource = MaterializeSource(source);
 
-    if (materializedSource.Length == 0)
+      if (materializedSource.Length == 0)
+        return Task.FromResult(UnitResult.Failure(SearchEngineError.SourceIsEmpty()));
+
+      return TryPrepareIndexInternal(() => search.PrepareIndexResult(materializedSource, delimiters));
+    }
+    catch (Exception exception) when (!IsCriticalException(exception))
+    {
       return Task.FromResult(
-              UnitResult.Failure(SearchEngineError.SourceIsEmpty()));
-
-    return TryPrepareIndexInternal(() => search.PrepareIndexResult(materializedSource, delimiters));
+              UnitResult.Failure(SearchEngineError.IndexBuildFailed(BuildSourceEnumerationErrorMessage(exception))));
+    }
   }
 
   /// <summary>
@@ -87,6 +94,13 @@ public static partial class SearchExtension
       forceParallel,
       parallelProcessingThreshold));
   }
+
+  /// <summary>
+  /// Формирует сообщение об ошибке перечисления источника.
+  /// </summary>
+  /// <param name="exception">Пойманное исключение.</param>
+  /// <returns>Текст ошибки для совместимого безопасного API.</returns>
+  private static string BuildSourceEnumerationErrorMessage(Exception exception) =>$"{IndexBuildFailedMessage} {exception.Message}";
 
   /// <summary>
   /// Выполняет безопасную подготовку индекса и приводит новую ошибку

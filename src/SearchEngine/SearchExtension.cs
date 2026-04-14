@@ -1,4 +1,6 @@
-﻿using ResultType;
+﻿using System.Timers;
+
+using ResultType;
 
 namespace SearchEngine;
 
@@ -7,6 +9,9 @@ namespace SearchEngine;
 /// </summary>
 public static partial class SearchExtension
 {
+  private const string EmptySourceErrorMessage = "Источник данных пуст или не содержит элементов.";
+  private const string IndexBuildFailedMessage = "Во время подготовки поискового индекса произошла ошибка.";
+
   /// <summary>
   /// Подготавливает индекс из коллекции объектов-источников.
   /// </summary>
@@ -30,10 +35,12 @@ public static partial class SearchExtension
 
     search!.IndexPreparing();
 
-    if (source?.Any() != true)
+    ISourceData<T>[] materializedSource = MaterializeSource(source);
+
+    if (materializedSource.Length == 0)
       return;
 
-    await Task.Run(() => new Search<T>.IndexBuilder(search, delimiters).BuildIndex(source))
+    await Task.Run(() => new Search<T>.IndexBuilder(search, delimiters).BuildIndex(materializedSource))
       .ConfigureAwait(false);
   }
 
@@ -94,17 +101,15 @@ public static partial class SearchExtension
     if (search is null)
       ThrowArgumentNull(nameof(search));
 
-    if (source?.Any() != true)
-      return UnitResult.Failure(
-              new SearchError(
-                SearchErrorCode.InvalidSourceRecord,
-                "Источник данных пуст или не содержит элементов."))!;
-
     try
     {
+      ISourceData<T>[] materializedSource = MaterializeSource(source);
+
+      if (materializedSource.Length == 0)
+        return UnitResult.Failure(new SearchError(SearchErrorCode.InvalidSourceRecord,EmptySourceErrorMessage))!;
       search!.IndexPreparing();
 
-      await Task.Run(() => new Search<T>.IndexBuilder(search, delimiters).BuildIndex(source))
+      await Task.Run(() => new Search<T>.IndexBuilder(search, delimiters).BuildIndex(materializedSource))
         .ConfigureAwait(false);
 
       return UnitResult.Success<SearchError>()!;
@@ -305,6 +310,23 @@ public static partial class SearchExtension
     parsedRecord = (textPart, id);
     error = null;
     return true;
+  }
+
+     /// <summary>
+  /// Материализует источник в массив, чтобы избежать повторного перечисления.
+  /// </summary>
+  /// <typeparam name="TItem">Тип элемента источника.</typeparam>
+  /// <param name="source">Источник данных.</param>
+  /// <returns>Материализованный массив элементов.</returns>
+  private static TItem[] MaterializeSource<TItem>(IEnumerable<TItem>? source)
+  {
+    if (source is null)
+      return [];
+
+    if (source is TItem[] sourceArray)
+      return sourceArray;
+
+    return [.. source];
   }
 
   /// <summary>
