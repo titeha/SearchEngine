@@ -53,26 +53,20 @@ public partial class Search<T> where T : struct
 
     try
     {
-      DisassemblyString(searchString);
+      var searchItems = DisassembleSearchTerms(searchString);
 
-      if (_searchList.Count == 0)
+      if (searchItems.Length == 0)
         return Result.Failure<SearchResultList<T>, SearchError>(
                   new SearchError(
                     SearchErrorCode.QueryHasNoSearchableTerms,
                     "Поисковый запрос не содержит пригодных для поиска слов."));
 
-      SearchType searchType = request?.SearchType ?? SearchType;
-      SearchLocation searchLocation = request?.SearchLocation ?? SearchLocation;
-      int precisionSearch = request?.PrecisionSearch ?? PrecisionSearch;
-      int acceptableCountMisprint = request?.AcceptableCountMisprint ?? AcceptableCountMisprint;
+      SearchExecutionOptions executionOptions = CreateExecutionOptions(request);
       QueryMatchMode matchMode = request?.MatchMode ?? QueryMatchMode.AllTerms;
 
       SearchResultList<T> searchResult = ExecuteSearch(
-        _searchList,
-        searchType,
-        searchLocation,
-        precisionSearch,
-        acceptableCountMisprint,
+        searchItems,
+        executionOptions,
         matchMode);
 
       return Result.Success<SearchResultList<T>, SearchError>(searchResult);
@@ -91,62 +85,37 @@ public partial class Search<T> where T : struct
   /// Выполняет поиск по подготовленному набору слов.
   /// </summary>
   /// <param name="searchItems">Слова поискового запроса.</param>
-  /// <param name="searchType">Тип поискового механизма.</param>
-  /// <param name="searchLocation">Место поиска.</param>
-  /// <param name="precisionSearch">Точность поиска в процентах.</param>
-  /// <param name="acceptableCountMisprint">Допустимое количество опечаток.</param>
+  /// <param name="executionOptions">Эффективные параметры выполнения поиска.</param>
   /// <param name="matchMode">Режим объединения слов запроса.</param>
   /// <returns>Результат поиска.</returns>
   private SearchResultList<T> ExecuteSearch(
     IEnumerable<string> searchItems,
-    SearchType searchType,
-    SearchLocation searchLocation,
-    int precisionSearch,
-    int acceptableCountMisprint,
+    SearchExecutionOptions executionOptions,
     QueryMatchMode matchMode)
   {
-    SearchLocation originalSearchLocation = SearchLocation;
-    int originalPrecisionSearch = PrecisionSearch;
-    int originalAcceptableCountMisprint = AcceptableCountMisprint;
-    SearchType originalSearchType = SearchType;
-
-    try
+    return matchMode switch
     {
-      SearchLocation = searchLocation;
-      PrecisionSearch = precisionSearch;
-      AcceptableCountMisprint = acceptableCountMisprint;
-      SearchType = searchType;
-
-      return matchMode switch
-      {
-        QueryMatchMode.AllTerms => ExecuteAllTermsSearch(searchItems),
-        QueryMatchMode.AnyTerm => ExecuteAnyTermSearch(searchItems),
-        QueryMatchMode.SoftAllTerms => ExecuteSoftAllTermsSearch(searchItems),
-        _ => throw new InvalidOperationException(
-          $"Режим {matchMode} не поддерживается текущей реализацией поиска.")
-      };
-    }
-    finally
-    {
-      SearchLocation = originalSearchLocation;
-      PrecisionSearch = originalPrecisionSearch;
-      AcceptableCountMisprint = originalAcceptableCountMisprint;
-      SearchType = originalSearchType;
-    }
+      QueryMatchMode.AllTerms => ExecuteAllTermsSearch(searchItems, executionOptions),
+      QueryMatchMode.AnyTerm => ExecuteAnyTermSearch(searchItems, executionOptions),
+      QueryMatchMode.SoftAllTerms => ExecuteSoftAllTermsSearch(searchItems, executionOptions),
+      _ => throw new InvalidOperationException(
+      $"Режим {matchMode} не поддерживается текущей реализацией поиска.")
+    };
   }
 
   /// <summary>
   /// Выполняет поиск в режиме строгого совпадения всех слов запроса.
   /// </summary>
   /// <param name="searchItems">Слова поискового запроса.</param>
+  /// <param name="executionOptions">Эффективные параметры выполнения поиска.</param>
   /// <returns>Результат поиска.</returns>
-  private SearchResultList<T> ExecuteAllTermsSearch(IEnumerable<string> searchItems)
+  private SearchResultList<T> ExecuteAllTermsSearch(IEnumerable<string> searchItems, SearchExecutionOptions executionOptions)
   {
     Dictionary<T, int>? commonDistances = null;
 
     foreach (string item in searchItems)
     {
-      Dictionary<T, int> itemDistances = ExtractBestDistances(ExecuteSingleItemSearch(item));
+      Dictionary<T, int> itemDistances = ExtractBestDistances(ExecuteSingleItemSearch(item, executionOptions));
 
       if (commonDistances is null)
       {
@@ -171,13 +140,14 @@ public partial class Search<T> where T : struct
   /// Выполняет поиск в режиме совпадения по любому слову запроса.
   /// </summary>
   /// <param name="searchItems">Слова поискового запроса.</param>
+  /// <param name="executionOptions">Эффективные параметры выполнения поиска.</param>
   /// <returns>Результат поиска.</returns>
-  private SearchResultList<T> ExecuteAnyTermSearch(IEnumerable<string> searchItems)
+  private SearchResultList<T> ExecuteAnyTermSearch(IEnumerable<string> searchItems, SearchExecutionOptions executionOptions)
   {
     Dictionary<T, int> bestDistances = new();
 
     foreach (string item in searchItems)
-      foreach (var pair in ExtractBestDistances(ExecuteSingleItemSearch(item)))
+      foreach (var pair in ExtractBestDistances(ExecuteSingleItemSearch(item, executionOptions)))
         if (!bestDistances.TryGetValue(pair.Key, out int currentDistance) ||
                     pair.Value < currentDistance)
           bestDistances[pair.Key] = pair.Value;
@@ -191,14 +161,15 @@ public partial class Search<T> where T : struct
   /// результаты ранжируются по суммарной дистанции.
   /// </summary>
   /// <param name="searchItems">Слова поискового запроса.</param>
+  /// <param name="executionOptions">Эффективные параметры выполнения поиска.</param>
   /// <returns>Результат поиска.</returns>
-  private SearchResultList<T> ExecuteSoftAllTermsSearch(IEnumerable<string> searchItems)
+  private SearchResultList<T> ExecuteSoftAllTermsSearch(IEnumerable<string> searchItems, SearchExecutionOptions executionOptions)
   {
     List<string> searchTerms = [.. searchItems];
     Dictionary<T, SearchRank> ranks = new();
 
     foreach (string item in searchTerms)
-      foreach (var pair in ExtractBestDistances(ExecuteSingleItemSearch(item)))
+      foreach (var pair in ExtractBestDistances(ExecuteSingleItemSearch(item, executionOptions)))
         if (ranks.TryGetValue(pair.Key, out SearchRank currentRank))
         {
           ranks[pair.Key] = currentRank with
@@ -217,20 +188,21 @@ public partial class Search<T> where T : struct
   /// Выполняет поиск по одному слову.
   /// </summary>
   /// <param name="item">Искомое слово.</param>
+  /// <param name="executionOptions">Эффективные параметры выполнения поиска.</param>
   /// <returns>Результат поиска по одному слову.</returns>
-  private SearchResultList<T> ExecuteSingleItemSearch(string item)
+  private SearchResultList<T> ExecuteSingleItemSearch(string item, SearchExecutionOptions executionOptions)
   {
     if (IsPhoneticSearch)
       return PhoneticFind(item);
 
-    if (item.Length == 2 || SearchType.ExactSearch == SearchType)
-      return ExactSearch(item);
+    if (item.Length == 2 || executionOptions.SearchType == SearchType.ExactSearch)
+      return ExactSearch(item, executionOptions.SearchLocation);
 
-    int distance = AcceptableCountMisprint >= 0
-      ? AcceptableCountMisprint
-      : CalculateDistance(item.Length, PrecisionSearch);
+    int distance = executionOptions.AcceptableCountMisprint >= 0
+      ? executionOptions.AcceptableCountMisprint
+      : CalculateDistance(item.Length, executionOptions.PrecisionSearch);
 
-    return FusySearch(item, distance);
+    return FusySearch(item, distance, executionOptions.SearchLocation);
   }
 
   /// <summary>
@@ -299,6 +271,18 @@ public partial class Search<T> where T : struct
 
     return BuildSearchResult(scores);
   }
+
+  /// <summary>
+  /// Формирует эффективные параметры выполнения поиска
+  /// с учётом настроек экземпляра и параметров запроса.
+  /// </summary>
+  /// <param name="request">Параметры поиска.</param>
+  /// <returns>Параметры выполнения конкретного запроса.</returns>
+  private SearchExecutionOptions CreateExecutionOptions(SearchRequest? request) => new(
+    request?.SearchType ?? SearchType,
+    request?.SearchLocation ?? SearchLocation,
+    request?.PrecisionSearch ?? PrecisionSearch,
+    request?.AcceptableCountMisprint ?? AcceptableCountMisprint);
 
   /// <summary>
   /// Проверяет корректность параметров поискового запроса.
@@ -388,6 +372,19 @@ public partial class Search<T> where T : struct
     or AppDomainUnloadedException
     or BadImageFormatException
     or CannotUnloadAppDomainException;
+
+  /// <summary>
+  /// Эффективные параметры выполнения конкретного поискового запроса.
+  /// </summary>
+  /// <param name="SearchType">Тип поискового механизма.</param>
+  /// <param name="SearchLocation">Место поиска.</param>
+  /// <param name="PrecisionSearch">Точность поиска в процентах.</param>
+  /// <param name="AcceptableCountMisprint">Допустимое количество опечаток.</param>
+  private readonly record struct SearchExecutionOptions(
+    SearchType SearchType,
+    SearchLocation SearchLocation,
+    int PrecisionSearch,
+    int AcceptableCountMisprint);
 
   /// <summary>
   /// Внутренний ранг результата для мягкого режима поиска.

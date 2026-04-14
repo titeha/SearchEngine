@@ -166,24 +166,43 @@ public partial class Search<T> where T : struct
 
   private protected void DisassemblyString(string source)
   {
-    string clearedString = source.Trim().ToUpper();
     _searchList.Clear();
 
-    if (!clearedString.IsNullOrWhiteSpace())
-    {
-      var delimiterArray = IndexBuilder.Delimiters.ToCharArray();
-      var values = clearedString.Split(delimiterArray, StringSplitOptions.RemoveEmptyEntries);
-      for (int i = 0, count = values.Length; i < count; i++)
-        if (values[i].Length > 1)
-          _searchList.Add(IsPhoneticSearch ? PhoneticSearch.MetaPhone(values[i]) : values[i]);
-    }
+    foreach (string searchItem in DisassembleSearchTerms(source))
+      _searchList.Add(searchItem);
   }
 
-  private SearchResultList<T> ExactSearch(string searchValue)
+  /// <summary>
+  /// Разбирает поисковую строку в локальный набор слов,
+  /// не изменяя состояние экземпляра.
+  /// </summary>
+  /// <param name="source">Исходная поисковая строка.</param>
+  /// <returns>Упорядоченный набор пригодных для поиска слов.</returns>
+  private string[] DisassembleSearchTerms(string source)
+  {
+    string clearedString = source.Trim().ToUpper();
+
+    if (clearedString.IsNullOrWhiteSpace())
+      return [];
+
+    SortedSet<string> searchItems = new();
+    var delimiterArray = IndexBuilder.Delimiters.ToCharArray();
+    var values = clearedString.Split(delimiterArray, StringSplitOptions.RemoveEmptyEntries);
+
+    for (int i = 0, count = values.Length; i < count; i++)
+      if (values[i].Length > 1)
+        searchItems.Add(IsPhoneticSearch ? PhoneticSearch.MetaPhone(values[i]) : values[i]);
+
+    return [.. searchItems];
+  }
+
+  private SearchResultList<T> ExactSearch(string searchValue) => ExactSearch(searchValue, SearchLocation);
+
+  private SearchResultList<T> ExactSearch(string searchValue, SearchLocation searchLocation)
   {
     SearchResultList<T> searchResult = new();
     searchResult.Items.Add(0, new IndexList<T>());
-    bool origin = SearchLocation.BeginWord == SearchLocation;
+    bool origin = SearchLocation.BeginWord == searchLocation;
     int sLength = searchValue.Length;
 
     var result = _searchIndex!
@@ -200,10 +219,12 @@ public partial class Search<T> where T : struct
     return searchResult;
   }
 
-  private SearchResultList<T> FusySearch(string searchValue, int distance)
+  private SearchResultList<T> FusySearch(string searchValue, int distance) => FusySearch(searchValue, distance, SearchLocation);
+
+  private SearchResultList<T> FusySearch(string searchValue, int distance, SearchLocation searchLocation)
   {
     SearchResultList<T> searchResult = new();
-    bool origin = SearchLocation.BeginWord == SearchLocation;
+    bool origin = SearchLocation.BeginWord == searchLocation;
     int sLength = searchValue.Length;
 
     static int CalculateResult(string searchValue, string targetString, bool origin)
@@ -231,7 +252,7 @@ public partial class Search<T> where T : struct
     }
 
     if (distance == 0)
-      searchResult = ExactSearch(searchValue);
+      searchResult = ExactSearch(searchValue, searchLocation);
     else
     {
       var result = _searchIndex!
