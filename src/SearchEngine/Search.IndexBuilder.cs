@@ -1,5 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 
+using SearchEngine.Properties;
+
 using StringFunctions;
 
 namespace SearchEngine;
@@ -105,7 +107,7 @@ public partial class Search<T> where T : struct
       Func<(T Id, string Text), string> textSelector,
       bool forceParallel = false)
     {
-      bool useParallelProcessing = forceParallel || ShouldUseParallelProcessing(source);
+      bool useParallelProcessing = ShouldUseParallelProcessing(source, forceParallel);
 
       return useParallelProcessing ? ProcessSourceParallel(source, idAndTextSelector, textSelector) : ProcessSourceSequental(source, idAndTextSelector, textSelector);
     }
@@ -134,7 +136,7 @@ public partial class Search<T> where T : struct
     {
       return source
         .AsParallel()
-        .WithDegreeOfParallelism((int)(Environment.ProcessorCount * .75))
+        .WithDegreeOfParallelism(ParallelExecutionPolicy.GetEffectiveDegreeOfParallelism(Environment.ProcessorCount))
         .Select(idAndTextSelector)
         .Where(x => x.HasValue)
         .Select(x => x!.Value)
@@ -147,12 +149,23 @@ public partial class Search<T> where T : struct
         .OrderBy(o => o.Text);
     }
 
-    private bool ShouldUseParallelProcessing<TInput>(IEnumerable<TInput> sources)
+    private bool ShouldUseParallelProcessing<TInput>(IEnumerable<TInput> sources, bool forceParallel)
+    {
+      int count = GetSourceCount(sources);
+
+      return ParallelExecutionPolicy.ShouldUseParallel(
+        Environment.ProcessorCount,
+        forceParallel,
+        count,
+        _parallelProcessingThreshold);
+    }
+
+    private static int GetSourceCount<TInput>(IEnumerable<TInput> sources)
     {
       if (sources.TryGetNonEnumeratedCount(out var count))
-        return count > _parallelProcessingThreshold;
+        return count;
 
-      return sources.Count() > _parallelProcessingThreshold;
+      return sources.Count();
     }
 
     private void AddToIndex(IOrderedEnumerable<(string Text, IEnumerable<T> Indexes)> result)
