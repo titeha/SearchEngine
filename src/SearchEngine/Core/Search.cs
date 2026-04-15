@@ -17,7 +17,7 @@ public partial class Search<T> where T : struct
 
   #region Поля
   private bool _isNumberSearch;
-  private int _precission;
+  private int _precision;
   private int _missprintCount;
 
   private protected SortedList<string, IndexList<T>>? _searchIndex;
@@ -50,11 +50,11 @@ public partial class Search<T> where T : struct
   /// </summary>
   public int PrecisionSearch
   {
-    get => _precission;
+    get => _precision;
     set
     {
-      if (_precission != value && value >= 0 && value <= 100)
-        _precission = value;
+      if (_precision != value && value >= 0 && value <= 100)
+        _precision = value;
     }
   }
 
@@ -128,7 +128,7 @@ public partial class Search<T> where T : struct
   public Search()
   {
     _isNumberSearch = false;
-    _precission = -1;
+    _precision = -1;
     _missprintCount = -1;
     _searchList = new();
     _searchIndex = new();
@@ -156,7 +156,7 @@ public partial class Search<T> where T : struct
       else if (item.Length == 2 || SearchType.ExactSearch == SearchType)
         searchResult.Union(ExactSearch(item));
       else
-        searchResult.Union(FusySearch(item, AcceptableCountMisprint >= 0
+        searchResult.Union(FuzzySearch(item, AcceptableCountMisprint >= 0
           ? AcceptableCountMisprint
           : CalculateDistance(item.Length, PrecisionSearch)));
     }
@@ -219,9 +219,9 @@ public partial class Search<T> where T : struct
     return searchResult;
   }
 
-  private SearchResultList<T> FusySearch(string searchValue, int distance) => FusySearch(searchValue, distance, SearchLocation);
+  private SearchResultList<T> FuzzySearch(string searchValue, int distance) => FuzzySearch(searchValue, distance, SearchLocation);
 
-  private SearchResultList<T> FusySearch(string searchValue, int distance, SearchLocation searchLocation)
+  private SearchResultList<T> FuzzySearch(string searchValue, int distance, SearchLocation searchLocation)
   {
     SearchResultList<T> searchResult = new();
     bool origin = SearchLocation.BeginWord == searchLocation;
@@ -234,16 +234,16 @@ public partial class Search<T> where T : struct
       int sLength = searchValue.Length;
 
       if (sLength == tLength)
-        calcResult = Levenshtein.DistanceLeventstein(searchValue, targetString);
+        calcResult = Levenshtein.DistanceLevenhstein(searchValue, targetString);
       else if (sLength < tLength)
         if (origin)
-          calcResult = Levenshtein.DistanceLeventstein(searchValue, targetString[..sLength]);
+          calcResult = Levenshtein.DistanceLevenhstein(searchValue, targetString[..sLength]);
         else
         {
           int actualLength = tLength - sLength + 1;
           int[] distances = new int[actualLength];
           for (int i = 0; i < actualLength; i++)
-            distances[i] = Levenshtein.DistanceLeventstein(searchValue, targetString[i..(i + sLength)]);
+            distances[i] = Levenshtein.DistanceLevenhstein(searchValue, targetString[i..(i + sLength)]);
 
           calcResult = distances.Min();
         }
@@ -292,7 +292,7 @@ public partial class Search<T> where T : struct
           checkString = targetString[..(sLength + 1)];
         else
           checkString = searchValue;
-        calcResult = Levenshtein.DistanceLeventstein(searchValue, checkString);
+        calcResult = Levenshtein.DistanceLevenhstein(searchValue, checkString);
       }
       return calcResult;
     }

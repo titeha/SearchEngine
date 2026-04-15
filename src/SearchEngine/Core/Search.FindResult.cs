@@ -202,7 +202,7 @@ public partial class Search<T> where T : struct
       ? executionOptions.AcceptableCountMisprint
       : CalculateDistance(item.Length, executionOptions.PrecisionSearch);
 
-    return FusySearch(item, distance, executionOptions.SearchLocation);
+    return FuzzySearch(item, distance, executionOptions.SearchLocation);
   }
 
   /// <summary>
