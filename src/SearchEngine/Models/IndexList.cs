@@ -1,9 +1,9 @@
 ﻿namespace SearchEngine;
 
 /// <summary>
-/// Список найденных индексов
+/// Представляет список индексов найденных записей.
 /// </summary>
-/// <typeparam name="T">Целый числовой тип</typeparam>
+/// <typeparam name="T">Тип идентификатора записи.</typeparam>
 public class IndexList<T> where T : struct
 {
   #region Поля
@@ -15,12 +15,22 @@ public class IndexList<T> where T : struct
 
   internal bool IsReadOnly { get; }
 
+  /// <summary>
+  /// Возвращает элементы списка индексов.
+  /// </summary>
   public IEnumerable<T> Items => _indexes;
   #endregion
 
   #region Конструкторы
+  /// <summary>
+  /// Инициализирует пустой список индексов.
+  /// </summary>
   public IndexList() => _indexes = new(4);
 
+  /// <summary>
+  /// Инициализирует список индексов одним значением.
+  /// </summary>
+  /// <param name="newIndex">Начальный индекс.</param>
   public IndexList(T newIndex) : this() => _indexes.Add(newIndex);
 
   internal IndexList(IEnumerable<T> indexes)
@@ -33,12 +43,16 @@ public class IndexList<T> where T : struct
   #endregion
 
   #region Методы
+  /// <summary>
+  /// Возвращает строковое представление списка индексов.
+  /// </summary>
+  /// <returns>Строка со значениями индексов, разделёнными запятыми.</returns>
   public override string ToString() => string.Join(',', _indexes);
 
   /// <summary>
-  /// Добавление нового элемента в список индексов
+  /// Пытается добавить новый индекс в список.
   /// </summary>
-  /// <param name="newIndex">Добавляемый индекс</param>
+  /// <param name="newIndex">Индекс, который нужно добавить.</param>
   public void TryAddValue(T newIndex)
   {
     if (!(IsReadOnly || _indexes.Contains(newIndex)))
@@ -48,6 +62,11 @@ public class IndexList<T> where T : struct
     }
   }
 
+  /// <summary>
+  /// Объединяет текущий список индексов с другим списком.
+  /// </summary>
+  /// <param name="otherIndexes">Список индексов для объединения.</param>
+  /// <returns>Новый список индексов после объединения.</returns>
   public IndexList<T> UnionIndexes(IndexList<T> otherIndexes)
   {
     if (_indexes.Count > 0)
@@ -59,6 +78,11 @@ public class IndexList<T> where T : struct
     }
   }
 
+  /// <summary>
+  /// Объединяет текущий список индексов с несколькими списками.
+  /// </summary>
+  /// <param name="otherIndexes">Набор списков индексов для объединения.</param>
+  /// <returns>Новый список индексов после объединения.</returns>
   public IndexList<T> UnionIndexes(IEnumerable<IndexList<T>> otherIndexes)
   {
     var union = otherIndexes.SelectMany(o => o._indexes).Distinct();

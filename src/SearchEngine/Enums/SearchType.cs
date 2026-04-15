@@ -1,17 +1,17 @@
 ﻿namespace SearchEngine;
 
 /// <summary>
-/// Тип поиска
+/// Определяет используемый алгоритм поиска.
 /// </summary>
 public enum SearchType
 {
   /// <summary>
-  /// Точный поиск
+  /// Точный поиск без допуска опечаток.
   /// </summary>
   ExactSearch,
 
   /// <summary>
-  /// Неточный поиск
+  /// Неточный поиск с допуском опечаток.
   /// </summary>
   NearSearch
 }
