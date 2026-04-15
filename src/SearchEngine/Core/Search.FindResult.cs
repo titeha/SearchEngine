@@ -5,29 +5,37 @@ namespace SearchEngine;
 /// <summary>
 /// Безопасные методы поиска, возвращающие результат выполнения.
 /// </summary>
-/// <typeparam name="T">Тип идентификатора записи.</typeparam>
 public partial class Search<T> where T : struct
 {
   /// <summary>
-  /// Выполняет поиск и возвращает результат без выбрасывания исключений
-  /// в ожидаемых прикладных сценариях.
+  /// Выполняет поиск по подготовленному индексу с использованием текущих настроек экземпляра.
   /// </summary>
   /// <param name="searchString">Поисковый запрос.</param>
   /// <returns>
   /// Успешный результат поиска либо описание ошибки.
   /// </returns>
+  /// <remarks>
+  /// Метод не выбрасывает исключения в ожидаемых прикладных сценариях.
+  /// Для ошибок валидации и типовых сбоев возвращается объект ошибки.
+  /// </remarks>
   public Result<SearchResultList<T>, SearchError> FindResult(string searchString) =>
     FindResult(searchString, null);
 
   /// <summary>
-  /// Выполняет поиск с параметрами конкретного запроса и возвращает результат
-  /// без выбрасывания исключений в ожидаемых прикладных сценариях.
+  /// Выполняет поиск по подготовленному индексу с параметрами конкретного запроса.
   /// </summary>
   /// <param name="searchString">Поисковый запрос.</param>
-  /// <param name="request">Параметры поиска.</param>
+  /// <param name="request">
+  /// Дополнительные параметры поиска. Если значение не задано,
+  /// используются текущие настройки экземпляра.
+  /// </param>
   /// <returns>
   /// Успешный результат поиска либо описание ошибки.
   /// </returns>
+  /// <remarks>
+  /// Метод предназначен для новых интеграций и является рекомендуемой точкой входа
+  /// для выполнения поиска.
+  /// </remarks>
   public Result<SearchResultList<T>, SearchError> FindResult(string searchString, SearchRequest? request)
   {
     if (string.IsNullOrWhiteSpace(searchString))

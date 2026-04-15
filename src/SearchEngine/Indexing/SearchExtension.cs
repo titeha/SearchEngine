@@ -125,21 +125,24 @@ public static partial class SearchExtension
   }
 
   /// <summary>
-  /// Подготавливает индекс из массива строк и возвращает результат операции.
+  /// Подготавливает поисковый индекс по коллекции исходных данных.
   /// </summary>
-  /// <typeparam name="T">Тип идентификатора записи.</typeparam>
   /// <param name="search">Экземпляр поискового движка.</param>
-  /// <param name="source">Источник данных.</param>
-  /// <param name="elementDelimiter">Разделитель между идентификатором и текстом.</param>
-  /// <param name="delimiters">Пользовательский набор разделителей слов.</param>
-  /// <param name="forceParallel">Признак принудительного включения параллельной обработки.</param>
-  /// <param name="parallelProcessingThreshold">Порог количества элементов для включения параллельной обработки.</param>
+  /// <param name="source">Набор данных для построения индекса.</param>
+  /// <param name="forceParallel">
+  /// <see langword="true"/>, если нужно принудительно использовать параллельную обработку.
+  /// </param>
+  /// <param name="parallelProcessingThreshold">
+  /// Минимальный размер набора данных, начиная с которого допускается
+  /// переход к параллельной обработке.
+  /// </param>
   /// <returns>
-  /// Успешный результат, если индекс подготовлен; иначе описание ошибки.
+  /// Успешный результат либо описание ошибки подготовки индекса.
   /// </returns>
-  /// <exception cref="ArgumentNullException">
-  /// Генерируется, если <paramref name="search"/> равен <see langword="null"/>.
-  /// </exception>
+  /// <remarks>
+  /// Метод не выбрасывает исключения в ожидаемых прикладных сценариях.
+  /// Для новых интеграций рекомендуется использовать именно его.
+  /// </remarks>
   public static async Task<UnitResult<SearchError>> PrepareIndexResult<T>(
     this Search<T> search,
     string[] source,

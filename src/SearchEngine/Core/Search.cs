@@ -6,6 +6,22 @@ using static SearchEngine.Properties.Resources;
 
 namespace SearchEngine;
 
+/// <summary>
+/// Представляет поисковый движок для точного, нечёткого и фонетического поиска
+/// по заранее подготовленному строковому индексу.
+/// </summary>
+/// <typeparam name="T">
+/// Тип идентификатора записи, связанной с индексируемым текстом.
+/// </typeparam>
+/// <remarks>
+/// Обычный жизненный цикл экземпляра:
+/// создать объект, подготовить индекс через <c>PrepareIndexResult(...)</c>,
+/// затем выполнять поиск через <c>FindResult(...)</c>.
+/// <para>
+/// Экземпляр не следует одновременно использовать для перестроения индекса,
+/// изменения настроек поиска и выполнения поиска из разных потоков.
+/// </para>
+/// </remarks>
 public partial class Search<T> where T : struct
 {
   #region Структуры для кодов клавиш
@@ -28,13 +44,16 @@ public partial class Search<T> where T : struct
 
   #region Свойства
   /// <summary>
-  /// Фонетический поиск. Исключает поиск с числами
+  /// Получает значение, указывающее, включён ли фонетический поиск.
   /// </summary>
   public bool IsPhoneticSearch { get; }
 
   /// <summary>
-  /// Поиск с цифрами. Исключает фонетический поиск
+  /// Получает или задаёт значение, указывающее, разрешён ли поиск по числовым данным.
   /// </summary>
+  /// <remarks>
+  /// Числовой поиск не используется вместе с фонетическим режимом.
+  /// </remarks>
   public bool IsNumberSearch
   {
     get => _isNumberSearch;
@@ -46,7 +65,7 @@ public partial class Search<T> where T : struct
   }
 
   /// <summary>
-  /// Точность поиска в %
+  /// Получает или задаёт точность нечёткого поиска в процентах.
   /// </summary>
   public int PrecisionSearch
   {
@@ -59,7 +78,7 @@ public partial class Search<T> where T : struct
   }
 
   /// <summary>
-  /// Допустимое количество опечаток для неточного поиска
+  /// Получает или задаёт допустимое количество опечаток для нечёткого поиска.
   /// </summary>
   public int AcceptableCountMisprint
   {
@@ -72,15 +91,18 @@ public partial class Search<T> where T : struct
   }
 
   /// <summary>
-  /// Тип поискового механизма
+  /// Получает или задаёт тип поискового механизма.
   /// </summary>
   public SearchType SearchType { get; set; }
 
   /// <summary>
-  /// Место поиска
+  /// Получает или задаёт место поиска внутри слова.
   /// </summary>
   public SearchLocation SearchLocation { get; set; }
 
+  /// <summary>
+  /// Получает значение, указывающее, завершено ли построение индекса.
+  /// </summary>
   public bool IsIndexComplete
   {
     get => _isIndexComplete;
@@ -125,6 +147,9 @@ public partial class Search<T> where T : struct
     }
   }
 
+  /// <summary>
+  /// Создаёт экземпляр поискового движка со стандартными настройками.
+  /// </summary>
   public Search()
   {
     _isNumberSearch = false;
@@ -135,6 +160,12 @@ public partial class Search<T> where T : struct
     _isIndexComplete = false;
   }
 
+  /// <summary>
+  /// Создаёт экземпляр поискового движка и задаёт режим фонетического поиска.
+  /// </summary>
+  /// <param name="isPhoneticSearch">
+  /// <see langword="true"/>, если нужно использовать фонетический поиск.
+  /// </param>
   public Search(bool isPhoneticSearch) : this() => IsPhoneticSearch = isPhoneticSearch;
   #endregion
 
