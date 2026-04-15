@@ -1,0 +1,49 @@
+name: Сборка и тесты SearchEngine
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-pack:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Получить исходный код
+        uses: actions/checkout@v4
+
+      - name: Установить SDK .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            6.0.x
+            7.0.x
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Восстановить зависимости
+        run: dotnet restore ./SearchEngine.sln
+
+      - name: Собрать решение
+        run: dotnet build ./SearchEngine.sln -c Release --no-restore
+
+      - name: Запустить тесты
+        run: dotnet test ./SearchEngine.sln -c Release --no-build
+
+      - name: Собрать NuGet-пакет
+        run: dotnet pack ./src/SearchEngine/SearchEngine.csproj -c Release --no-build -o ./artifacts
+
+      - name: Сохранить артефакты пакета
+        uses: actions/upload-artifact@v4
+        with:
+          name: searchengine-nuget
+          path: |
