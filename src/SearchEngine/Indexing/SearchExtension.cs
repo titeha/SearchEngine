@@ -1,6 +1,4 @@
-﻿using System.Timers;
-
-using ResultType;
+﻿using ResultType;
 
 namespace SearchEngine;
 
@@ -11,73 +9,6 @@ public static partial class SearchExtension
 {
   private const string EmptySourceErrorMessage = "Источник данных пуст или не содержит элементов.";
   private const string IndexBuildFailedMessage = "Во время подготовки поискового индекса произошла ошибка.";
-
-  /// <summary>
-  /// Подготавливает индекс из коллекции объектов-источников.
-  /// </summary>
-  /// <typeparam name="T">Тип идентификатора записи.</typeparam>
-  /// <param name="search">Экземпляр поискового движка.</param>
-  /// <param name="source">Источник данных.</param>
-  /// <param name="delimiters">Пользовательский набор разделителей слов.</param>
-  /// <returns>Асинхронная операция подготовки индекса.</returns>
-  /// <exception cref="ArgumentNullException">
-  /// Генерируется, если <paramref name="search"/> равен <see langword="null"/>.
-  /// </exception>
-  [Obsolete("Используйте PrepareIndexResult(...) или TryPrepareIndex(...). Legacy API без Result устарел и будет удалён в следующем мажорном релизе.", false)]
-  public static async Task PrepareIndex<T>(
-    this Search<T> search,
-    IEnumerable<ISourceData<T>> source,
-    string? delimiters = null)
-    where T : struct
-  {
-    if (search is null)
-      ThrowArgumentNull(nameof(search));
-
-    search!.IndexPreparing();
-
-    ISourceData<T>[] materializedSource = MaterializeSource(source);
-
-    if (materializedSource.Length == 0)
-      return;
-
-    await Task.Run(() => new Search<T>.IndexBuilder(search, delimiters).BuildIndex(materializedSource))
-      .ConfigureAwait(false);
-  }
-
-  /// <summary>
-  /// Подготавливает индекс из массива строк, содержащих идентификатор и текст.
-  /// </summary>
-  /// <typeparam name="T">Тип идентификатора записи.</typeparam>
-  /// <param name="search">Экземпляр поискового движка.</param>
-  /// <param name="source">Источник данных.</param>
-  /// <param name="elementDelimiter">Разделитель между идентификатором и текстом.</param>
-  /// <param name="delimiters">Пользовательский набор разделителей слов.</param>
-  /// <returns>Асинхронная операция подготовки индекса.</returns>
-  /// <exception cref="ArgumentNullException">
-  /// Генерируется, если <paramref name="search"/> равен <see langword="null"/>.
-  /// </exception>
-  [Obsolete("Используйте PrepareIndexResult(...) или TryPrepareIndex(...). Legacy API без Result устарел и будет удалён в следующем мажорном релизе.", false)]
-  public static async Task PrepareIndex<T>(
-    this Search<T> search,
-    string[] source,
-    string elementDelimiter,
-    string? delimiters = null)
-    where T : struct
-  {
-    if (search is null)
-      ThrowArgumentNull(nameof(search));
-
-    search!.IndexPreparing();
-
-    if (source is null || source.Length == 0)
-      return;
-
-    if (string.IsNullOrWhiteSpace(elementDelimiter))
-      return;
-
-    await Task.Run(() => new Search<T>.IndexBuilder(search, delimiters).BuildIndex(source, elementDelimiter))
-      .ConfigureAwait(false);
-  }
 
   /// <summary>
   /// Подготавливает индекс из коллекции объектов-источников и возвращает результат операции.
@@ -129,13 +60,11 @@ public static partial class SearchExtension
   /// </summary>
   /// <param name="search">Экземпляр поискового движка.</param>
   /// <param name="source">Набор данных для построения индекса.</param>
+  /// <param name="elementDelimiter"> Разделитель между идентификатором записи и индексируемым текстом в строке источника.</param>
+  /// <param name="delimiters"> Пользовательский набор разделителей слов. Если не задан, используется набор по умолчанию.</param>
   /// <param name="forceParallel">
-  /// <see langword="true"/>, если нужно принудительно использовать параллельную обработку.
-  /// </param>
-  /// <param name="parallelProcessingThreshold">
-  /// Минимальный размер набора данных, начиная с которого допускается
-  /// переход к параллельной обработке.
-  /// </param>
+  /// <see langword="true"/>, если нужно принудительно использовать параллельную обработку.</param>
+  /// <param name="parallelProcessingThreshold"> Минимальный размер набора данных, начиная с которого допускается переход к параллельной обработке.</param>
   /// <returns>
   /// Успешный результат либо описание ошибки подготовки индекса.
   /// </returns>

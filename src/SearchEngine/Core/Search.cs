@@ -10,9 +10,6 @@ namespace SearchEngine;
 /// Представляет поисковый движок для точного, нечёткого и фонетического поиска
 /// по заранее подготовленному строковому индексу.
 /// </summary>
-/// <typeparam name="T">
-/// Тип идентификатора записи, связанной с индексируемым текстом.
-/// </typeparam>
 /// <remarks>
 /// Обычный жизненный цикл экземпляра:
 /// создать объект, подготовить индекс через <c>PrepareIndexResult(...)</c>,
@@ -170,31 +167,6 @@ public partial class Search<T> where T : struct
   #endregion
 
   #region Методы
-  [Obsolete("Используйте FindResult(...) или TryFind(...). Legacy API без Result устарел и будет удалён в следующем мажорном релизе.", false)]
-  public SearchResultList<T> Find(string searchString)
-  {
-    static int CalculateDistance(int length, int percent) => length > 1
-      ? length - (length * percent / 100)
-      : 0;
-
-    SearchResultList<T> searchResult = new();
-
-    DisassemblyString(searchString);
-    foreach (var item in _searchList)
-    {
-      if (IsPhoneticSearch)
-        searchResult.Union(PhoneticFind(item));
-      else if (item.Length == 2 || SearchType.ExactSearch == SearchType)
-        searchResult.Union(ExactSearch(item));
-      else
-        searchResult.Union(FuzzySearch(item, AcceptableCountMisprint >= 0
-          ? AcceptableCountMisprint
-          : CalculateDistance(item.Length, PrecisionSearch)));
-    }
-
-    return searchResult;
-  }
-
   private protected void DisassemblyString(string source)
   {
     _searchList.Clear();
@@ -360,6 +332,9 @@ public partial class Search<T> where T : struct
   #endregion Методы
 
   #region События
+  /// <summary>
+  /// Происходит после завершения построения поискового индекса.
+  /// </summary>
   public event EventHandler? CreateIndexComplete;
   #endregion
 }

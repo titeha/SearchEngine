@@ -49,28 +49,6 @@ public class RegressionStabilityTests
     Assert.True(ContainsId(result.Value, 1));
   }
 
-#pragma warning disable CS0618 // Legacy API intentionally covered by regression test.
-  [Fact]
-  public async Task PrepareIndex_ИзМассиваСтрок_ДолженСохранятьВесьТекстПослеПервогоРазделителя()
-  {
-    TestSearch<int> sut = new();
-
-    await sut.PrepareIndex(
-      [
-        "1;товар;с дополнительным;разделителем"
-      ],
-      ";");
-
-    Assert.True(sut.IsIndexComplete);
-
-    var searchResult = sut.FindResult("разделителем");
-
-    Assert.True(searchResult.IsSuccess);
-    Assert.True(searchResult.Value!.IsHasIndex);
-    Assert.True(ContainsId(searchResult.Value, 1));
-  }
-#pragma warning restore CS0618
-
   [Fact]
   public void FindResult_ВФонетическомРежиме_ДолженСохранятьBucketСДистанциейБольшеНуля()
   {

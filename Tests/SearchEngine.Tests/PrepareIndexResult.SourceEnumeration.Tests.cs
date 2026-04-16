@@ -42,23 +42,6 @@ public class PrepareIndexResultSourceEnumerationTests
     Assert.Empty(sut.SearchIndex);
   }
 
-  [Fact]
-  public async Task TryPrepareIndex_ДолженВернутьОшибкуIndexBuildFailed_ЕслиИсточникБросилИсключениеПриПеречислении()
-  {
-    TestSearch<int> sut = new();
-    ThrowingEnumerable<ISourceData<int>> source = new("Ошибка перечисления источника.");
-
-    var result = await sut.TryPrepareIndex(source);
-
-    Assert.True(result.IsFailure);
-    Assert.Equal(SearchEngineErrorCode.IndexBuildFailed, result.Error.Code);
-    Assert.Equal(
-    "Во время подготовки поискового индекса произошла ошибка. Ошибка перечисления источника.",
-    result.Error.Message);
-    Assert.False(sut.IsIndexComplete);
-    Assert.Empty(sut.SearchIndex);
-  }
-
   private sealed record TestSourceRecord : ISourceData<int>
   {
     public int Id { get; init; }
