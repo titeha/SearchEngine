@@ -1,34 +1,36 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net6.0;net7.0;net8.0;net9.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Copyright>Artemy Sobolev</Copyright>
-    <Version>1.1.6</Version>
-    <RepositoryUrl>https://github.com/titeha/SearchEngine/tree/master/SearchEngine</RepositoryUrl>
-    <BaseOutputPath>..\..\bin\</BaseOutputPath>
-    <Authors>Artemy Sobolev</Authors>
-    <TieredPGO>true</TieredPGO>
-    <LangVersion>latest</LangVersion>
-    <PackageId>Ti-Soft.SearchEngine</PackageId>
-    <Title>Ti-Soft.SearchEngine</Title>
-    <Description>Библиотека для организации нечёткого и фонетического поиска по строкам БД на русском языке.</Description>
-    <Authors>Artemy Sobolev</Authors>
 
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <Authors>Artemy Sobolev</Authors>
+    <Copyright>Artemy Sobolev</Copyright>
+    <Version>1.1.6</Version>
+
+    <PackageId>Ti-Soft.SearchEngine</PackageId>
+    <Title>Ti-Soft.SearchEngine</Title>
+    <Description>Библиотека для организации нечёткого и фонетического поиска по строкам БД на русском языке.</Description>
+    <PackageTags>search;fuzzy-search;phonetic-search;database;db;ru;typo-tolerance</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+
     <PackageProjectUrl>https://github.com/titeha/SearchEngine</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/titeha/SearchEngine</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
+
+    <BaseOutputPath>..\..\bin\</BaseOutputPath>
+    <TieredPGO>true</TieredPGO>
+    <LangVersion>latest</LangVersion>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageRequireLecenseAcceptanec>false</PackageRequireLecenseAcceptanec>
-    <PackageTags>search;fuzzy-search;phonetic-search;database;db;ru;typo-tolerance</PackageTags>
-
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
@@ -71,6 +73,7 @@
 
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
