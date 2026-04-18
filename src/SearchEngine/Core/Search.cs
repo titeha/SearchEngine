@@ -237,16 +237,16 @@ public partial class Search<T> where T : struct
       int sLength = searchValue.Length;
 
       if (sLength == tLength)
-        calcResult = Levenshtein.DistanceLevenhstein(searchValue, targetString);
+        calcResult = Levenshtein.DistanceLevenshtein(searchValue, targetString);
       else if (sLength < tLength)
         if (origin)
-          calcResult = Levenshtein.DistanceLevenhstein(searchValue, targetString[..sLength]);
+          calcResult = Levenshtein.DistanceLevenshtein(searchValue, targetString[..sLength]);
         else
         {
           int actualLength = tLength - sLength + 1;
           int[] distances = new int[actualLength];
           for (int i = 0; i < actualLength; i++)
-            distances[i] = Levenshtein.DistanceLevenhstein(searchValue, targetString[i..(i + sLength)]);
+            distances[i] = Levenshtein.DistanceLevenshtein(searchValue, targetString[i..(i + sLength)]);
 
           calcResult = distances.Min();
         }
@@ -295,7 +295,7 @@ public partial class Search<T> where T : struct
           checkString = targetString[..(sLength + 1)];
         else
           checkString = searchValue;
-        calcResult = Levenshtein.DistanceLevenhstein(searchValue, checkString);
+        calcResult = Levenshtein.DistanceLevenshtein(searchValue, checkString);
       }
       return calcResult;
     }

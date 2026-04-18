@@ -10,7 +10,7 @@ public partial class Search<T> where T : struct
 {
   internal static class Levenshtein
   {
-    public static int DistanceLevenhstein(string source, string target)
+    public static int DistanceLevenshtein(string source, string target)
     {
       if (source.IsNullOrEmpty())
       {

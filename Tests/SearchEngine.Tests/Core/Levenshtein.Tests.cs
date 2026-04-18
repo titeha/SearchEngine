@@ -7,7 +7,7 @@ public class LevenshteinTests
   [Fact]
   public void Test_EmptyStrings()
   {
-    Assert.Equal(0, Search<int>.Levenshtein.DistanceLevenhstein("", ""));
+    Assert.Equal(0, Search<int>.Levenshtein.DistanceLevenshtein("", ""));
   }
 
   [Theory]
@@ -16,7 +16,7 @@ public class LevenshteinTests
   [InlineData("HELLO", 10)]
   public void Test_SourceIsEmpty(string target, int expected)
   {
-    Assert.Equal(expected, Search<int>.Levenshtein.DistanceLevenhstein("", target));
+    Assert.Equal(expected, Search<int>.Levenshtein.DistanceLevenshtein("", target));
   }
 
   [Theory]
@@ -27,7 +27,7 @@ public class LevenshteinTests
   {
     var sut = new Search<int>();
 
-    Assert.Equal(0, Search<int>.Levenshtein.DistanceLevenhstein(str, str));
+    Assert.Equal(0, Search<int>.Levenshtein.DistanceLevenshtein(str, str));
   }
 
   [Theory]
@@ -36,7 +36,7 @@ public class LevenshteinTests
   [InlineData("EXAMPLE", "SAMPLES", 4)]
   public void Test_DifferentStrings(string source, string target, int expected)
   {
-    Assert.Equal(expected, Search<int>.Levenshtein.DistanceLevenhstein(source, target));
+    Assert.Equal(expected, Search<int>.Levenshtein.DistanceLevenshtein(source, target));
   }
 
   [Theory]
@@ -45,7 +45,7 @@ public class LevenshteinTests
   [InlineData("ABCDEFG", "ABCDFG", 2)]
   public void Test_SubstitutionCost(string source, string target, int expected)
   {
-    Assert.Equal(expected, Search<int>.Levenshtein.DistanceLevenhstein(source, target));
+    Assert.Equal(expected, Search<int>.Levenshtein.DistanceLevenshtein(source, target));
   }
 
   [Theory]
@@ -54,7 +54,7 @@ public class LevenshteinTests
   [InlineData("EXAMPLE", "EXMPLE", 2)]
   public void Test_InsertionDeletionCost(string source, string target, int expected)
   {
-    Assert.Equal(expected, Search<int>.Levenshtein.DistanceLevenhstein(source, target));
+    Assert.Equal(expected, Search<int>.Levenshtein.DistanceLevenshtein(source, target));
   }
 
   [Theory]
@@ -62,6 +62,6 @@ public class LevenshteinTests
   [InlineData("СОЛНЦЕ", "СОЛНЫШКО", 5)] // русские символы
   public void Test_RussianSpecialCases(string source, string target, int expected)
   {
-    Assert.Equal(expected, Search<int>.Levenshtein.DistanceLevenhstein(source, target));
+    Assert.Equal(expected, Search<int>.Levenshtein.DistanceLevenshtein(source, target));
   }
 }

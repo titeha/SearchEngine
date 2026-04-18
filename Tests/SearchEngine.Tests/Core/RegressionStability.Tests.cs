@@ -58,7 +58,7 @@ public class RegressionStabilityTests
     string query = Assert.Single(sut.SearchList);
     string target = CreatePhoneticTargetAtDistanceOne(query);
 
-    int expectedDistance = Search<int>.Levenshtein.DistanceLevenhstein(
+    int expectedDistance = Search<int>.Levenshtein.DistanceLevenshtein(
       query,
       target[..(query.Length + 1)]);
 
@@ -112,7 +112,7 @@ public class RegressionStabilityTests
   {
     try
     {
-      return Search<int>.Levenshtein.DistanceLevenhstein(left, right) == expected;
+      return Search<int>.Levenshtein.DistanceLevenshtein(left, right) == expected;
     }
     catch (KeyNotFoundException)
     {
