@@ -2,8 +2,7 @@
 
 namespace SearchEngine.Benchmarks;
 
-[MemoryDiagnoser]
-[ShortRunJob]
+[Config(typeof(BenchmarkConfig))]
 public class FuzzySearchBenchmarks
 {
   [Params(1_000, 10_000, 100_000)]
