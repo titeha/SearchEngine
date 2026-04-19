@@ -24,6 +24,20 @@ public class FuzzySearchBenchmarks
   [GlobalSetup]
   public void GlobalSetup()
   {
+    ValidateSearch(_exactRequest);
+    ValidateSearch(_fuzzyRequest);
+
+    void ValidateSearch(SearchRequest request)
+    {
+      var result = _search.FindResult(Query, request);
+
+      if (result.IsFailure)
+      {
+        throw new InvalidOperationException(
+          $"Проверочный поиск завершился с ошибкой: {result.Error!.Code} - {result.Error.Message}");
+      }
+    }
+
     _search = new Search<int>();
 
     _exactRequest = new SearchRequest

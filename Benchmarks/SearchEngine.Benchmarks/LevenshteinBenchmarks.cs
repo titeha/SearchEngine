@@ -17,7 +17,8 @@ public class LevenshteinBenchmarks
     LevenshteinScenario.InsertOne,
     LevenshteinScenario.DeleteOne,
     LevenshteinScenario.TransposeNearEnd,
-    LevenshteinScenario.Different)]
+    LevenshteinScenario.Different,
+    LevenshteinScenario.LengthGapTooLarge)]
   public LevenshteinScenario Scenario { get; set; }
 
   [GlobalSetup]
