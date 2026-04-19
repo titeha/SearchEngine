@@ -33,6 +33,7 @@ public class LevenshteinBenchmarks
       LevenshteinScenario.DeleteOne => DeleteOne(_source),
       LevenshteinScenario.TransposeNearEnd => TransposeNearEnd(_source),
       LevenshteinScenario.Different => CreateDifferentWord(Length),
+      LevenshteinScenario.LengthGapTooLarge => CreateLengthGapWord(_source),
       _ => throw new InvalidOperationException($"Неизвестный сценарий {Scenario}.")
     };
 
@@ -101,6 +102,8 @@ public class LevenshteinBenchmarks
     return value.Insert(position, "а");
   }
 
+  private static string CreateLengthGapWord(string value) => value + "абвг";
+
   private static string DeleteOne(string value)
   {
     if (value.Length <= 1)
@@ -134,5 +137,6 @@ public enum LevenshteinScenario
   InsertOne,
   DeleteOne,
   TransposeNearEnd,
-  Different
+  Different,
+  LengthGapTooLarge
 }
