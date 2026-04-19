@@ -25,8 +25,6 @@ public class LevenshteinTests
   [InlineData("TEST123")]
   public void Test_SameStrings(string str)
   {
-    var sut = new Search<int>();
-
     Assert.Equal(0, Search<int>.Levenshtein.DistanceLevenshtein(str, str));
   }
 
@@ -58,10 +56,41 @@ public class LevenshteinTests
   }
 
   [Theory]
-  [InlineData("ПРОВЕРКА", "ПРОВЕРЬКА", 2)] // русский язык
-  [InlineData("СОЛНЦЕ", "СОЛНЫШКО", 5)] // русские символы
+  [InlineData("ПРОВЕРКА", "ПРОВЕРЬКА", 2)]
+  [InlineData("СОЛНЦЕ", "СОЛНЫШКО", 5)]
   public void Test_RussianSpecialCases(string source, string target, int expected)
   {
     Assert.Equal(expected, Search<int>.Levenshtein.DistanceLevenshtein(source, target));
+  }
+
+  [Theory]
+  [InlineData("KITTEN", "SITTING", 5)]
+  [InlineData("SATURDAY", "SUNDAY", 6)]
+  [InlineData("HELLO", "HALLO", 2)]
+  [InlineData("ABCDEFG", "ABCDFG", 2)]
+  public void Test_BoundedDistance_ReturnsExactDistance_WhenDistanceIsWithinThreshold(
+    string source,
+    string target,
+    int expected)
+  {
+    Assert.Equal(expected, Search<int>.Levenshtein.DistanceLevenshtein(source, target, expected));
+  }
+
+  [Fact]
+  public void Test_BoundedDistance_ReturnsThresholdPlusOne_WhenDistanceIsGreaterThanThreshold()
+  {
+    Assert.Equal(3, Search<int>.Levenshtein.DistanceLevenshtein("ABCDEFGH", "ZZZZZZZZ", 2));
+  }
+
+  [Fact]
+  public void Test_Distance_DoesNotThrow_WhenSymbolsAreUnknown()
+  {
+    Assert.Equal(2, Search<int>.Levenshtein.DistanceLevenshtein("☺", "☻"));
+  }
+
+  [Fact]
+  public void Test_Distance_DoesNotThrow_WhenLowercaseSymbolsArePassedDirectly()
+  {
+    Assert.Equal(2, Search<int>.Levenshtein.DistanceLevenshtein("и", "о"));
   }
 }

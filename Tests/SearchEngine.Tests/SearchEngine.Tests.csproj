@@ -24,7 +24,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\SearchEngine\SearchEngine.csproj" />
-    <ProjectReference Include="..\SearchEngine\SearchEngine.csproj" />
   </ItemGroup>
 
 </Project>

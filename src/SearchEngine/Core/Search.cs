@@ -230,28 +230,40 @@ public partial class Search<T> where T : struct
     bool origin = SearchLocation.BeginWord == searchLocation;
     int sLength = searchValue.Length;
 
-    static int CalculateResult(string searchValue, string targetString, bool origin)
+    static int CalculateResult(string searchValue, string targetString, bool origin, int maxDistance)
     {
-      int calcResult = 0;
-      int tLength = targetString.Length;
-      int sLength = searchValue.Length;
+      int targetLength = targetString.Length;
+      int searchLength = searchValue.Length;
 
-      if (sLength == tLength)
-        calcResult = Levenshtein.DistanceLevenshtein(searchValue, targetString);
-      else if (sLength < tLength)
-        if (origin)
-          calcResult = Levenshtein.DistanceLevenshtein(searchValue, targetString[..sLength]);
-        else
-        {
-          int actualLength = tLength - sLength + 1;
-          int[] distances = new int[actualLength];
-          for (int i = 0; i < actualLength; i++)
-            distances[i] = Levenshtein.DistanceLevenshtein(searchValue, targetString[i..(i + sLength)]);
+      if (searchLength > targetLength)
+        return maxDistance + 1;
 
-          calcResult = distances.Min();
-        }
+      ReadOnlySpan<char> searchSpan = searchValue.AsSpan();
 
-      return calcResult;
+      if (searchLength == targetLength)
+        return Levenshtein.DistanceLevenshtein(searchSpan, targetString.AsSpan(), maxDistance);
+
+      if (origin)
+        return Levenshtein.DistanceLevenshtein(searchSpan, targetString.AsSpan(0, searchLength), maxDistance);
+
+      int bestDistance = maxDistance + 1;
+      int windowCount = targetLength - searchLength + 1;
+
+      for (int i = 0; i < windowCount; i++)
+      {
+        int currentDistance = Levenshtein.DistanceLevenshtein(
+          searchSpan,
+          targetString.AsSpan(i, searchLength),
+          maxDistance);
+
+        if (currentDistance < bestDistance)
+          bestDistance = currentDistance;
+
+        if (bestDistance == 0)
+          break;
+      }
+
+      return bestDistance;
     }
 
     if (distance == 0)
@@ -264,7 +276,7 @@ public partial class Search<T> where T : struct
         .WithDegreeOfParallelism(Environment.ProcessorCount)
 #endif
         .Where(s => s.Key.Length >= sLength)
-        .Select(d => (Distance: CalculateResult(searchValue, d.Key, origin), Indexes: d.Value))
+        .Select(d => (Distance: CalculateResult(searchValue, d.Key, origin, distance), Indexes: d.Value))
         .Where(r => r.Distance <= distance)
 #if !DEBUG
         .AsSequential()
@@ -295,7 +307,7 @@ public partial class Search<T> where T : struct
           checkString = targetString[..(sLength + 1)];
         else
           checkString = searchValue;
-        calcResult = Levenshtein.DistanceLevenshtein(searchValue, checkString);
+        calcResult = Levenshtein.DistanceLevenshtein(searchValue, checkString, 1);
       }
       return calcResult;
     }

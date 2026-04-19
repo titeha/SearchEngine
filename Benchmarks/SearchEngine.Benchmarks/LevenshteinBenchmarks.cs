@@ -24,6 +24,7 @@ public class LevenshteinBenchmarks
   public void Setup()
   {
     _source = CreateWord(Length);
+
     _target = Scenario switch
     {
       LevenshteinScenario.Equal => _source,
@@ -34,6 +35,17 @@ public class LevenshteinBenchmarks
       LevenshteinScenario.Different => CreateDifferentWord(Length),
       _ => throw new InvalidOperationException($"Неизвестный сценарий {Scenario}.")
     };
+
+    // В реальном поисковом пути токены нормализуются до верхнего регистра.
+    // Микробенчмарк вызывает внутренний алгоритм напрямую, поэтому обязан
+    // выполнить такую же нормализацию сам.
+    _source = _source.ToUpperInvariant();
+    _target = _target.ToUpperInvariant();
+
+    // Sanity-check до старта BenchmarkDotNet-итераций.
+    // Если внутренний алгоритм снова упадёт на тестовых данных,
+    // мы увидим проблему сразу в GlobalSetup.
+    _ = Search<int>.Levenshtein.DistanceLevenshtein(_source, _target);
   }
 
   [Benchmark]
@@ -69,6 +81,7 @@ public class LevenshteinBenchmarks
   private static string ReplaceOne(string value)
   {
     char[] result = value.ToCharArray();
+
     int position = result.Length / 2;
     result[position] = result[position] == 'о' ? 'а' : 'о';
 
@@ -78,6 +91,7 @@ public class LevenshteinBenchmarks
   private static string InsertOne(string value)
   {
     int position = value.Length / 2;
+
     return value.Insert(position, "а");
   }
 
@@ -87,6 +101,7 @@ public class LevenshteinBenchmarks
       return string.Empty;
 
     int position = value.Length / 2;
+
     return value.Remove(position, 1);
   }
 
