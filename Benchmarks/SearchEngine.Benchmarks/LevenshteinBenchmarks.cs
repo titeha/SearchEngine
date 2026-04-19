@@ -37,22 +37,28 @@ public class LevenshteinBenchmarks
     };
 
     // В реальном поисковом пути токены нормализуются до верхнего регистра.
-    // Микробенчмарк вызывает внутренний алгоритм напрямую, поэтому обязан
-    // выполнить такую же нормализацию сам.
+    // Здесь мы вызываем внутренний алгоритм напрямую, поэтому нормализуем сами.
     _source = _source.ToUpperInvariant();
     _target = _target.ToUpperInvariant();
 
-    // Sanity-check до старта BenchmarkDotNet-итераций.
-    // Если внутренний алгоритм снова упадёт на тестовых данных,
-    // мы увидим проблему сразу в GlobalSetup.
+    // Sanity-check до старта измерений.
     _ = Search<int>.Levenshtein.DistanceLevenshtein(_source, _target);
+    _ = Search<int>.Levenshtein.DistanceLevenshtein(_source, _target, 1);
+    _ = Search<int>.Levenshtein.DistanceLevenshtein(_source, _target, 2);
+    _ = Search<int>.Levenshtein.DistanceLevenshtein(_source, _target, 3);
   }
 
+  [Benchmark(Baseline = true)]
+  public int FullDistance() => Search<int>.Levenshtein.DistanceLevenshtein(_source, _target);
+
   [Benchmark]
-  public int Distance()
-  {
-    return Search<int>.Levenshtein.DistanceLevenshtein(_source, _target);
-  }
+  public int BoundedDistanceMax1() => Search<int>.Levenshtein.DistanceLevenshtein(_source, _target, 1);
+
+  [Benchmark]
+  public int BoundedDistanceMax2() => Search<int>.Levenshtein.DistanceLevenshtein(_source, _target, 2);
+
+  [Benchmark]
+  public int BoundedDistanceMax3() => Search<int>.Levenshtein.DistanceLevenshtein(_source, _target, 3);
 
   private static string CreateWord(int length)
   {
