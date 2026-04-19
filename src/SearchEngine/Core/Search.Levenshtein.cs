@@ -43,6 +43,9 @@ public partial class Search<T> where T : struct
 
     public static int DistanceLevenshtein(ReadOnlySpan<char> source, ReadOnlySpan<char> target, int maxDistance)
     {
+      if (Abs(source.Length - target.Length) > maxDistance)
+        return maxDistance + 1;
+
       if (maxDistance < 0)
         throw new ArgumentOutOfRangeException(nameof(maxDistance), "Максимальное расстояние не может быть отрицательным.");
 

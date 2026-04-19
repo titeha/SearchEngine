@@ -33,7 +33,6 @@ public sealed class BenchmarkConfig : ManualConfig
         AppContext.BaseDirectory,
         "..",
         "..",
-        "..",
         "BenchmarkDotNet.Artifacts"
       ]));
 
