@@ -103,6 +103,17 @@ public partial class Search<T> where T : struct
     SearchExecutionOptions executionOptions,
     QueryMatchMode matchMode)
   {
+    if (searchItems.Count == 1
+      && !IsPhoneticSearch
+      &&  executionOptions.SearchType == SearchType.ExactSearch)
+    {
+      IReadOnlyList<T> indexes = ExecuteExactZeroDistanceItemSearch(
+        searchItems[0],
+        executionOptions.SearchLocation);
+
+      return BuildExactZeroDistanceSingleTermResult(indexes);
+    }
+
     if (searchItems.Count == 1)
       return ExecuteSingleTermSearch(searchItems[0], executionOptions);
 
@@ -1038,6 +1049,21 @@ public partial class Search<T> where T : struct
     }
 
     return distances;
+  }
+
+  private static SearchResultList<T> BuildExactZeroDistanceSingleTermResult(
+  IReadOnlyList<T> indexes)
+  {
+    SearchResultList<T> result = new();
+
+    if (indexes.Count == 0)
+      return result;
+
+    result.Items.Add(
+      0,
+      CreateResultIndexList(indexes));
+
+    return result;
   }
 
   /// <summary>
