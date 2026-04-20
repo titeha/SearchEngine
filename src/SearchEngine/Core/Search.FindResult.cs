@@ -59,7 +59,7 @@ public partial class Search<T> where T : struct
                 "Поисковый индекс пуст."));
 
     if (!TryValidateRequest(request, out SearchError? validationError))
-      return Result.Failure<SearchResultList<T>, SearchError>(validationError!);
+      return Result.Failure<SearchResultList<T>, SearchError>(validationError);
 
     try
     {
@@ -99,18 +99,36 @@ public partial class Search<T> where T : struct
   /// <param name="matchMode">Режим объединения слов запроса.</param>
   /// <returns>Результат поиска.</returns>
   private SearchResultList<T> ExecuteSearch(
-    IEnumerable<string> searchItems,
-    SearchExecutionOptions executionOptions,
-    QueryMatchMode matchMode)
+  IReadOnlyList<string> searchItems,
+  SearchExecutionOptions executionOptions,
+  QueryMatchMode matchMode)
   {
+    if (searchItems.Count == 1)
+      return ExecuteSingleTermSearch(searchItems[0], executionOptions);
+
     return matchMode switch
     {
       QueryMatchMode.AllTerms => ExecuteAllTermsSearch(searchItems, executionOptions),
       QueryMatchMode.AnyTerm => ExecuteAnyTermSearch(searchItems, executionOptions),
       QueryMatchMode.SoftAllTerms => ExecuteSoftAllTermsSearch(searchItems, executionOptions),
       _ => throw new InvalidOperationException(
-      $"Режим {matchMode} не поддерживается текущей реализацией поиска.")
+        $"Режим {matchMode} не поддерживается текущей реализацией поиска.")
     };
+  }
+
+  /// <summary>
+  /// Выполняет поиск по одному слову запроса без маршрутизации через режимы объединения.
+  /// </summary>
+  /// <param name="item">Искомое слово.</param>
+  /// <param name="executionOptions">Эффективные параметры выполнения поиска.</param>
+  /// <returns>Нормализованный результат поиска по одному слову.</returns>
+  private SearchResultList<T> ExecuteSingleTermSearch(
+    string item,
+    SearchExecutionOptions executionOptions)
+  {
+    SearchResultList<T> searchResult = ExecuteSingleItemSearch(item, executionOptions);
+
+    return BuildSingleTermSearchResult(searchResult);
   }
 
   /// <summary>
@@ -143,7 +161,7 @@ public partial class Search<T> where T : struct
         break;
     }
 
-    return BuildSearchResult(commonDistances ?? new Dictionary<T, int>());
+    return BuildSearchResult(commonDistances ?? []);
   }
 
   /// <summary>
@@ -275,6 +293,53 @@ public partial class Search<T> where T : struct
       searchResult.Items.Add(pair.Key, new IndexList<T>(pair.Value, sort: true));
 
     return searchResult;
+  }
+
+  /// <summary>
+  /// Создаёт результат поиска для запроса из одного слова.
+  /// </summary>
+  /// <param name="searchResult">Исходный результат поиска по одному слову.</param>
+  /// <returns>
+  /// Результат, в котором каждый идентификатор находится только в лучшей для него корзине дистанции.
+  /// </returns>
+  private static SearchResultList<T> BuildSingleTermSearchResult(SearchResultList<T> searchResult)
+  {
+    SearchResultList<T> result = new();
+
+    if (searchResult.Items.Count == 0)
+      return result;
+
+    if (searchResult.Items.Count == 1)
+    {
+      int distance = searchResult.Items.Keys[0];
+      IndexList<T> indexes = searchResult.Items.Values[0];
+
+      if (indexes.Count > 0)
+        result.Items.Add(distance, new IndexList<T>(indexes.Items));
+
+      return result;
+    }
+
+    HashSet<T> usedIndexes = new();
+
+    foreach (var bucket in searchResult.Items)
+    {
+      List<T>? bucketIndexes = null;
+
+      foreach (T index in bucket.Value.Items)
+      {
+        if (!usedIndexes.Add(index))
+          continue;
+
+        bucketIndexes ??= [];
+        bucketIndexes.Add(index);
+      }
+
+      if (bucketIndexes is { Count: > 0 })
+        result.Items.Add(bucket.Key, new IndexList<T>(bucketIndexes, sort: true));
+    }
+
+    return result;
   }
 
   /// <summary>
