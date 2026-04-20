@@ -106,17 +106,15 @@ public partial class Search<T> where T : struct
     if (searchItems.Count == 1)
       return ExecuteSingleTermSearch(searchItems[0], executionOptions);
 
-    if (executionOptions.SearchType == SearchType.ExactSearch)
+    if (!IsPhoneticSearch && executionOptions.SearchType == SearchType.ExactSearch)
     {
-      SearchResultList<T>[] termResults = ExecuteTermSearches(
+      IReadOnlyList<T>[] termIndexes = ExecuteExactZeroDistanceTermSearches(
         searchItems,
         executionOptions);
 
-      if (TryBuildZeroDistanceSearchResult(
-        termResults,
-        matchMode,
-        out SearchResultList<T>? searchResult))
-        return searchResult!;
+      return BuildExactZeroDistanceSearchResult(
+        termIndexes,
+        matchMode);
     }
 
     return matchMode switch
@@ -128,6 +126,492 @@ public partial class Search<T> where T : struct
       _ => throw new InvalidOperationException(
         $"Режим {matchMode} не поддерживается текущей реализацией поиска.")
     };
+  }
+
+  /// <summary>
+  /// Выполняет точный поиск отдельно для каждого слова запроса
+  /// и возвращает только списки идентификаторов нулевой дистанции.
+  /// </summary>
+  /// <param name="searchItems">Слова поискового запроса.</param>
+  /// <param name="executionOptions">Эффективные параметры выполнения поиска.</param>
+  /// <returns>Списки идентификаторов по каждому слову запроса.</returns>
+  private IReadOnlyList<T>[] ExecuteExactZeroDistanceTermSearches(
+    IReadOnlyList<string> searchItems,
+    SearchExecutionOptions executionOptions)
+  {
+    IReadOnlyList<T>[] termIndexes = new IReadOnlyList<T>[searchItems.Count];
+
+    for (int i = 0; i < searchItems.Count; i++)
+    {
+      termIndexes[i] = ExecuteExactZeroDistanceItemSearch(
+        searchItems[i],
+        executionOptions.SearchLocation);
+    }
+
+    return termIndexes;
+  }
+
+  /// <summary>
+  /// Выполняет точный поиск по одному слову и возвращает список найденных идентификаторов
+  /// без создания промежуточного <see cref="SearchResultList{T}"/>.
+  /// </summary>
+  /// <param name="searchValue">Искомое слово.</param>
+  /// <param name="searchLocation">Место поиска внутри слова.</param>
+  /// <returns>Отсортированный список найденных идентификаторов.</returns>
+  private IReadOnlyList<T> ExecuteExactZeroDistanceItemSearch(
+    string searchValue,
+    SearchLocation searchLocation)
+  {
+    if (_searchIndex is null || _searchIndex.Count == 0)
+      return [];
+
+    bool origin = SearchLocation.BeginWord == searchLocation;
+
+    IReadOnlyList<T>? singleMatch = null;
+    List<T>? union = null;
+
+    foreach (var pair in _searchIndex)
+    {
+      if (!IsExactSearchKeyMatch(pair.Key, searchValue, origin))
+        continue;
+
+      IReadOnlyList<T> indexes = pair.Value.InternalItems;
+
+      if (indexes.Count == 0)
+        continue;
+
+      if (singleMatch is null && union is null)
+      {
+        singleMatch = indexes;
+        continue;
+      }
+
+      union = union is null
+        ? UnionSortedLists(singleMatch!, indexes)
+        : UnionSortedLists(union, indexes);
+
+      singleMatch = null;
+    }
+
+    return (IReadOnlyList<T>?)union ?? singleMatch ?? [];
+  }
+
+  /// <summary>
+  /// Проверяет, подходит ли ключ индекса под точный поиск.
+  /// </summary>
+  /// <param name="indexKey">Ключ поискового индекса.</param>
+  /// <param name="searchValue">Искомое слово.</param>
+  /// <param name="origin">
+  /// <see langword="true"/>, если совпадение должно быть в начале слова.
+  /// </param>
+  /// <returns>
+  /// <see langword="true"/>, если ключ подходит под поисковый запрос.
+  /// </returns>
+  private static bool IsExactSearchKeyMatch(
+    string indexKey,
+    string searchValue,
+    bool origin)
+  {
+    if (indexKey.Length < searchValue.Length)
+      return false;
+
+    int position = indexKey.IndexOf(
+      searchValue,
+      StringComparison.OrdinalIgnoreCase);
+
+    return origin
+      ? position == 0
+      : position >= 0;
+  }
+
+  /// <summary>
+  /// Строит результат точного поиска по спискам идентификаторов отдельных слов.
+  /// </summary>
+  /// <param name="termIndexes">Списки идентификаторов по словам запроса.</param>
+  /// <param name="matchMode">Режим объединения слов запроса.</param>
+  /// <returns>Результат поиска.</returns>
+  private static SearchResultList<T> BuildExactZeroDistanceSearchResult(
+    IReadOnlyList<T>[] termIndexes,
+    QueryMatchMode matchMode)
+  {
+    return matchMode switch
+    {
+      QueryMatchMode.AllTerms => BuildExactZeroDistanceAllTermsResult(termIndexes),
+      QueryMatchMode.AnyTerm => BuildExactZeroDistanceAnyTermResult(termIndexes),
+      QueryMatchMode.SoftAllTerms => BuildExactZeroDistanceSoftAllTermsResult(termIndexes),
+
+      _ => throw new InvalidOperationException(
+        $"Режим {matchMode} не поддерживается текущей реализацией поиска.")
+    };
+  }
+
+  /// <summary>
+  /// Строит результат <see cref="QueryMatchMode.AllTerms"/> для точных совпадений
+  /// по готовым спискам идентификаторов.
+  /// </summary>
+  /// <param name="termIndexes">Списки идентификаторов по словам запроса.</param>
+  /// <returns>Результат поиска.</returns>
+  private static SearchResultList<T> BuildExactZeroDistanceAllTermsResult(
+    IReadOnlyList<T>[] termIndexes)
+  {
+    SearchResultList<T> result = new();
+
+    if (termIndexes.Length == 0)
+      return result;
+
+    for (int i = 0; i < termIndexes.Length; i++)
+      if (termIndexes[i].Count == 0)
+        return result;
+
+    int smallestIndex = FindSmallestIndexList(termIndexes);
+
+    IReadOnlyList<T> current = termIndexes[smallestIndex];
+
+    for (int i = 0; i < termIndexes.Length; i++)
+    {
+      if (i == smallestIndex)
+        continue;
+
+      current = IntersectSortedLists(
+        current,
+        termIndexes[i]);
+
+      if (current.Count == 0)
+        return new SearchResultList<T>();
+    }
+
+    result.Items.Add(
+      0,
+      CreateResultIndexList(current));
+
+    return result;
+  }
+
+  /// <summary>
+  /// Строит результат <see cref="QueryMatchMode.AnyTerm"/> для точных совпадений
+  /// по готовым спискам идентификаторов.
+  /// </summary>
+  /// <param name="termIndexes">Списки идентификаторов по словам запроса.</param>
+  /// <returns>Результат поиска.</returns>
+  private static SearchResultList<T> BuildExactZeroDistanceAnyTermResult(
+    IReadOnlyList<T>[] termIndexes)
+  {
+    SearchResultList<T> result = new();
+
+    IReadOnlyList<T>? singleSource = null;
+    List<T>? union = null;
+
+    foreach (IReadOnlyList<T> indexes in termIndexes)
+    {
+      if (indexes.Count == 0)
+        continue;
+
+      if (singleSource is null && union is null)
+      {
+        singleSource = indexes;
+        continue;
+      }
+
+      union = union is null
+        ? UnionSortedLists(singleSource!, indexes)
+        : UnionSortedLists(union, indexes);
+
+      singleSource = null;
+    }
+
+    if (union is not null)
+    {
+      result.Items.Add(
+        0,
+        new IndexList<T>(union, sort: false));
+
+      return result;
+    }
+
+    if (singleSource is not null)
+    {
+      result.Items.Add(
+        0,
+        CreateResultIndexList(singleSource));
+    }
+
+    return result;
+  }
+
+  /// <summary>
+  /// Строит результат <see cref="QueryMatchMode.SoftAllTerms"/> для точных совпадений
+  /// по готовым спискам идентификаторов.
+  /// </summary>
+  /// <param name="termIndexes">Списки идентификаторов по словам запроса.</param>
+  /// <returns>Результат поиска.</returns>
+  private static SearchResultList<T> BuildExactZeroDistanceSoftAllTermsResult(
+    IReadOnlyList<T>[] termIndexes)
+  {
+    SearchResultList<T> result = new();
+
+    if (termIndexes.Length == 0)
+      return result;
+
+    List<IReadOnlyList<T>> nonEmptyIndexes = [];
+
+    foreach (IReadOnlyList<T> indexes in termIndexes)
+      if (indexes.Count > 0)
+        nonEmptyIndexes.Add(indexes);
+
+    if (nonEmptyIndexes.Count == 0)
+      return result;
+
+    int[] positions = new int[nonEmptyIndexes.Count];
+    List<T>?[] buckets = new List<T>[termIndexes.Length];
+
+    Comparer<T> comparer = Comparer<T>.Default;
+
+    while (TryGetMinimalCurrentValue(
+      nonEmptyIndexes,
+      positions,
+      comparer,
+      out T currentValue))
+    {
+      int matchedTerms = 0;
+
+      for (int i = 0; i < nonEmptyIndexes.Count; i++)
+      {
+        IReadOnlyList<T> indexes = nonEmptyIndexes[i];
+
+        if (positions[i] >= indexes.Count)
+          continue;
+
+        if (comparer.Compare(indexes[positions[i]], currentValue) != 0)
+          continue;
+
+        matchedTerms++;
+
+        do
+        {
+          positions[i]++;
+        }
+        while (
+          positions[i] < indexes.Count &&
+          comparer.Compare(indexes[positions[i]], currentValue) == 0);
+      }
+
+      int missingTerms = termIndexes.Length - matchedTerms;
+
+      buckets[missingTerms] ??= [];
+      buckets[missingTerms]!.Add(currentValue);
+    }
+
+    for (int score = 0; score < buckets.Length; score++)
+    {
+      List<T>? bucket = buckets[score];
+
+      if (bucket is { Count: > 0 })
+        result.Items.Add(
+          score,
+          new IndexList<T>(bucket, sort: false));
+    }
+
+    return result;
+  }
+
+  /// <summary>
+  /// Находит самый короткий список идентификаторов.
+  /// </summary>
+  /// <param name="indexLists">Списки идентификаторов.</param>
+  /// <returns>Индекс самого короткого списка.</returns>
+  private static int FindSmallestIndexList(
+    IReadOnlyList<T>[] indexLists)
+  {
+    int smallestIndex = 0;
+    int smallestCount = indexLists[0].Count;
+
+    for (int i = 1; i < indexLists.Length; i++)
+    {
+      if (indexLists[i].Count >= smallestCount)
+        continue;
+
+      smallestIndex = i;
+      smallestCount = indexLists[i].Count;
+    }
+
+    return smallestIndex;
+  }
+
+  /// <summary>
+  /// Создаёт результирующий список индексов с защитной копией данных.
+  /// </summary>
+  /// <param name="indexes">Исходный отсортированный список индексов.</param>
+  /// <returns>Список индексов для выдачи наружу.</returns>
+  private static IndexList<T> CreateResultIndexList(
+    IReadOnlyList<T> indexes)
+  {
+    return new IndexList<T>(
+      new List<T>(indexes),
+      sort: false);
+  }
+
+  /// <summary>
+  /// Строит пересечение двух отсортированных списков.
+  /// </summary>
+  /// <param name="left">Первый список.</param>
+  /// <param name="right">Второй список.</param>
+  /// <returns>Отсортированный список общих элементов.</returns>
+  private static List<T> IntersectSortedLists(
+    IReadOnlyList<T> left,
+    IReadOnlyList<T> right)
+  {
+    List<T> result = new(Math.Min(left.Count, right.Count));
+
+    Comparer<T> comparer = Comparer<T>.Default;
+
+    int leftIndex = 0;
+    int rightIndex = 0;
+
+    while (leftIndex < left.Count && rightIndex < right.Count)
+    {
+      T leftValue = left[leftIndex];
+      T rightValue = right[rightIndex];
+
+      int comparison = comparer.Compare(leftValue, rightValue);
+
+      if (comparison == 0)
+      {
+        AddIfDifferentFromLast(result, leftValue, comparer);
+
+        leftIndex++;
+        rightIndex++;
+
+        continue;
+      }
+
+      if (comparison < 0)
+        leftIndex++;
+      else
+        rightIndex++;
+    }
+
+    return result;
+  }
+
+  /// <summary>
+  /// Строит объединение двух отсортированных списков без дублей.
+  /// </summary>
+  /// <param name="left">Первый список.</param>
+  /// <param name="right">Второй список.</param>
+  /// <returns>Отсортированный список уникальных элементов.</returns>
+  private static List<T> UnionSortedLists(
+    IReadOnlyList<T> left,
+    IReadOnlyList<T> right)
+  {
+    List<T> result = new(left.Count + right.Count);
+
+    Comparer<T> comparer = Comparer<T>.Default;
+
+    int leftIndex = 0;
+    int rightIndex = 0;
+
+    while (leftIndex < left.Count && rightIndex < right.Count)
+    {
+      T leftValue = left[leftIndex];
+      T rightValue = right[rightIndex];
+
+      int comparison = comparer.Compare(leftValue, rightValue);
+
+      if (comparison == 0)
+      {
+        AddIfDifferentFromLast(result, leftValue, comparer);
+
+        leftIndex++;
+        rightIndex++;
+
+        continue;
+      }
+
+      if (comparison < 0)
+      {
+        AddIfDifferentFromLast(result, leftValue, comparer);
+        leftIndex++;
+      }
+      else
+      {
+        AddIfDifferentFromLast(result, rightValue, comparer);
+        rightIndex++;
+      }
+    }
+
+    while (leftIndex < left.Count)
+    {
+      AddIfDifferentFromLast(result, left[leftIndex], comparer);
+      leftIndex++;
+    }
+
+    while (rightIndex < right.Count)
+    {
+      AddIfDifferentFromLast(result, right[rightIndex], comparer);
+      rightIndex++;
+    }
+
+    return result;
+  }
+
+  /// <summary>
+  /// Добавляет значение в список, если оно отличается от последнего добавленного значения.
+  /// </summary>
+  /// <param name="items">Список значений.</param>
+  /// <param name="value">Добавляемое значение.</param>
+  /// <param name="comparer">Сравниватель значений.</param>
+  private static void AddIfDifferentFromLast(
+    List<T> items,
+    T value,
+    Comparer<T> comparer)
+  {
+    if (items.Count == 0)
+    {
+      items.Add(value);
+      return;
+    }
+
+    if (comparer.Compare(items[^1], value) != 0)
+      items.Add(value);
+  }
+
+  /// <summary>
+  /// Получает минимальное текущее значение среди нескольких отсортированных списков.
+  /// </summary>
+  /// <param name="indexLists">Списки идентификаторов.</param>
+  /// <param name="positions">Текущие позиции в списках.</param>
+  /// <param name="comparer">Сравниватель значений.</param>
+  /// <param name="value">Минимальное текущее значение.</param>
+  /// <returns>
+  /// <see langword="true"/>, если минимальное значение найдено.
+  /// </returns>
+  private static bool TryGetMinimalCurrentValue(
+    IReadOnlyList<IReadOnlyList<T>> indexLists,
+    IReadOnlyList<int> positions,
+    Comparer<T> comparer,
+    out T value)
+  {
+    value = default;
+
+    bool hasValue = false;
+
+    for (int i = 0; i < indexLists.Count; i++)
+    {
+      IReadOnlyList<T> indexes = indexLists[i];
+
+      if (positions[i] >= indexes.Count)
+        continue;
+
+      T currentValue = indexes[positions[i]];
+
+      if (!hasValue || comparer.Compare(currentValue, value) < 0)
+      {
+        value = currentValue;
+        hasValue = true;
+      }
+    }
+
+    return hasValue;
   }
 
   /// <summary>
@@ -426,170 +910,6 @@ public partial class Search<T> where T : struct
     indexes = zeroDistanceIndexes;
 
     return true;
-  }
-
-  /// <summary>
-  /// Строит пересечение двух отсортированных списков.
-  /// </summary>
-  /// <param name="left">Первый список.</param>
-  /// <param name="right">Второй список.</param>
-  /// <returns>Отсортированный список общих элементов.</returns>
-  private static List<T> IntersectSortedLists(
-    IReadOnlyList<T> left,
-    IReadOnlyList<T> right)
-  {
-    List<T> result = new(Math.Min(left.Count, right.Count));
-
-    Comparer<T> comparer = Comparer<T>.Default;
-
-    int leftIndex = 0;
-    int rightIndex = 0;
-
-    while (leftIndex < left.Count && rightIndex < right.Count)
-    {
-      T leftValue = left[leftIndex];
-      T rightValue = right[rightIndex];
-
-      int comparison = comparer.Compare(leftValue, rightValue);
-
-      if (comparison == 0)
-      {
-        AddIfDifferentFromLast(result, leftValue, comparer);
-
-        leftIndex++;
-        rightIndex++;
-
-        continue;
-      }
-
-      if (comparison < 0)
-        leftIndex++;
-      else
-        rightIndex++;
-    }
-
-    return result;
-  }
-
-  /// <summary>
-  /// Строит объединение двух отсортированных списков без дублей.
-  /// </summary>
-  /// <param name="left">Первый список.</param>
-  /// <param name="right">Второй список.</param>
-  /// <returns>Отсортированный список уникальных элементов.</returns>
-  private static List<T> UnionSortedLists(
-    IReadOnlyList<T> left,
-    IReadOnlyList<T> right)
-  {
-    List<T> result = new(left.Count + right.Count);
-
-    Comparer<T> comparer = Comparer<T>.Default;
-
-    int leftIndex = 0;
-    int rightIndex = 0;
-
-    while (leftIndex < left.Count && rightIndex < right.Count)
-    {
-      T leftValue = left[leftIndex];
-      T rightValue = right[rightIndex];
-
-      int comparison = comparer.Compare(leftValue, rightValue);
-
-      if (comparison == 0)
-      {
-        AddIfDifferentFromLast(result, leftValue, comparer);
-
-        leftIndex++;
-        rightIndex++;
-
-        continue;
-      }
-
-      if (comparison < 0)
-      {
-        AddIfDifferentFromLast(result, leftValue, comparer);
-        leftIndex++;
-      }
-      else
-      {
-        AddIfDifferentFromLast(result, rightValue, comparer);
-        rightIndex++;
-      }
-    }
-
-    while (leftIndex < left.Count)
-    {
-      AddIfDifferentFromLast(result, left[leftIndex], comparer);
-      leftIndex++;
-    }
-
-    while (rightIndex < right.Count)
-    {
-      AddIfDifferentFromLast(result, right[rightIndex], comparer);
-      rightIndex++;
-    }
-
-    return result;
-  }
-
-  /// <summary>
-  /// Добавляет значение в список, если оно отличается от последнего добавленного значения.
-  /// </summary>
-  /// <param name="items">Список значений.</param>
-  /// <param name="value">Добавляемое значение.</param>
-  /// <param name="comparer">Сравниватель значений.</param>
-  private static void AddIfDifferentFromLast(
-    List<T> items,
-    T value,
-    Comparer<T> comparer)
-  {
-    if (items.Count == 0)
-    {
-      items.Add(value);
-      return;
-    }
-
-    if (comparer.Compare(items[^1], value) != 0)
-      items.Add(value);
-  }
-
-  /// <summary>
-  /// Получает минимальное текущее значение среди нескольких отсортированных списков.
-  /// </summary>
-  /// <param name="indexLists">Списки идентификаторов.</param>
-  /// <param name="positions">Текущие позиции в списках.</param>
-  /// <param name="comparer">Сравниватель значений.</param>
-  /// <param name="value">Минимальное текущее значение.</param>
-  /// <returns>
-  /// <see langword="true"/>, если минимальное значение найдено.
-  /// </returns>
-  private static bool TryGetMinimalCurrentValue(
-    IReadOnlyList<IReadOnlyList<T>> indexLists,
-    IReadOnlyList<int> positions,
-    Comparer<T> comparer,
-    out T value)
-  {
-    value = default;
-
-    bool hasValue = false;
-
-    for (int i = 0; i < indexLists.Count; i++)
-    {
-      IReadOnlyList<T> indexes = indexLists[i];
-
-      if (positions[i] >= indexes.Count)
-        continue;
-
-      T currentValue = indexes[positions[i]];
-
-      if (!hasValue || comparer.Compare(currentValue, value) < 0)
-      {
-        value = currentValue;
-        hasValue = true;
-      }
-    }
-
-    return hasValue;
   }
 
   /// <summary>
