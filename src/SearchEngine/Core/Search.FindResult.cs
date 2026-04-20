@@ -274,26 +274,14 @@ public partial class Search<T> where T : struct
       if (termIndexes[i].Count == 0)
         return result;
 
-    int smallestIndex = FindSmallestIndexList(termIndexes);
+    List<T> intersection = IntersectAllSortedLists(termIndexes);
 
-    IReadOnlyList<T> current = termIndexes[smallestIndex];
-
-    for (int i = 0; i < termIndexes.Length; i++)
-    {
-      if (i == smallestIndex)
-        continue;
-
-      current = IntersectSortedLists(
-        current,
-        termIndexes[i]);
-
-      if (current.Count == 0)
-        return new SearchResultList<T>();
-    }
+    if (intersection.Count == 0)
+      return result;
 
     result.Items.Add(
       0,
-      CreateResultIndexList(current));
+      new IndexList<T>(intersection, sort: false));
 
     return result;
   }
@@ -309,41 +297,41 @@ public partial class Search<T> where T : struct
   {
     SearchResultList<T> result = new();
 
-    IReadOnlyList<T>? singleSource = null;
-    List<T>? union = null;
+    List<IReadOnlyList<T>> nonEmptyIndexes = [];
+    int capacity = 0;
 
     foreach (IReadOnlyList<T> indexes in termIndexes)
     {
       if (indexes.Count == 0)
         continue;
 
-      if (singleSource is null && union is null)
-      {
-        singleSource = indexes;
-        continue;
-      }
+      nonEmptyIndexes.Add(indexes);
 
-      union = union is null
-        ? UnionSortedLists(singleSource!, indexes)
-        : UnionSortedLists(union, indexes);
-
-      singleSource = null;
+      if (indexes.Count > capacity)
+        capacity = indexes.Count;
     }
 
-    if (union is not null)
+    if (nonEmptyIndexes.Count == 0)
+      return result;
+
+    if (nonEmptyIndexes.Count == 1)
     {
       result.Items.Add(
         0,
-        new IndexList<T>(union, sort: false));
+        CreateResultIndexList(nonEmptyIndexes[0]));
 
       return result;
     }
 
-    if (singleSource is not null)
+    List<T> union = UnionAllSortedLists(
+      nonEmptyIndexes,
+      capacity);
+
+    if (union.Count > 0)
     {
       result.Items.Add(
         0,
-        CreateResultIndexList(singleSource));
+        new IndexList<T>(union, sort: false));
     }
 
     return result;
@@ -423,6 +411,155 @@ public partial class Search<T> where T : struct
     }
 
     return result;
+  }
+
+  /// <summary>
+  /// Строит пересечение нескольких отсортированных списков без промежуточных результатов.
+  /// </summary>
+  /// <param name="indexLists">Списки идентификаторов.</param>
+  /// <returns>Отсортированный список общих идентификаторов.</returns>
+  private static List<T> IntersectAllSortedLists(
+    IReadOnlyList<T>[] indexLists)
+  {
+    int smallestIndex = FindSmallestIndexList(indexLists);
+    IReadOnlyList<T> smallest = indexLists[smallestIndex];
+
+    List<T> result = new(smallest.Count);
+
+    int[] positions = new int[indexLists.Length];
+    Comparer<T> comparer = Comparer<T>.Default;
+
+    bool hasLastValue = false;
+    T lastValue = default;
+
+    for (int i = 0; i < smallest.Count; i++)
+    {
+      T candidate = smallest[i];
+
+      if (hasLastValue && comparer.Compare(lastValue, candidate) == 0)
+        continue;
+
+      bool foundInAllLists = true;
+
+      for (int listIndex = 0; listIndex < indexLists.Length; listIndex++)
+      {
+        if (listIndex == smallestIndex)
+          continue;
+
+        IReadOnlyList<T> currentList = indexLists[listIndex];
+
+        int position = AdvanceWhileLessThan(
+          currentList,
+          positions[listIndex],
+          candidate,
+          comparer);
+
+        positions[listIndex] = position;
+
+        if (
+          position >= currentList.Count ||
+          comparer.Compare(currentList[position], candidate) != 0)
+        {
+          foundInAllLists = false;
+          break;
+        }
+      }
+
+      if (!foundInAllLists)
+        continue;
+
+      result.Add(candidate);
+      lastValue = candidate;
+      hasLastValue = true;
+    }
+
+    return result;
+  }
+
+  /// <summary>
+  /// Строит объединение нескольких отсортированных списков без дублей.
+  /// </summary>
+  /// <param name="indexLists">Списки идентификаторов.</param>
+  /// <param name="capacity">
+  /// Начальная ёмкость результирующего списка.
+  /// </param>
+  /// <returns>Отсортированный список уникальных идентификаторов.</returns>
+  private static List<T> UnionAllSortedLists(
+    IReadOnlyList<IReadOnlyList<T>> indexLists,
+    int capacity)
+  {
+    List<T> result = new(capacity);
+
+    int[] positions = new int[indexLists.Count];
+    Comparer<T> comparer = Comparer<T>.Default;
+
+    while (TryGetMinimalCurrentValue(
+      indexLists,
+      positions,
+      comparer,
+      out T currentValue))
+    {
+      result.Add(currentValue);
+
+      for (int i = 0; i < indexLists.Count; i++)
+      {
+        positions[i] = AdvanceWhileEqual(
+          indexLists[i],
+          positions[i],
+          currentValue,
+          comparer);
+      }
+    }
+
+    return result;
+  }
+
+  /// <summary>
+  /// Продвигает позицию в отсортированном списке, пока текущее значение меньше искомого.
+  /// </summary>
+  /// <param name="items">Отсортированный список.</param>
+  /// <param name="position">Начальная позиция.</param>
+  /// <param name="value">Искомое значение.</param>
+  /// <param name="comparer">Сравниватель значений.</param>
+  /// <returns>Новая позиция.</returns>
+  private static int AdvanceWhileLessThan(
+    IReadOnlyList<T> items,
+    int position,
+    T value,
+    Comparer<T> comparer)
+  {
+    while (
+      position < items.Count &&
+      comparer.Compare(items[position], value) < 0)
+    {
+      position++;
+    }
+
+    return position;
+  }
+
+  /// <summary>
+  /// Продвигает позицию в отсортированном списке, пока текущее значение равно указанному.
+  /// </summary>
+  /// <param name="items">Отсортированный список.</param>
+  /// <param name="position">Начальная позиция.</param>
+  /// <param name="value">Значение, которое нужно пропустить.</param>
+  /// <param name="comparer">Сравниватель значений.</param>
+  /// <returns>Новая позиция.</returns>
+  private static int AdvanceWhileEqual(
+    IReadOnlyList<T> items,
+    int position,
+    T value,
+    Comparer<T> comparer)
+  {
+    while (
+      position < items.Count &&
+      comparer.Compare(items[position], value) == 0)
+    {
+      position++;
+    }
+
+    return position;
   }
 
   /// <summary>
