@@ -106,6 +106,78 @@ public class PhoneticSearchQualityTests
     Assert.False(result.Value!.IsHasIndex);
   }
 
+  [Fact]
+  public async Task FindResult_ФонетическийПоиск_НеДолженСчитатьРазныеКлючиОдинаковойДлиныСовпадением()
+  {
+    // Arrange
+    Search<int> sut = new(isPhoneticSearch: true);
+
+    Test<int>[] source =
+    [
+      new() { Id = 1, Text = "Иванов" },
+    new() { Id = 2, Text = "Петров" }
+    ];
+
+    var prepareResult = await sut.PrepareIndexResult(source);
+
+    Assert.True(prepareResult.IsSuccess);
+
+    SearchRequest request = new()
+    {
+      MatchMode = QueryMatchMode.AnyTerm,
+      SearchLocation = SearchLocation.BeginWord
+    };
+
+    // Act
+    var result = sut.FindResult("Петров", request);
+
+    // Assert
+    Assert.True(result.IsSuccess);
+
+    Assert.True(ContainsId(result.Value!, 2));
+    Assert.False(ContainsId(result.Value!, 1));
+  }
+
+  [Theory]
+  [InlineData("Папондопуло", "Папандопуло")]
+  [InlineData("Папондопуло", "Попондопуло")]
+  [InlineData("Забабонова", "Забабанова")]
+  [InlineData("Забабонова", "Зобобонова")]
+  public async Task FindResult_ФонетическийПоиск_ДолженНаходитьВариантыТрудныхФамилий(
+  string query,
+  string variant)
+  {
+    // Arrange
+    Search<int> sut = new(isPhoneticSearch: true);
+
+    Test<int>[] source =
+    [
+      new() { Id = 1, Text = variant },
+    new() { Id = 2, Text = "Петров" },
+    new() { Id = 3, Text = "Иванов" }
+    ];
+
+    var prepareResult = await sut.PrepareIndexResult(source);
+
+    Assert.True(prepareResult.IsSuccess);
+
+    SearchRequest request = new()
+    {
+      MatchMode = QueryMatchMode.AnyTerm,
+      SearchLocation = SearchLocation.BeginWord
+    };
+
+    // Act
+    var result = sut.FindResult(query, request);
+
+    // Assert
+    Assert.True(result.IsSuccess);
+
+    Assert.True(ContainsId(result.Value!, 1));
+    Assert.False(ContainsId(result.Value!, 2));
+    Assert.False(ContainsId(result.Value!, 3));
+  }
+
   private static bool ContainsId(
     SearchResultList<int> result,
     int id)

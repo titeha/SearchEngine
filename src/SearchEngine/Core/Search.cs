@@ -271,45 +271,88 @@ public partial class Search<T> where T : struct
     return searchResult;
   }
 
+  /// <summary>
+  /// Выполняет фонетический поиск по подготовленному индексу.
+  /// </summary>
+  /// <param name="searchValue">Фонетически нормализованное слово запроса.</param>
+  /// <returns>Результат фонетического поиска.</returns>
   private SearchResultList<T> PhoneticFind(string searchValue)
   {
-    static int CalculateResult(string searchValue, string targetString)
-    {
-      int calcResult = 0;
-      int sLength = searchValue.Length;
+    SearchResultList<T> searchResult = new();
 
-      if (!targetString.StartsWith(searchValue))
-      {
-        string checkString;
-        if (sLength < targetString.Length)
-          checkString = targetString[..(sLength + 1)];
-        else
-          checkString = searchValue;
-        calcResult = Levenshtein.DistanceLevenshtein(searchValue, checkString, 1);
-      }
-      return calcResult;
+    searchResult.Items.Add(0, new IndexList<T>());
+
+    if (_searchIndex is null || _searchIndex.Count == 0)
+      return searchResult;
+
+    int searchLength = searchValue.Length;
+
+    List<T>? exactIndexes = null;
+    List<T>? nearIndexes = null;
+
+    foreach (var pair in _searchIndex)
+    {
+      string targetString = pair.Key;
+
+      if (targetString.Length < searchLength)
+        continue;
+
+      int distance = CalculatePhoneticDistance(
+        searchValue,
+        targetString);
+
+      if (distance > 1)
+        continue;
+
+      IReadOnlyList<T> indexes = pair.Value.InternalItems;
+
+      if (indexes.Count == 0)
+        continue;
+
+      if (distance == 0)
+        exactIndexes = exactIndexes is null ? [.. indexes] : UnionSortedLists(exactIndexes, indexes);
+      else
+        nearIndexes = nearIndexes is null ? [.. indexes] : UnionSortedLists(nearIndexes, indexes);
     }
 
-    SearchResultList<T> searchResult = new();
-    searchResult.Items.Add(0, new());
-    int sLength = searchValue.Length;
+    if (exactIndexes is { Count: > 0 })
+      searchResult.Items[0] = new IndexList<T>(exactIndexes, sort: false);
 
-    var searchValues = _searchIndex!
-      .AsParallel()
-      .WithDegreeOfParallelism(Environment.ProcessorCount)
-      .Where(l => l.Key.Length >= sLength)
-      .Select(d => (Distance: CalculateResult(searchValue, d.Key), Indexes: d.Value))
-      .Where(r => r.Distance <= 1)
-      .AsSequential()
-      .GroupBy(v => v.Distance)
-      .Select(g => (Distance: g.Key, Indexes: g
-        .Select(i => i.Indexes)
-        .Aggregate((a, r) => r.UnionIndexes(a))));
-
-    foreach (var (distance, indexes) in searchValues)
-      searchResult.Items[distance] = indexes;
+    if (nearIndexes is { Count: > 0 })
+      searchResult.Items[1] = new IndexList<T>(nearIndexes, sort: false);
 
     return searchResult;
+
+    /// <summary>
+    /// Вычисляет расстояние между фонетическим ключом запроса и фонетическим ключом индекса.
+    /// </summary>
+    /// <param name="searchValue">Фонетический ключ запроса.</param>
+    /// <param name="targetString">Фонетический ключ из индекса.</param>
+    /// <returns>
+    /// Значение <c>0</c>, если ключи совпадают по началу,
+    /// <c>1</c>, если ключи отличаются в пределах одной правки,
+    /// либо значение больше <c>1</c>, если кандидат не подходит.
+    /// </returns>
+    static int CalculatePhoneticDistance(
+      string searchValue,
+      string targetString)
+    {
+      if (targetString.StartsWith(searchValue, StringComparison.Ordinal))
+        return 0;
+
+      int searchLength = searchValue.Length;
+
+      ReadOnlySpan<char> searchSpan = searchValue.AsSpan();
+
+      ReadOnlySpan<char> targetSpan = targetString.Length > searchLength
+        ? targetString.AsSpan(0, searchLength + 1)
+        : targetString.AsSpan();
+
+      return Levenshtein.DistanceLevenshtein(
+        searchSpan,
+        targetSpan,
+        1);
+    }
   }
 
   internal void IndexPreparing()
