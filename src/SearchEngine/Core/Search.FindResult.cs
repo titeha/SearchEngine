@@ -105,7 +105,7 @@ public partial class Search<T> where T : struct
   {
     if (searchItems.Count == 1
       && !IsPhoneticSearch
-      &&  executionOptions.SearchType == SearchType.ExactSearch)
+      && executionOptions.SearchType == SearchType.ExactSearch)
     {
       IReadOnlyList<T> indexes = ExecuteExactZeroDistanceItemSearch(
         searchItems[0],
@@ -263,7 +263,7 @@ public partial class Search<T> where T : struct
   /// <param name="termIndexes">Списки идентификаторов по словам запроса.</param>
   /// <returns>Результат поиска.</returns>
   private static SearchResultList<T> BuildExactZeroDistanceAllTermsResult(
-    IReadOnlyList<T>[] termIndexes)
+  IReadOnlyList<T>[] termIndexes)
   {
     SearchResultList<T> result = new();
 
@@ -273,6 +273,15 @@ public partial class Search<T> where T : struct
     for (int i = 0; i < termIndexes.Length; i++)
       if (termIndexes[i].Count == 0)
         return result;
+
+    if (TryGetEquivalentAllTermsSource(termIndexes, out IReadOnlyList<T>? equivalentIndexes))
+    {
+      result.Items.Add(
+        0,
+        CreateResultIndexList(equivalentIndexes!));
+
+      return result;
+    }
 
     List<T> intersection = IntersectAllSortedLists(termIndexes);
 
@@ -293,9 +302,18 @@ public partial class Search<T> where T : struct
   /// <param name="termIndexes">Списки идентификаторов по словам запроса.</param>
   /// <returns>Результат поиска.</returns>
   private static SearchResultList<T> BuildExactZeroDistanceAnyTermResult(
-    IReadOnlyList<T>[] termIndexes)
+  IReadOnlyList<T>[] termIndexes)
   {
     SearchResultList<T> result = new();
+
+    if (TryGetEquivalentAnyTermSource(termIndexes, out IReadOnlyList<T>? equivalentIndexes))
+    {
+      result.Items.Add(
+        0,
+        CreateResultIndexList(equivalentIndexes!));
+
+      return result;
+    }
 
     List<IReadOnlyList<T>> nonEmptyIndexes = [];
     int capacity = 0;
@@ -306,22 +324,11 @@ public partial class Search<T> where T : struct
         continue;
 
       nonEmptyIndexes.Add(indexes);
-
-      if (indexes.Count > capacity)
-        capacity = indexes.Count;
+      capacity += indexes.Count;
     }
 
     if (nonEmptyIndexes.Count == 0)
       return result;
-
-    if (nonEmptyIndexes.Count == 1)
-    {
-      result.Items.Add(
-        0,
-        CreateResultIndexList(nonEmptyIndexes[0]));
-
-      return result;
-    }
 
     List<T> union = UnionAllSortedLists(
       nonEmptyIndexes,
@@ -346,6 +353,9 @@ public partial class Search<T> where T : struct
   private static SearchResultList<T> BuildExactZeroDistanceSoftAllTermsResult(
     IReadOnlyList<T>[] termIndexes)
   {
+    if (TryBuildEquivalentSoftAllTermsResult(termIndexes, out SearchResultList<T> equivalentResult))
+      return equivalentResult;
+
     SearchResultList<T> result = new();
 
     if (termIndexes.Length == 0)
@@ -424,7 +434,7 @@ public partial class Search<T> where T : struct
     int smallestIndex = FindSmallestIndexList(indexLists);
     IReadOnlyList<T> smallest = indexLists[smallestIndex];
 
-    List<T> result = new(smallest.Count);
+    List<T>? result = null;
 
     int[] positions = new int[indexLists.Length];
     Comparer<T> comparer = Comparer<T>.Default;
@@ -468,12 +478,13 @@ public partial class Search<T> where T : struct
       if (!foundInAllLists)
         continue;
 
+      result ??= [];
       result.Add(candidate);
       lastValue = candidate;
       hasLastValue = true;
     }
 
-    return result;
+    return result ?? [];
   }
 
   /// <summary>
@@ -512,6 +523,147 @@ public partial class Search<T> where T : struct
     }
 
     return result;
+  }
+
+  /// <summary>
+  /// Проверяет, содержат ли два отсортированных списка одинаковые значения.
+  /// </summary>
+  /// <param name="left">Первый список.</param>
+  /// <param name="right">Второй список.</param>
+  /// <returns>
+  /// <see langword="true"/>, если списки имеют одинаковую длину и одинаковые элементы.
+  /// </returns>
+  private static bool AreSortedListsEqual(
+    IReadOnlyList<T> left,
+    IReadOnlyList<T> right)
+  {
+    if (left.Count != right.Count)
+      return false;
+
+    Comparer<T> comparer = Comparer<T>.Default;
+
+    for (int i = 0; i < left.Count; i++)
+      if (comparer.Compare(left[i], right[i]) != 0)
+        return false;
+
+    return true;
+  }
+
+  /// <summary>
+  /// Пытается получить общий список, если все списки идентификаторов непустые и одинаковые.
+  /// </summary>
+  /// <param name="termIndexes">Списки идентификаторов по словам запроса.</param>
+  /// <param name="indexes">Общий список идентификаторов.</param>
+  /// <returns>
+  /// <see langword="true"/>, если все списки непустые и одинаковые.
+  /// </returns>
+  private static bool TryGetEquivalentAllTermsSource(
+    IReadOnlyList<T>[] termIndexes,
+    out IReadOnlyList<T>? indexes)
+  {
+    indexes = null;
+
+    if (termIndexes.Length == 0)
+      return false;
+
+    IReadOnlyList<T> first = termIndexes[0];
+
+    if (first.Count == 0)
+      return false;
+
+    for (int i = 1; i < termIndexes.Length; i++)
+    {
+      IReadOnlyList<T> current = termIndexes[i];
+
+      if (current.Count == 0)
+        return false;
+
+      if (!AreSortedListsEqual(first, current))
+        return false;
+    }
+
+    indexes = first;
+
+    return true;
+  }
+
+  /// <summary>
+  /// Пытается получить единственный список, если все непустые списки идентификаторов одинаковые.
+  /// </summary>
+  /// <param name="termIndexes">Списки идентификаторов по словам запроса.</param>
+  /// <param name="indexes">Единственный список идентификаторов.</param>
+  /// <returns>
+  /// <see langword="true"/>, если все непустые списки одинаковые.
+  /// </returns>
+  private static bool TryGetEquivalentAnyTermSource(
+    IReadOnlyList<T>[] termIndexes,
+    out IReadOnlyList<T>? indexes)
+  {
+    indexes = null;
+
+    foreach (IReadOnlyList<T> current in termIndexes)
+    {
+      if (current.Count == 0)
+        continue;
+
+      if (indexes is null)
+      {
+        indexes = current;
+        continue;
+      }
+
+      if (!AreSortedListsEqual(indexes, current))
+        return false;
+    }
+
+    return indexes is not null;
+  }
+
+  /// <summary>
+  /// Пытается построить результат <see cref="QueryMatchMode.SoftAllTerms"/>,
+  /// если все непустые списки идентификаторов одинаковые.
+  /// </summary>
+  /// <param name="termIndexes">Списки идентификаторов по словам запроса.</param>
+  /// <param name="searchResult">Результат поиска.</param>
+  /// <returns>
+  /// <see langword="true"/>, если результат был построен быстрым путём.
+  /// </returns>
+  private static bool TryBuildEquivalentSoftAllTermsResult(
+    IReadOnlyList<T>[] termIndexes,
+    out SearchResultList<T> searchResult)
+  {
+    searchResult = new();
+
+    IReadOnlyList<T>? commonIndexes = null;
+    int matchedTerms = 0;
+
+    foreach (IReadOnlyList<T> current in termIndexes)
+    {
+      if (current.Count == 0)
+        continue;
+
+      matchedTerms++;
+
+      if (commonIndexes is null)
+      {
+        commonIndexes = current;
+        continue;
+      }
+
+      if (!AreSortedListsEqual(commonIndexes, current))
+        return false;
+    }
+
+    if (commonIndexes is null)
+      return true;
+
+    int missingTerms = termIndexes.Length - matchedTerms;
+
+    searchResult.Items.Add(
+      missingTerms,
+      CreateResultIndexList(commonIndexes));
+
+    return true;
   }
 
   /// <summary>
