@@ -323,16 +323,6 @@ public partial class Search<T> where T : struct
 
     return searchResult;
 
-    /// <summary>
-    /// Вычисляет расстояние между фонетическим ключом запроса и фонетическим ключом индекса.
-    /// </summary>
-    /// <param name="searchValue">Фонетический ключ запроса.</param>
-    /// <param name="targetString">Фонетический ключ из индекса.</param>
-    /// <returns>
-    /// Значение <c>0</c>, если ключи совпадают по началу,
-    /// <c>1</c>, если ключи отличаются в пределах одной правки,
-    /// либо значение больше <c>1</c>, если кандидат не подходит.
-    /// </returns>
     static int CalculatePhoneticDistance(
       string searchValue,
       string targetString)
@@ -348,10 +338,9 @@ public partial class Search<T> where T : struct
         ? targetString.AsSpan(0, searchLength + 1)
         : targetString.AsSpan();
 
-      return Levenshtein.DistanceLevenshtein(
+      return Levenshtein.DistanceLevenshteinUpToOne(
         searchSpan,
-        targetSpan,
-        1);
+        targetSpan);
     }
   }
 

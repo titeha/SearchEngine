@@ -120,6 +120,107 @@ public partial class Search<T> where T : struct
       return LimitByThreshold(result, maxDistance);
     }
 
+    /// <summary>
+    /// Быстро вычисляет расстояние Левенштейна для случая,
+    /// когда интересует только порог не больше одной правки.
+    /// </summary>
+    /// <param name="source">Исходная строка.</param>
+    /// <param name="target">Сравниваемая строка.</param>
+    /// <returns>
+    /// <c>0</c>, если строки эквивалентны;
+    /// <c>1</c>, если расстояние не больше одной правки;
+    /// <c>2</c>, если расстояние больше одной правки.
+    /// </returns>
+    /// <remarks>
+    /// Метод предназначен для горячего пути фонетического поиска,
+    /// где используется только порог <c>distance &lt;= 1</c>.
+    /// Стоимость замены символов вычисляется через тот же механизм,
+    /// что и в полном расчёте расстояния.
+    /// </remarks>
+    public static int DistanceLevenshteinUpToOne(
+      ReadOnlySpan<char> source,
+      ReadOnlySpan<char> target)
+    {
+      if (source.SequenceEqual(target))
+        return 0;
+
+      int lengthDifference = source.Length - target.Length;
+
+      if (lengthDifference is < -1 or > 1)
+        return 2;
+
+      if (lengthDifference == 0)
+        return CalculateSameLengthDistanceUpToOne(source, target);
+
+      return source.Length < target.Length
+        ? CalculateSingleInsertionDistanceUpToOne(source, target)
+        : CalculateSingleInsertionDistanceUpToOne(target, source);
+    }
+
+    /// <summary>
+    /// Вычисляет расстояние для строк одинаковой длины,
+    /// ограниченное одной правкой.
+    /// </summary>
+    private static int CalculateSameLengthDistanceUpToOne(
+      ReadOnlySpan<char> source,
+      ReadOnlySpan<char> target)
+    {
+      int distance = 0;
+
+      for (int i = 0; i < source.Length; i++)
+      {
+        int cost = CostDistanceSymbol(source[i], target[i]);
+
+        if (cost == 0)
+          continue;
+
+        distance += cost;
+
+        if (distance > 1)
+          return 2;
+      }
+
+      return distance;
+    }
+
+    /// <summary>
+    /// Вычисляет расстояние для строк, отличающихся по длине на один символ.
+    /// </summary>
+    /// <param name="shorter">Более короткая строка.</param>
+    /// <param name="longer">Более длинная строка.</param>
+    /// <returns>
+    /// <c>1</c>, если более длинная строка отличается одной вставкой;
+    /// иначе <c>2</c>.
+    /// </returns>
+    private static int CalculateSingleInsertionDistanceUpToOne(
+      ReadOnlySpan<char> shorter,
+      ReadOnlySpan<char> longer)
+    {
+      int shorterIndex = 0;
+      int longerIndex = 0;
+
+      bool insertionUsed = false;
+
+      while (shorterIndex < shorter.Length && longerIndex < longer.Length)
+      {
+        if (CostDistanceSymbol(shorter[shorterIndex], longer[longerIndex]) == 0)
+        {
+          shorterIndex++;
+          longerIndex++;
+
+          continue;
+        }
+
+        if (insertionUsed)
+          return 2;
+
+        insertionUsed = true;
+        longerIndex++;
+      }
+
+      return 1;
+    }
+
     private static int CostDistanceSymbol(char source, char target)
     {
       if (source == target)
