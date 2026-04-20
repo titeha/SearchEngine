@@ -177,30 +177,6 @@ public partial class Search<T> where T : struct
       _searchList.Add(searchItem);
   }
 
-  /// <summary>
-  /// Разбирает поисковую строку в локальный набор слов,
-  /// не изменяя состояние экземпляра.
-  /// </summary>
-  /// <param name="source">Исходная поисковая строка.</param>
-  /// <returns>Упорядоченный набор пригодных для поиска слов.</returns>
-  private string[] DisassembleSearchTerms(string source)
-  {
-    string clearedString = source.Trim().ToUpper();
-
-    if (clearedString.IsNullOrWhiteSpace())
-      return [];
-
-    SortedSet<string> searchItems = new();
-    var delimiterArray = IndexBuilder.Delimiters.ToCharArray();
-    var values = clearedString.Split(delimiterArray, StringSplitOptions.RemoveEmptyEntries);
-
-    for (int i = 0, count = values.Length; i < count; i++)
-      if (values[i].Length > 1)
-        searchItems.Add(IsPhoneticSearch ? PhoneticSearch.MetaPhone(values[i]) : values[i]);
-
-    return [.. searchItems];
-  }
-
   private SearchResultList<T> ExactSearch(string searchValue) => ExactSearch(searchValue, SearchLocation);
 
   private SearchResultList<T> ExactSearch(string searchValue, SearchLocation searchLocation)
