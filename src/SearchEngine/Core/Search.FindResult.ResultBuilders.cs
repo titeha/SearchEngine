@@ -28,7 +28,7 @@ public partial class Search<T> where T : struct
       IndexList<T> indexes = searchResult.Items.Values[0];
 
       if (indexes.Count > 0)
-        result.Items.Add(distance, new IndexList<T>(indexes.Items));
+        result.Items.Add(distance, new IndexList<T>(indexes.InternalItems));
 
       return result;
     }

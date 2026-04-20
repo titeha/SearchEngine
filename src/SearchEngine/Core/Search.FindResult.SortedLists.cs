@@ -53,49 +53,6 @@ public partial class Search<T> where T : struct
   }
 
   /// <summary>
-  /// Строит пересечение двух отсортированных списков.
-  /// </summary>
-  /// <param name="left">Первый список.</param>
-  /// <param name="right">Второй список.</param>
-  /// <returns>Отсортированный список общих элементов.</returns>
-  private static List<T> IntersectSortedLists(
-    IReadOnlyList<T> left,
-    IReadOnlyList<T> right)
-  {
-    List<T> result = new(Math.Min(left.Count, right.Count));
-
-    Comparer<T> comparer = Comparer<T>.Default;
-
-    int leftIndex = 0;
-    int rightIndex = 0;
-
-    while (leftIndex < left.Count && rightIndex < right.Count)
-    {
-      T leftValue = left[leftIndex];
-      T rightValue = right[rightIndex];
-
-      int comparison = comparer.Compare(leftValue, rightValue);
-
-      if (comparison == 0)
-      {
-        AddIfDifferentFromLast(result, leftValue, comparer);
-
-        leftIndex++;
-        rightIndex++;
-
-        continue;
-      }
-
-      if (comparison < 0)
-        leftIndex++;
-      else
-        rightIndex++;
-    }
-
-    return result;
-  }
-
-  /// <summary>
   /// Строит пересечение нескольких отсортированных списков без промежуточных результатов.
   /// </summary>
   /// <param name="indexLists">Списки идентификаторов.</param>
