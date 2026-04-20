@@ -173,6 +173,9 @@ public partial class Search<T> where T : struct
       foreach (var (Text, Indexes) in result)
         _search._searchIndex!.Add(Text, new(Indexes));
 
+      if (_search.IsPhoneticSearch)
+        _search.RebuildPhoneticCandidateIndex();
+
       _search.IsIndexComplete = true;
     }
 

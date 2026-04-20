@@ -35,6 +35,10 @@ public partial class Search<T> where T : struct
   private int _precision;
   private int _missprintCount;
 
+  /// <summary>
+  /// Индекс фонетических ключей-кандидатов для поиска на расстоянии одной правки.
+  /// </summary>
+  private Dictionary<string, List<string>>? _phoneticCandidateIndex;
   private protected SortedList<string, IndexList<T>>? _searchIndex;
   private protected SortedSet<string> _searchList;
 
@@ -290,11 +294,12 @@ public partial class Search<T> where T : struct
     List<T>? exactIndexes = null;
     List<T>? nearIndexes = null;
 
-    foreach (var pair in _searchIndex)
+    foreach (string targetString in EnumeratePhoneticCandidateKeys(searchValue))
     {
-      string targetString = pair.Key;
+      if (_searchIndex is null)
+        break;
 
-      if (targetString.Length < searchLength)
+      if (!_searchIndex.TryGetValue(targetString, out IndexList<T>? indexList))
         continue;
 
       int distance = CalculatePhoneticDistance(
@@ -304,7 +309,7 @@ public partial class Search<T> where T : struct
       if (distance > 1)
         continue;
 
-      IReadOnlyList<T> indexes = pair.Value.InternalItems;
+      IReadOnlyList<T> indexes = indexList.InternalItems;
 
       if (indexes.Count == 0)
         continue;
@@ -347,7 +352,11 @@ public partial class Search<T> where T : struct
   internal void IndexPreparing()
   {
     IsIndexComplete = false;
+
     _searchIndex?.Clear();
+
+    _phoneticCandidateIndex?.Clear();
+    _phoneticCandidateIndex = null;
   }
 
   private void OnCreateIndexComplete() => CreateIndexComplete?.Invoke(this, EventArgs.Empty);

@@ -178,6 +178,71 @@ public class PhoneticSearchQualityTests
     Assert.False(ContainsId(result.Value!, 3));
   }
 
+  [Fact]
+  public async Task FindResult_ФонетическийПоиск_ДолженНаходитьФамилиюПоНачалу()
+  {
+    // Arrange
+    Search<int> sut = new(isPhoneticSearch: true);
+
+    Test<int>[] source =
+    [
+      new() { Id = 1, Text = "Папандопуло" },
+    new() { Id = 2, Text = "Петров" },
+    new() { Id = 3, Text = "Смирнов" }
+    ];
+
+    var prepareResult = await sut.PrepareIndexResult(source);
+
+    Assert.True(prepareResult.IsSuccess);
+
+    SearchRequest request = new()
+    {
+      MatchMode = QueryMatchMode.AnyTerm,
+      SearchLocation = SearchLocation.BeginWord
+    };
+
+    // Act
+    // Запрос "Папанд" не используем: после фонетической нормализации
+    // финальная "д" может перейти в "т", и строка перестаёт быть
+    // фонетическим префиксом фамилии "Папандопуло".
+    var result = sut.FindResult("Папандо", request);
+
+    // Assert
+    Assert.True(result.IsSuccess);
+    Assert.True(ContainsId(result.Value!, 1));
+    Assert.False(ContainsId(result.Value!, 2));
+    Assert.False(ContainsId(result.Value!, 3));
+  }
+
+  [Fact]
+  public async Task FindResult_ФонетическийПоиск_НеДолженСчитатьЛюбойКороткийПрефиксСовпадением()
+  {
+    // Arrange
+    Search<int> sut = new(isPhoneticSearch: true);
+
+    Test<int>[] source =
+    [
+      new() { Id = 1, Text = "Папандопуло" }
+    ];
+
+    var prepareResult = await sut.PrepareIndexResult(source);
+
+    Assert.True(prepareResult.IsSuccess);
+
+    SearchRequest request = new()
+    {
+      MatchMode = QueryMatchMode.AnyTerm,
+      SearchLocation = SearchLocation.BeginWord
+    };
+
+    // Act
+    var result = sut.FindResult("Папанд", request);
+
+    // Assert
+    Assert.True(result.IsSuccess);
+    Assert.False(ContainsId(result.Value!, 1));
+  }
+
   private static bool ContainsId(
     SearchResultList<int> result,
     int id)
