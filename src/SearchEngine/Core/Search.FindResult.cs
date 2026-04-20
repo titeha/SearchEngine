@@ -1,5 +1,7 @@
 ﻿using ResultType;
 
+using SearchEngine.Models;
+
 namespace SearchEngine;
 
 /// <summary>
@@ -220,13 +222,21 @@ public partial class Search<T> where T : struct
   /// <returns>Набор идентификаторов и их минимальных дистанций.</returns>
   private static Dictionary<T, int> ExtractBestDistances(SearchResultList<T> searchResult)
   {
-    Dictionary<T, int> distances = new();
+    int capacity = 0;
 
     foreach (var bucket in searchResult.Items)
+      capacity += bucket.Value.Count;
+
+    Dictionary<T, int> distances = new(capacity);
+
+    foreach (var bucket in searchResult.Items)
+    {
+      int distance = bucket.Key;
+
       foreach (T index in bucket.Value.Items)
-        if (!distances.TryGetValue(index, out int currentDistance) ||
-                    bucket.Key < currentDistance)
-          distances[index] = bucket.Key;
+        if (!distances.TryGetValue(index, out int currentDistance) || distance < currentDistance)
+          distances[index] = distance;
+    }
 
     return distances;
   }
@@ -240,12 +250,29 @@ public partial class Search<T> where T : struct
   {
     SearchResultList<T> searchResult = new();
 
-    foreach (var group in distances
-      .GroupBy(x => x.Value)
-      .OrderBy(x => x.Key))
-      searchResult.Items.Add(
-              group.Key,
-              new IndexList<T>(group.Select(x => x.Key)));
+    if (distances.Count == 0)
+      return searchResult;
+
+    Dictionary<int, int> bucketSizes = new();
+
+    foreach (var pair in distances)
+    {
+      if (bucketSizes.TryGetValue(pair.Value, out int count))
+        bucketSizes[pair.Value] = count + 1;
+      else
+        bucketSizes.Add(pair.Value, 1);
+    }
+
+    SortedList<int, List<T>> buckets = new(bucketSizes.Count);
+
+    foreach (var pair in bucketSizes)
+      buckets.Add(pair.Key, new List<T>(pair.Value));
+
+    foreach (var pair in distances)
+      buckets[pair.Value].Add(pair.Key);
+
+    foreach (var pair in buckets)
+      searchResult.Items.Add(pair.Key, new IndexList<T>(pair.Value, sort: true));
 
     return searchResult;
   }
@@ -260,16 +287,21 @@ public partial class Search<T> where T : struct
   /// <param name="termsCount">Количество слов в запросе.</param>
   /// <returns>Результат поиска.</returns>
   private static SearchResultList<T> BuildSoftAllTermsResult(
-    IReadOnlyDictionary<T, SearchRank> ranks,
-    int termsCount)
+  IReadOnlyDictionary<T, SearchRank> ranks,
+  int termsCount)
   {
     if (ranks.Count == 0 || termsCount == 0)
       return new SearchResultList<T>();
 
-    int maxObservedDistance = ranks.Max(x => x.Value.TotalDistance);
+    int maxObservedDistance = 0;
+
+    foreach (var pair in ranks)
+      if (pair.Value.TotalDistance > maxObservedDistance)
+        maxObservedDistance = pair.Value.TotalDistance;
+
     int missingTermPenalty = maxObservedDistance + 1;
 
-    Dictionary<T, int> scores = new();
+    Dictionary<T, int> scores = new(ranks.Count);
 
     foreach (var pair in ranks)
     {

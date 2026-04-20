@@ -1,4 +1,4 @@
-﻿namespace SearchEngine;
+﻿namespace SearchEngine.Models;
 
 /// <summary>
 /// Представляет список индексов найденных записей.
@@ -35,11 +35,19 @@ public class IndexList<T> where T : struct
 
   internal IndexList(IEnumerable<T> indexes)
   {
-    _indexes = new(indexes);
+    _indexes = [.. indexes];
     _indexes.Sort();
   }
 
   internal IndexList(bool isReadOnly) : this() => IsReadOnly = isReadOnly;
+
+  internal IndexList(List<T> indexes, bool sort)
+  {
+    _indexes = indexes;
+
+    if (sort)
+      _indexes.Sort();
+  }
   #endregion
 
   #region Методы

@@ -1,4 +1,6 @@
-﻿namespace SearchEngine.Tests;
+﻿using SearchEngine.Models;
+
+namespace SearchEngine.Tests;
 
 public class RegressionStabilityTests
 {

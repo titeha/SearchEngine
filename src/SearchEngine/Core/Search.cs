@@ -1,5 +1,7 @@
 ﻿using System.Xml.Linq;
 
+using SearchEngine.Models;
+
 using StringFunctions;
 
 using static SearchEngine.Properties.Resources;

@@ -1,3 +1,5 @@
+using SearchEngine.Models;
+
 namespace SearchEngine.Tests;
 
 public class IndexListTests

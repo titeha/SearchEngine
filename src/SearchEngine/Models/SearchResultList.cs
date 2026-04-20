@@ -1,4 +1,6 @@
-﻿namespace SearchEngine;
+﻿using SearchEngine.Models;
+
+namespace SearchEngine;
 
 /// <summary>
 /// Представляет сгруппированные результаты поиска.
