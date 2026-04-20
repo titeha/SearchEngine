@@ -93,16 +93,53 @@ public class IndexList<T> where T : struct
   /// <returns>Новый список индексов после объединения.</returns>
   public IndexList<T> UnionIndexes(IEnumerable<IndexList<T>> otherIndexes)
   {
-    var union = otherIndexes.SelectMany(o => o._indexes).Distinct();
     if (_indexes.Count > 0)
-      return new(_indexes.Intersect(union));
-    else
     {
-      _indexes.AddRange(union);
-      return new(_indexes);
+      HashSet<T> union = [];
+
+      foreach (IndexList<T> otherIndex in otherIndexes)
+        foreach (T index in otherIndex._indexes)
+          union.Add(index);
+
+      List<T> intersection = [];
+
+      foreach (T index in _indexes)
+        if (union.Contains(index))
+          intersection.Add(index);
+
+      return new IndexList<T>(intersection, sort: false);
     }
+
+    using IEnumerator<IndexList<T>> enumerator = otherIndexes.GetEnumerator();
+
+    if (!enumerator.MoveNext())
+      return new IndexList<T>();
+
+    IndexList<T> first = enumerator.Current;
+
+    if (!enumerator.MoveNext())
+      return first.Clone();
+
+    HashSet<T> result = [];
+
+    foreach (T index in first._indexes)
+      result.Add(index);
+
+    do
+    {
+      foreach (T index in enumerator.Current._indexes)
+        result.Add(index);
+    }
+    while (enumerator.MoveNext());
+
+    List<T> indexes = [.. result];
+    indexes.Sort();
+
+    return new IndexList<T>(indexes, sort: false);
   }
 
   internal bool Contains(IndexList<T> lookUpSet) => _indexes.Intersect(lookUpSet._indexes)?.Count() > 0;
+
+  internal IndexList<T> Clone() => new IndexList<T>([.. _indexes], sort: false);
   #endregion
 }
