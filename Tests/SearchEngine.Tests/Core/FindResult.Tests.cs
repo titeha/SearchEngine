@@ -1,4 +1,6 @@
-﻿namespace SearchEngine.Tests;
+﻿using SearchEngine.Models;
+
+namespace SearchEngine.Tests;
 
 public class FindResultTests
 {
@@ -106,5 +108,168 @@ public class FindResultTests
 
     if (result.Value.Items.ContainsKey(1))
       Assert.DoesNotContain(1, result.Value[1].Items);
+  }
+
+  [Fact]
+  public async Task FindResult_ExactSearchAllTerms_ДолженВозвращатьТолькоЗаписиСоВсемиСловами()
+  {
+    // Arrange
+    Search<int> sut = new();
+
+    Test<int>[] source =
+    [
+      new() { Id = 1, Text = "альфа бета гамма" },
+    new() { Id = 2, Text = "альфа бета" },
+    new() { Id = 3, Text = "бета гамма" },
+    new() { Id = 4, Text = "альфа" },
+    new() { Id = 5, Text = "дельта" }
+    ];
+
+    var prepareResult = await sut.PrepareIndexResult(source);
+
+    Assert.True(prepareResult.IsSuccess);
+
+    SearchRequest request = new()
+    {
+      SearchType = SearchType.ExactSearch,
+      SearchLocation = SearchLocation.BeginWord,
+      MatchMode = QueryMatchMode.AllTerms
+    };
+
+    // Act
+    var result = sut.FindResult("альфа бета гамма", request);
+
+    // Assert
+    Assert.True(result.IsSuccess);
+    Assert.True(ContainsIdAtDistance(result.Value!, 0, 1));
+    Assert.Equal(1, CountAllIndexes(result.Value!));
+  }
+
+  [Fact]
+  public async Task FindResult_ExactSearchAnyTerm_ДолженВозвращатьОбъединениеБезДублей()
+  {
+    // Arrange
+    Search<int> sut = new();
+
+    Test<int>[] source =
+    [
+      new() { Id = 1, Text = "альфа бета гамма" },
+    new() { Id = 2, Text = "альфа бета" },
+    new() { Id = 3, Text = "бета гамма" },
+    new() { Id = 4, Text = "альфа" },
+    new() { Id = 5, Text = "дельта" }
+    ];
+
+    var prepareResult = await sut.PrepareIndexResult(source);
+
+    Assert.True(prepareResult.IsSuccess);
+
+    SearchRequest request = new()
+    {
+      SearchType = SearchType.ExactSearch,
+      SearchLocation = SearchLocation.BeginWord,
+      MatchMode = QueryMatchMode.AnyTerm
+    };
+
+    // Act
+    var result = sut.FindResult("альфа бета гамма", request);
+
+    // Assert
+    Assert.True(result.IsSuccess);
+
+    Assert.True(ContainsIdAtDistance(result.Value!, 0, 1));
+    Assert.True(ContainsIdAtDistance(result.Value!, 0, 2));
+    Assert.True(ContainsIdAtDistance(result.Value!, 0, 3));
+    Assert.True(ContainsIdAtDistance(result.Value!, 0, 4));
+    Assert.False(ContainsId(result.Value!, 5));
+
+    Assert.Equal(4, CountAllIndexes(result.Value!));
+  }
+
+  [Fact]
+  public async Task FindResult_ExactSearchSoftAllTerms_ДолженГруппироватьПоКоличествуПропущенныхСлов()
+  {
+    // Arrange
+    Search<int> sut = new();
+
+    Test<int>[] source =
+    [
+      new() { Id = 1, Text = "альфа бета гамма" },
+    new() { Id = 2, Text = "альфа бета" },
+    new() { Id = 3, Text = "бета гамма" },
+    new() { Id = 4, Text = "альфа" },
+    new() { Id = 5, Text = "дельта" }
+    ];
+
+    var prepareResult = await sut.PrepareIndexResult(source);
+
+    Assert.True(prepareResult.IsSuccess);
+
+    SearchRequest request = new()
+    {
+      SearchType = SearchType.ExactSearch,
+      SearchLocation = SearchLocation.BeginWord,
+      MatchMode = QueryMatchMode.SoftAllTerms
+    };
+
+    // Act
+    var result = sut.FindResult("альфа бета гамма", request);
+
+    // Assert
+    Assert.True(result.IsSuccess);
+
+    Assert.True(ContainsIdAtDistance(result.Value!, 0, 1));
+
+    Assert.True(ContainsIdAtDistance(result.Value!, 1, 2));
+    Assert.True(ContainsIdAtDistance(result.Value!, 1, 3));
+
+    Assert.True(ContainsIdAtDistance(result.Value!, 2, 4));
+
+    Assert.False(ContainsId(result.Value!, 5));
+
+    Assert.Equal(4, CountAllIndexes(result.Value!));
+  }
+
+  private static bool ContainsId(
+    SearchResultList<int> result,
+    int id)
+  {
+    foreach (var bucket in result.Items)
+    {
+      foreach (int item in bucket.Value.Items)
+      {
+        if (item == id)
+          return true;
+      }
+    }
+
+    return false;
+  }
+
+  private static bool ContainsIdAtDistance(
+    SearchResultList<int> result,
+    int distance,
+    int id)
+  {
+    if (!result.Items.TryGetValue(distance, out IndexList<int>? bucket))
+      return false;
+
+    foreach (int item in bucket.Items)
+    {
+      if (item == id)
+        return true;
+    }
+
+    return false;
+  }
+
+  private static int CountAllIndexes(SearchResultList<int> result)
+  {
+    int count = 0;
+
+    foreach (var bucket in result.Items)
+      count += bucket.Value.Count;
+
+    return count;
   }
 }

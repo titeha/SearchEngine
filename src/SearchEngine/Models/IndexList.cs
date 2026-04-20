@@ -19,6 +19,15 @@ public class IndexList<T> where T : struct
   /// Возвращает элементы списка индексов.
   /// </summary>
   public IEnumerable<T> Items => _indexes;
+
+  /// <summary>
+  /// Получает внутреннее представление индексов без создания копии.
+  /// </summary>
+  /// <remarks>
+  /// Свойство предназначено только для внутренних алгоритмов объединения результатов.
+  /// Наружу библиотека по-прежнему отдаёт публичное перечисление через <see cref="Items"/>.
+  /// </remarks>
+  internal IReadOnlyList<T> InternalItems => _indexes;
   #endregion
 
   #region Конструкторы
