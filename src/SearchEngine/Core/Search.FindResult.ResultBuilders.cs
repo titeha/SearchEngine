@@ -14,8 +14,7 @@ public partial class Search<T> where T : struct
   /// <returns>
   /// Результат, в котором каждый идентификатор находится только в лучшей для него корзине дистанции.
   /// </returns>
-  private static SearchResultList<T> BuildSingleTermSearchResult(
-    SearchResultList<T> searchResult)
+  private static SearchResultList<T> BuildSingleTermSearchResult(SearchResultList<T> searchResult)
   {
     SearchResultList<T> result = new();
 
@@ -28,7 +27,7 @@ public partial class Search<T> where T : struct
       IndexList<T> indexes = searchResult.Items.Values[0];
 
       if (indexes.Count > 0)
-        result.Items.Add(distance, new IndexList<T>(indexes.InternalItems));
+        result.Items.Add(distance, CreateResultIndexList(indexes.InternalItems));
 
       return result;
     }
