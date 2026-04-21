@@ -52,23 +52,37 @@ public class IndexBuildExecutionModeBenchmarks
   {
     Search<int> search = new();
 
-    bool forceParallel = ExecutionMode == IndexBuildExecutionMode.ForceParallel;
+    var result = ExecutionMode switch
+    {
+      IndexBuildExecutionMode.Automatic => search
+        .PrepareIndexResult(_source)
+        .GetAwaiter()
+        .GetResult(),
 
-    int parallelProcessingThreshold = ExecutionMode == IndexBuildExecutionMode.ForceSequential
-      ? ForceSequentialThreshold
-      : 10_000;
+      IndexBuildExecutionMode.ForceSequential => search
+        .PrepareIndexResult(
+          _source,
+          forceParallel: false,
+          parallelProcessingThreshold: int.MaxValue)
+        .GetAwaiter()
+        .GetResult(),
 
-    var result = search
-      .PrepareIndexResult(_source, forceParallel: forceParallel, parallelProcessingThreshold: parallelProcessingThreshold)
-      .GetAwaiter()
-      .GetResult();
+      IndexBuildExecutionMode.ForceParallel => search
+        .PrepareIndexResult(
+          _source,
+          forceParallel: true,
+          parallelProcessingThreshold: 0)
+        .GetAwaiter()
+        .GetResult(),
+
+      _ => throw new InvalidOperationException($"Неизвестный режим построения индекса: {ExecutionMode}.")
+    };
 
     if (!result.IsSuccess)
       throw new InvalidOperationException($"Не удалось построить индекс: {result.Error!.Code} - {result.Error.Message}");
   }
 
-  private SourceData[] CreateUniqueWordsSource(
-    IReadOnlyList<string> words)
+  private SourceData[] CreateUniqueWordsSource(IReadOnlyList<string> words)
   {
     if (words.Count < ItemCount)
       throw new InvalidOperationException($"Для сценария {SourceMode} требуется минимум {ItemCount} слов, " + $"а найдено только {words.Count}. Добавьте слова в Data/Words.");
