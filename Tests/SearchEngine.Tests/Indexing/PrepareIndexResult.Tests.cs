@@ -56,4 +56,33 @@ public class PrepareIndexResultTests
     Assert.True(sut.IsIndexComplete);
     Assert.Equal(10, sut.SearchIndex.Count);
   }
+
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task PrepareIndexResult_ДляSourceDataСНастройкамиВыполнения_ДолженСтроитьИндекс(
+  bool forceParallel)
+  {
+    // Arrange
+    Search<int> sut = new();
+
+    Test<int>[] source =
+    [
+      new() { Id = 1, Text = "договор поставки" },
+    new() { Id = 2, Text = "акт выполненных работ" }
+    ];
+
+    // Act
+    var prepareResult = await sut.PrepareIndexResult(
+      source,
+      forceParallel: forceParallel,
+      parallelProcessingThreshold: 1);
+
+    var findResult = sut.FindResult("договор");
+
+    // Assert
+    Assert.True(prepareResult.IsSuccess);
+    Assert.True(findResult.IsSuccess);
+    Assert.True(findResult.Value!.IsHasIndex);
+  }
 }

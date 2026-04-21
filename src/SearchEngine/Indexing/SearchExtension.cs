@@ -7,8 +7,8 @@ namespace SearchEngine;
 /// </summary>
 public static partial class SearchExtension
 {
-  private const string EmptySourceErrorMessage = "Источник данных пуст или не содержит элементов.";
-  private const string IndexBuildFailedMessage = "Во время подготовки поискового индекса произошла ошибка.";
+  private const string _emptySourceErrorMessage = "Источник данных пуст или не содержит элементов.";
+  private const string _indexBuildFailedMessage = "Во время подготовки поискового индекса произошла ошибка.";
 
   /// <summary>
   /// Подготавливает индекс из коллекции объектов-источников и возвращает результат операции.
@@ -16,17 +16,81 @@ public static partial class SearchExtension
   /// <typeparam name="T">Тип идентификатора записи.</typeparam>
   /// <param name="search">Экземпляр поискового движка.</param>
   /// <param name="source">Источник данных.</param>
-  /// <param name="delimiters">Пользовательский набор разделителей слов.</param>
-  /// <returns>
-  /// Успешный результат, если индекс подготовлен; иначе описание ошибки.
-  /// </returns>
+  /// <param name="delimiters">
+  /// Пользовательский набор разделителей слов. Если не задан, используется набор по умолчанию.
+  /// </param>
+  /// <returns>Успешный результат, если индекс подготовлен; иначе описание ошибки.</returns>
+  /// <exception cref="ArgumentNullException">
+  /// Генерируется, если <paramref name="search"/> равен <see langword="null"/>.
+  /// </exception>
+  public static Task<UnitResult<SearchError>> PrepareIndexResult<T>(
+    this Search<T> search,
+    IEnumerable<ISourceData<T>> source,
+    string? delimiters = null)
+    where T : struct
+  {
+    return search.PrepareIndexResult(
+      source,
+      delimiters,
+      forceParallel: false,
+      parallelProcessingThreshold: 10_000);
+  }
+
+  /// <summary>
+  /// Подготавливает индекс из коллекции объектов-источников с настройками режима выполнения.
+  /// </summary>
+  /// <typeparam name="T">Тип идентификатора записи.</typeparam>
+  /// <param name="search">Экземпляр поискового движка.</param>
+  /// <param name="source">Источник данных.</param>
+  /// <param name="forceParallel">
+  /// <see langword="true"/>, если нужно принудительно использовать параллельную обработку.
+  /// </param>
+  /// <param name="parallelProcessingThreshold">
+  /// Минимальный размер набора данных, начиная с которого допускается переход к параллельной обработке.
+  /// </param>
+  /// <returns>Успешный результат, если индекс подготовлен; иначе описание ошибки.</returns>
+  /// <exception cref="ArgumentNullException">
+  /// Генерируется, если <paramref name="search"/> равен <see langword="null"/>.
+  /// </exception>
+  public static Task<UnitResult<SearchError>> PrepareIndexResult<T>(
+    this Search<T> search,
+    IEnumerable<ISourceData<T>> source,
+    bool forceParallel,
+    int parallelProcessingThreshold = 10_000)
+    where T : struct
+  {
+    return search.PrepareIndexResult(
+      source,
+      delimiters: null,
+      forceParallel,
+      parallelProcessingThreshold);
+  }
+
+  /// <summary>
+  /// Подготавливает индекс из коллекции объектов-источников с настройками разделителей и режима выполнения.
+  /// </summary>
+  /// <typeparam name="T">Тип идентификатора записи.</typeparam>
+  /// <param name="search">Экземпляр поискового движка.</param>
+  /// <param name="source">Источник данных.</param>
+  /// <param name="delimiters">
+  /// Пользовательский набор разделителей слов. Если не задан, используется набор по умолчанию.
+  /// </param>
+  /// <param name="forceParallel">
+  /// <see langword="true"/>, если нужно принудительно использовать параллельную обработку.
+  /// </param>
+  /// <param name="parallelProcessingThreshold">
+  /// Минимальный размер набора данных, начиная с которого допускается переход к параллельной обработке.
+  /// </param>
+  /// <returns>Успешный результат, если индекс подготовлен; иначе описание ошибки.</returns>
   /// <exception cref="ArgumentNullException">
   /// Генерируется, если <paramref name="search"/> равен <see langword="null"/>.
   /// </exception>
   public static async Task<UnitResult<SearchError>> PrepareIndexResult<T>(
     this Search<T> search,
     IEnumerable<ISourceData<T>> source,
-    string? delimiters = null)
+    string? delimiters,
+    bool forceParallel,
+    int parallelProcessingThreshold = 10_000)
     where T : struct
   {
     if (search is null)
@@ -37,10 +101,27 @@ public static partial class SearchExtension
       ISourceData<T>[] materializedSource = MaterializeSource(source);
 
       if (materializedSource.Length == 0)
-        return UnitResult.Failure(new SearchError(SearchErrorCode.InvalidSourceRecord,EmptySourceErrorMessage))!;
+      {
+        return UnitResult.Failure(
+          new SearchError(
+            SearchErrorCode.InvalidSourceRecord,
+            _emptySourceErrorMessage))!;
+      }
+
       search!.IndexPreparing();
 
-      await Task.Run(() => new Search<T>.IndexBuilder(search, delimiters).BuildIndex(materializedSource))
+      await Task
+        .Run(() =>
+        {
+          Search<T>.IndexBuilder builder = new(
+            search,
+            delimiters,
+            parallelProcessingThreshold);
+
+          builder.BuildIndex(
+            materializedSource,
+            forceParallel);
+        })
         .ConfigureAwait(false);
 
       return UnitResult.Success<SearchError>()!;
@@ -50,7 +131,7 @@ public static partial class SearchExtension
       return UnitResult.Failure(
         new SearchError(
           SearchErrorCode.IndexBuildFailed,
-          "Во время подготовки поискового индекса произошла ошибка.",
+          _indexBuildFailedMessage,
           exception))!;
     }
   }
