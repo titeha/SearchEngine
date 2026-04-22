@@ -11,12 +11,6 @@ public static partial class SearchExtension
   private const string _indexBuildFailedMessage = "Во время подготовки поискового индекса произошла ошибка.";
 
   /// <summary>
-  /// Минимальный размер источника, начиная с которого автоматически допускается
-  /// параллельное построение индекса.
-  /// </summary>
-  private const int _defaultParallelProcessingThreshold = 100_000;
-
-  /// <summary>
   /// Подготавливает индекс из коллекции объектов-источников и возвращает результат операции.
   /// </summary>
   /// <typeparam name="T">Тип идентификатора записи.</typeparam>
@@ -39,7 +33,7 @@ public static partial class SearchExtension
       source,
       delimiters,
       forceParallel: false,
-      parallelProcessingThreshold: 10_000);
+      parallelProcessingThreshold: IndexBuildDefaults.ParallelProcessingThreshold);
   }
 
   /// <summary>
@@ -65,7 +59,7 @@ public static partial class SearchExtension
     this Search<T> search,
     IEnumerable<ISourceData<T>> source,
     bool forceParallel,
-    int parallelProcessingThreshold = _defaultParallelProcessingThreshold)
+    int parallelProcessingThreshold = IndexBuildDefaults.ParallelProcessingThreshold)
     where T : struct
   {
     return search.PrepareIndexResult(
@@ -102,7 +96,7 @@ public static partial class SearchExtension
     IEnumerable<ISourceData<T>> source,
     string? delimiters,
     bool forceParallel,
-    int parallelProcessingThreshold = _defaultParallelProcessingThreshold)
+    int parallelProcessingThreshold = IndexBuildDefaults.ParallelProcessingThreshold)
     where T : struct
   {
     if (search is null)
@@ -176,7 +170,7 @@ public static partial class SearchExtension
     string elementDelimiter,
     string? delimiters = null,
     bool forceParallel = false,
-    int parallelProcessingThreshold = _defaultParallelProcessingThreshold)
+    int parallelProcessingThreshold = IndexBuildDefaults.ParallelProcessingThreshold)
     where T : struct
   {
     if (search is null)
