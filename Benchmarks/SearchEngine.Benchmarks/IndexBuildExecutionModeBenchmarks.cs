@@ -9,8 +9,6 @@ namespace SearchEngine.Benchmarks;
 [Config(typeof(BenchmarkConfig))]
 public class IndexBuildExecutionModeBenchmarks
 {
-  private const int ForceSequentialThreshold = int.MaxValue;
-
   private SourceData[] _source = [];
 
   [Params(1_000, 10_000, 50_000)]
