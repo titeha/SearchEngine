@@ -10,7 +10,7 @@ public class IndexBuildThresholdBenchmarks
 {
   private SourceData[] _source = [];
 
-  [Params(75_000, 100_000, 150_000, 200_000)]
+  [Params(75_000, 100_000, 150_000, 200_000, 250_000, 300_000)]
   public int ItemCount { get; set; }
 
   [Params(
