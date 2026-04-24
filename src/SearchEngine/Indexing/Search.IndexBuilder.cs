@@ -179,11 +179,13 @@ public partial class Search<T> where T : struct
 
     private void NotifyIndexCreated() => IndexCreated?.Invoke(this, EventArgs.Empty);
 
-    private IOrderedEnumerable<(string Text, IEnumerable<T> Indexes)> ConvertToPhonetic(
-      IOrderedEnumerable<(string Text, IEnumerable<T> Indexes)> result)
+    private IOrderedEnumerable<(string Text, IEnumerable<T> Indexes)> ConvertToPhonetic(IOrderedEnumerable<(string Text, IEnumerable<T> Indexes)> result)
     {
       return result
-        .Select(p => (Text: search.EncodePhonetic(p.Text), p.Indexes))
+        .SelectMany(
+          p => search
+            .EncodePhoneticKeys(p.Text)
+            .Select(key => (Text: key, p.Indexes)))
         .GroupBy(x => x.Text)
         .Select(g => (Text: g.Key, Indexes: g
           .Select(t => t.Indexes)
@@ -191,6 +193,7 @@ public partial class Search<T> where T : struct
           .Distinct()))
         .OrderBy(o => o.Text);
     }
+
 #if NET7_0_OR_GREATER
     private static bool TryConvertToId(ReadOnlySpan<char> source, out T value) => DefaultIdParser<T>.TryParse(source, out value);
 #else

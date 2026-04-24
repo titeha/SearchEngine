@@ -38,4 +38,19 @@ public partial class Search<T> where T : struct
 
     return _phoneticEncoder(source);
   }
+
+  /// <summary>
+  /// Возвращает фонетические ключи для исходной строки.
+  /// </summary>
+  /// <param name="source">Исходная строка.</param>
+  /// <returns>Набор фонетических ключей.</returns>
+  internal IReadOnlyList<string> EncodePhoneticKeys(string source)
+  {
+    string key = EncodePhonetic(source);
+
+    if (string.IsNullOrWhiteSpace(key))
+      return [];
+
+    return [key];
+  }
 }
