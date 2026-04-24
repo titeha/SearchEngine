@@ -15,5 +15,5 @@ internal static class IndexBuildDefaults
   /// устойчивого выигрыша по времени. При необходимости пользователь может
   /// включить параллельную обработку явно через <c>forceParallel</c>.
   /// </remarks>
-  internal const int ParallelProcessingThreshold = 250_000;
+  internal const int ParallelProcessingThreshold = 500_000;
 }
