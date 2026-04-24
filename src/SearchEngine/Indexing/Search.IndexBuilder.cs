@@ -6,7 +6,7 @@ namespace SearchEngine;
 
 public partial class Search<T> where T : struct
 {
-  internal partial class IndexBuilder(Search<T> search, string? delimiters = null, int parallelProcessingThreshold = IndexBuildDefaults.ParallelProcessingThreshold)
+  internal partial class IndexBuilder(Search<T> search, string? delimiters = null, int parallelProcessingThreshold = IndexBuildDefaults._parallelProcessingThreshold)
   {
     #region Константа
     public const string Delimiters = ".,()-:;!?\"\\'$_=[]<>/«»“” …’\t";

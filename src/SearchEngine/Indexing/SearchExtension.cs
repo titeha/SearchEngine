@@ -33,7 +33,7 @@ public static partial class SearchExtension
       source,
       delimiters,
       forceParallel: false,
-      parallelProcessingThreshold: IndexBuildDefaults.ParallelProcessingThreshold);
+      parallelProcessingThreshold: IndexBuildDefaults._parallelProcessingThreshold);
   }
 
   /// <summary>
@@ -59,7 +59,7 @@ public static partial class SearchExtension
     this Search<T> search,
     IEnumerable<ISourceData<T>> source,
     bool forceParallel,
-    int parallelProcessingThreshold = IndexBuildDefaults.ParallelProcessingThreshold)
+    int parallelProcessingThreshold = IndexBuildDefaults._parallelProcessingThreshold)
     where T : struct
   {
     return search.PrepareIndexResult(
@@ -96,7 +96,7 @@ public static partial class SearchExtension
     IEnumerable<ISourceData<T>> source,
     string? delimiters,
     bool forceParallel,
-    int parallelProcessingThreshold = IndexBuildDefaults.ParallelProcessingThreshold)
+    int parallelProcessingThreshold = IndexBuildDefaults._parallelProcessingThreshold)
     where T : struct
   {
     if (search is null)
@@ -170,7 +170,7 @@ public static partial class SearchExtension
     string elementDelimiter,
     string? delimiters = null,
     bool forceParallel = false,
-    int parallelProcessingThreshold = IndexBuildDefaults.ParallelProcessingThreshold)
+    int parallelProcessingThreshold = IndexBuildDefaults._parallelProcessingThreshold)
     where T : struct
   {
     if (search is null)
