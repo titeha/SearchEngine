@@ -2,8 +2,6 @@
 
 using SearchEngine.Models;
 
-using StringFunctions;
-
 using static SearchEngine.Properties.Resources;
 
 namespace SearchEngine;
@@ -158,9 +156,11 @@ public partial class Search<T> where T : struct
     _isNumberSearch = false;
     _precision = -1;
     _missprintCount = -1;
-    _searchList = new();
-    _searchIndex = new();
+    _searchList = [];
+    _searchIndex = [];
     _isIndexComplete = false;
+
+    _phoneticEncoder = PhoneticSearch.MetaPhone;
   }
 
   /// <summary>
@@ -169,7 +169,8 @@ public partial class Search<T> where T : struct
   /// <param name="isPhoneticSearch">
   /// <see langword="true"/>, если нужно использовать фонетический поиск.
   /// </param>
-  public Search(bool isPhoneticSearch) : this() => IsPhoneticSearch = isPhoneticSearch;
+  public Search(bool isPhoneticSearch)
+    : this(isPhoneticSearch, phoneticEncoder: null) { }
   #endregion
 
   #region Методы
@@ -180,8 +181,6 @@ public partial class Search<T> where T : struct
     foreach (string searchItem in DisassembleSearchTerms(source))
       _searchList.Add(searchItem);
   }
-
-  private SearchResultList<T> ExactSearch(string searchValue) => ExactSearch(searchValue, SearchLocation);
 
   private SearchResultList<T> ExactSearch(string searchValue, SearchLocation searchLocation)
   {
@@ -203,8 +202,6 @@ public partial class Search<T> where T : struct
 
     return searchResult;
   }
-
-  private SearchResultList<T> FuzzySearch(string searchValue, int distance) => FuzzySearch(searchValue, distance, SearchLocation);
 
   private SearchResultList<T> FuzzySearch(string searchValue, int distance, SearchLocation searchLocation)
   {

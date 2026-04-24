@@ -122,7 +122,7 @@ public partial class Search<T> where T : struct
 
     for (int i = 0, count = values.Length; i < count; i++)
       if (values[i].Length > 1)
-        searchItems.Add(IsPhoneticSearch ? PhoneticSearch.MetaPhone(values[i]) : values[i]);
+        searchItems.Add(IsPhoneticSearch ? EncodePhonetic(values[i]) : values[i]);
 
     return [.. searchItems];
   }
