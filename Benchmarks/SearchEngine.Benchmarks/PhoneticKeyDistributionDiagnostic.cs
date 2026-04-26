@@ -47,6 +47,13 @@ internal static class PhoneticKeyDistributionDiagnostic
         PhoneticAlgorithmBenchMode.Bmpm,
         surnames,
         BmpmPhoneticEncoder.Encode);
+
+    Console.WriteLine();
+
+    PrintReport(
+        PhoneticAlgorithmBenchMode.BmpmApprox,
+        surnames,
+        BmpmPhoneticEncoder.EncodeApprox);
   }
 
   /// <summary>

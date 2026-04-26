@@ -21,4 +21,21 @@ internal static class BmpmPhoneticEncoder
       _ => []
     };
   }
+
+  /// <summary>
+  /// Возвращает приближённые фонетические ключи для исходного имени.
+  /// </summary>
+  /// <param name="source">Исходное имя.</param>
+  /// <returns>Набор фонетических ключей.</returns>
+  public static IReadOnlyList<string> EncodeApprox(string? source)
+  {
+    BmpmNameLanguage language = BmpmNameLanguageDetector.Detect(source);
+
+    return language switch
+    {
+      BmpmNameLanguage.RussianCyrillic => BmpmRussianCyrillicApproxEncoder.Encode(source),
+      BmpmNameLanguage.RussianLatin => [],
+      _ => []
+    };
+  }
 }

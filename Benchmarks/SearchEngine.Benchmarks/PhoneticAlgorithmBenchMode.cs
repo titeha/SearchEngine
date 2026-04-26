@@ -13,5 +13,10 @@ public enum PhoneticAlgorithmBenchMode
   /// <summary>
   /// Экспериментальная реализация BMPM.
   /// </summary>
-  Bmpm
+  Bmpm,
+
+  /// <summary>
+  /// Экспериментальная реализация BMPM с приближённой обработкой гласных.
+  /// </summary>
+  BmpmApprox
 }

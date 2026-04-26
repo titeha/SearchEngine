@@ -58,4 +58,36 @@ public class BmpmPhoneticEncoderTests
     // Assert
     Assert.Empty(result);
   }
+
+  [Theory]
+  [InlineData("Петров", "ПЕТРОФ", "ПИТРАФ")]
+  [InlineData("Смирнов", "СМИРНОФ", "СМИРНАФ")]
+  [InlineData("Папондопуло", "ПАПОНТОПУЛО", "ПАПАНТАПУЛА")]
+  public void EncodeApprox_РусскаяКириллица_ДолженВернутьТочныйИПриближённыйКлюч(
+    string source,
+    string exactKey,
+    string approxKey)
+  {
+    // Act
+    IReadOnlyList<string> result = BmpmPhoneticEncoder.EncodeApprox(source);
+
+    // Assert
+    Assert.Equal(2, result.Count);
+    Assert.Equal(exactKey, result[0]);
+    Assert.Equal(approxKey, result[1]);
+  }
+
+  [Theory]
+  [InlineData("Ivanov")]
+  [InlineData("Petrova")]
+  [InlineData("Shcherbakov")]
+  [InlineData("Smith")]
+  public void EncodeApprox_НеподдерживаемоеИмя_ДолженВернутьПустойНабор(string source)
+  {
+    // Act
+    IReadOnlyList<string> result = BmpmPhoneticEncoder.EncodeApprox(source);
+
+    // Assert
+    Assert.Empty(result);
+  }
 }
