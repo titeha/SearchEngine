@@ -42,6 +42,14 @@ public class PhoneticIndexBuildBenchmarks
     PhoneticIndexSourceMode.UniqueSurnames)]
   public PhoneticIndexSourceMode SourceMode { get; set; }
 
+  /// <summary>
+  /// Фонетический алгоритм для проверки.
+  /// </summary>
+  [Params(
+      PhoneticAlgorithmBenchMode.MetaPhone,
+      PhoneticAlgorithmBenchMode.Bmpm)]
+  public PhoneticAlgorithmBenchMode Algorithm { get; set; }
+
   [GlobalSetup]
   public void Setup() => _source = CreateSource();
 
@@ -56,13 +64,13 @@ public class PhoneticIndexBuildBenchmarks
       .GetResult();
 
     if (!result.IsSuccess)
-      throw new InvalidOperationException($"Не удалось построить обычный индекс: {result.Error!.Code} - {result.Error.Message}");
+      throw new InvalidOperationException($"Не удалось построить обычный индекс. " + $"Режим данных: {SourceMode}. " + $"{result.Error!.Code} - {result.Error.Message}");
   }
 
   [Benchmark]
   public void PhoneticIndexBuild()
   {
-    Search<int> search = new(isPhoneticSearch: true);
+    Search<int> search = PhoneticSearchFactory.Create<int>(Algorithm);
 
     var result = search
       .PrepareIndexResult(_source)
@@ -70,7 +78,7 @@ public class PhoneticIndexBuildBenchmarks
       .GetResult();
 
     if (!result.IsSuccess)
-      throw new InvalidOperationException($"Не удалось построить фонетический индекс: {result.Error!.Code} - {result.Error.Message}");
+      throw new InvalidOperationException($"Не удалось построить фонетический индекс. " + $"Алгоритм: {Algorithm}. " + $"{result.Error!.Code} - {result.Error.Message}");
   }
 
   private SourceData[] CreateSource()
