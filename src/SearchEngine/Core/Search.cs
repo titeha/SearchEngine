@@ -160,7 +160,7 @@ public partial class Search<T> where T : struct
     _searchIndex = [];
     _isIndexComplete = false;
 
-    _phoneticEncoder = PhoneticSearch.MetaPhone;
+    _phoneticEncoder = EncodeDefaultPhoneticKeys;
   }
 
   /// <summary>
