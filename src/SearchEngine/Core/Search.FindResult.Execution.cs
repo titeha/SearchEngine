@@ -111,18 +111,36 @@ public partial class Search<T> where T : struct
   /// <returns>Упорядоченный набор пригодных для поиска слов.</returns>
   private string[] DisassembleSearchTerms(string source)
   {
-    string clearedString = source.Trim().ToUpper();
+    string clearedString = source.Trim().ToUpperInvariant();
 
     if (clearedString.IsNullOrWhiteSpace())
       return [];
 
-    SortedSet<string> searchItems = new();
-    var delimiterArray = IndexBuilder.Delimiters.ToCharArray();
-    var values = clearedString.Split(delimiterArray, StringSplitOptions.RemoveEmptyEntries);
+    SortedSet<string> searchItems = new(StringComparer.Ordinal);
+
+    string[] values = clearedString.Split(
+      IndexBuilder.Delimiters.ToCharArray(),
+      StringSplitOptions.RemoveEmptyEntries);
 
     for (int i = 0, count = values.Length; i < count; i++)
-      if (values[i].Length > 1)
-        searchItems.Add(IsPhoneticSearch ? EncodePhonetic(values[i]) : values[i]);
+    {
+      string value = values[i];
+
+      if (value.Length <= 1)
+        continue;
+
+      if (!IsPhoneticSearch)
+      {
+        searchItems.Add(value);
+        continue;
+      }
+
+      foreach (string phoneticKey in EncodePhoneticKeys(value))
+      {
+        if (!string.IsNullOrWhiteSpace(phoneticKey))
+          searchItems.Add(phoneticKey);
+      }
+    }
 
     return [.. searchItems];
   }
