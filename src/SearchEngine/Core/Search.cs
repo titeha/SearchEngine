@@ -170,7 +170,22 @@ public partial class Search<T> where T : struct
   /// <see langword="true"/>, если нужно использовать фонетический поиск.
   /// </param>
   public Search(bool isPhoneticSearch)
-    : this(isPhoneticSearch, phoneticEncoder: null) { }
+    : this(isPhoneticSearch, PhoneticSearchAlgorithm.MetaPhone) { }
+
+  /// <summary>
+  /// Создаёт экземпляр поискового движка и задаёт фонетический алгоритм.
+  /// </summary>
+  /// <param name="isPhoneticSearch">
+  /// <see langword="true"/>, если нужно использовать фонетический поиск.
+  /// </param>
+  /// <param name="phoneticAlgorithm">Фонетический алгоритм.</param>
+  public Search(
+      bool isPhoneticSearch,
+      PhoneticSearchAlgorithm phoneticAlgorithm) : this()
+  {
+    IsPhoneticSearch = isPhoneticSearch;
+    _phoneticEncoder = CreatePhoneticEncoder(phoneticAlgorithm);
+  }
   #endregion
 
   #region Методы

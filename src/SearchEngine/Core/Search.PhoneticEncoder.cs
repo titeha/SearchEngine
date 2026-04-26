@@ -152,4 +152,30 @@ public partial class Search<T> where T : struct
 
     return false;
   }
+
+  /// <summary>
+  /// Создаёт кодировщик для выбранного фонетического алгоритма.
+  /// </summary>
+  /// <param name="phoneticAlgorithm">Фонетический алгоритм.</param>
+  /// <returns>Кодировщик фонетических ключей.</returns>
+  private static Func<string, IReadOnlyList<string>> CreatePhoneticEncoder(
+      PhoneticSearchAlgorithm phoneticAlgorithm)
+  {
+    return phoneticAlgorithm switch
+    {
+      PhoneticSearchAlgorithm.MetaPhone =>
+          EncodeDefaultPhoneticKeys,
+
+      PhoneticSearchAlgorithm.RussianBmpm =>
+          BmpmPhoneticEncoder.Encode,
+
+      PhoneticSearchAlgorithm.RussianBmpmApprox =>
+          BmpmPhoneticEncoder.EncodeApprox,
+
+      _ => throw new ArgumentOutOfRangeException(
+          nameof(phoneticAlgorithm),
+          phoneticAlgorithm,
+          "Неизвестный фонетический алгоритм.")
+    };
+  }
 }
