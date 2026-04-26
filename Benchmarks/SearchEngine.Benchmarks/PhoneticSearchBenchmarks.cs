@@ -54,13 +54,21 @@ public class PhoneticSearchBenchmarks
     "Гоголадзе")]
   public string Query { get; set; } = string.Empty;
 
+  /// <summary>
+  /// Фонетический алгоритм для проверки.
+  /// </summary>
+  [Params(
+      PhoneticAlgorithmBenchMode.MetaPhone,
+      PhoneticAlgorithmBenchMode.Bmpm)]
+  public PhoneticAlgorithmBenchMode Algorithm { get; set; }
+
   [GlobalSetup]
   public void Setup()
   {
     SourceData[] source = CreateSource();
 
     _exactSearch = new Search<int>();
-    _phoneticSearch = new Search<int>(isPhoneticSearch: true);
+    _phoneticSearch = PhoneticSearchFactory.Create<int>(Algorithm);
 
     var exactPrepareResult = _exactSearch
       .PrepareIndexResult(source)
@@ -76,7 +84,7 @@ public class PhoneticSearchBenchmarks
       .GetResult();
 
     if (!phoneticPrepareResult.IsSuccess)
-      throw new InvalidOperationException("Не удалось подготовить фонетический индекс для бенчмарка.");
+      throw new InvalidOperationException($"Не удалось подготовить фонетический индекс для бенчмарка. Алгоритм: {Algorithm}.");
 
     _request = new SearchRequest
     {
@@ -85,7 +93,7 @@ public class PhoneticSearchBenchmarks
     };
 
     ValidateSearch(_exactSearch);
-    ValidateSearch(_phoneticSearch);
+    ValidateSearch(_phoneticSearch, Algorithm);
   }
 
   [Benchmark(Baseline = true)]
@@ -114,15 +122,17 @@ public class PhoneticSearchBenchmarks
     return source;
   }
 
-  private void ValidateSearch(Search<int> search)
+  /// <summary>
+  /// Проверяет, что поисковый движок готов выполнить запрос бенчмарка.
+  /// </summary>
+  /// <param name="search">Проверяемый поисковый движок.</param>
+  /// <param name="algorithm">Фонетический алгоритм, если проверяется фонетический поиск.</param>
+  private void ValidateSearch(Search<int> search, PhoneticAlgorithmBenchMode? algorithm = null)
   {
     var result = search.FindResult(Query, _request);
 
     if (!result.IsSuccess)
-    {
-      throw new InvalidOperationException(
-        $"Проверочный поиск завершился ошибкой: {result.Error!.Code} - {result.Error.Message}");
-    }
+      throw new InvalidOperationException($"Проверочный поиск завершился ошибкой. Алгоритм: {algorithm?.ToString() ?? "Exact"}. {result.Error!.Code} - {result.Error.Message}");
   }
 
   private sealed record SourceData(int Id, string Text) : ISourceData<int>;
