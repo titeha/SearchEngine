@@ -5,36 +5,35 @@
 /// </summary>
 internal static class BmpmRussianCyrillicApproxEncoder
 {
-  private const int _maxStackBufferLength = 256;
+  private const int MaxStackBufferLength = 256;
 
   /// <summary>
-  /// Возвращает точный и приближённый фонетические ключи для русского имени.
+  /// Возвращает приближённый фонетический ключ для русского имени.
   /// </summary>
   /// <param name="source">Исходное имя.</param>
   /// <returns>Набор фонетических ключей.</returns>
   public static IReadOnlyList<string> Encode(string? source)
   {
-    IReadOnlyList<string> exactKeys = BmpmRussianCyrillicEncoder.Encode(source);
+    string normalized = BmpmRussianCyrillicNormalizer.Normalize(source);
 
-    if (exactKeys.Count == 0)
+    if (normalized.Length == 0)
       return [];
 
-    string exactKey = exactKeys[0];
-    string approxKey = BuildApproxKey(exactKey);
+    string key = EncodeNormalized(normalized);
 
-    return string.Equals(exactKey, approxKey, StringComparison.Ordinal)
-        ? exactKeys
-        : [exactKey, approxKey];
+    return key.Length == 0
+        ? []
+        : [key];
   }
 
   /// <summary>
-  /// Строит приближённый ключ на основе точного BMPM-ключа.
+  /// Кодирует уже нормализованное имя в приближённый фонетический ключ.
   /// </summary>
-  /// <param name="source">Точный фонетический ключ.</param>
+  /// <param name="source">Нормализованное имя.</param>
   /// <returns>Приближённый фонетический ключ.</returns>
-  private static string BuildApproxKey(string source)
+  private static string EncodeNormalized(string source)
   {
-    Span<char> buffer = source.Length <= _maxStackBufferLength
+    Span<char> buffer = source.Length <= MaxStackBufferLength
         ? stackalloc char[source.Length]
         : new char[source.Length];
 
@@ -42,7 +41,8 @@ internal static class BmpmRussianCyrillicApproxEncoder
 
     for (int i = 0, count = source.Length; i < count; i++)
     {
-      char symbol = MapApproxSymbol(source[i]);
+      char symbol = BmpmRussianCyrillicEncoder.MapSymbol(source[i]);
+      symbol = MapApproxSymbol(symbol);
 
       if (position > 0 && buffer[position - 1] == symbol)
         continue;
@@ -57,17 +57,14 @@ internal static class BmpmRussianCyrillicApproxEncoder
   }
 
   /// <summary>
-  /// Переводит символ точного ключа в приближённую фонетическую группу.
+  /// Переводит символ базового ключа в приближённую фонетическую группу.
   /// </summary>
-  /// <param name="symbol">Символ точного ключа.</param>
+  /// <param name="symbol">Символ базового ключа.</param>
   /// <returns>Символ приближённого ключа.</returns>
-  private static char MapApproxSymbol(char symbol)
+  private static char MapApproxSymbol(char symbol) => symbol switch
   {
-    return symbol switch
-    {
-      'О' => 'А',
-      'Е' or 'Э' or 'Ы' => 'И',
-      _ => symbol
-    };
-  }
+    'О' => 'А',
+    'Е' or 'Э' or 'Ы' => 'И',
+    _ => symbol
+  };
 }

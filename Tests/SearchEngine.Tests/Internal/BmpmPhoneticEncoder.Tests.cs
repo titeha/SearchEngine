@@ -60,21 +60,19 @@ public class BmpmPhoneticEncoderTests
   }
 
   [Theory]
-  [InlineData("Петров", "ПЕТРОФ", "ПИТРАФ")]
-  [InlineData("Смирнов", "СМИРНОФ", "СМИРНАФ")]
-  [InlineData("Папондопуло", "ПАПОНТОПУЛО", "ПАПАНТАПУЛА")]
-  public void EncodeApprox_РусскаяКириллица_ДолженВернутьТочныйИПриближённыйКлюч(
+  [InlineData("Петров", "ПИТРАФ")]
+  [InlineData("Смирнов", "СМИРНАФ")]
+  [InlineData("Папондопуло", "ПАПАНТАПУЛА")]
+  public void EncodeApprox_РусскаяКириллица_ДолженВернутьПриближённыйКлюч(
     string source,
-    string exactKey,
-    string approxKey)
+    string expectedKey)
   {
     // Act
     IReadOnlyList<string> result = BmpmPhoneticEncoder.EncodeApprox(source);
 
     // Assert
-    Assert.Equal(2, result.Count);
-    Assert.Equal(exactKey, result[0]);
-    Assert.Equal(approxKey, result[1]);
+    string key = Assert.Single(result);
+    Assert.Equal(expectedKey, key);
   }
 
   [Theory]

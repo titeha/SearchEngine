@@ -18,22 +18,20 @@ public class BmpmRussianCyrillicApproxEncoderTests
   }
 
   [Theory]
-  [InlineData("Петров", "ПЕТРОФ", "ПИТРАФ")]
-  [InlineData("Смирнов", "СМИРНОФ", "СМИРНАФ")]
-  [InlineData("Семёнов", "СЕМЕНОФ", "СИМИНАФ")]
-  [InlineData("Папондопуло", "ПАПОНТОПУЛО", "ПАПАНТАПУЛА")]
-  public void Encode_РусскаяФамилия_ДолженВернутьТочныйИПриближённыйКлюч(
-      string source,
-      string exactKey,
-      string approxKey)
+  [InlineData("Петров", "ПИТРАФ")]
+  [InlineData("Смирнов", "СМИРНАФ")]
+  [InlineData("Семёнов", "СИМИНАФ")]
+  [InlineData("Папондопуло", "ПАПАНТАПУЛА")]
+  public void Encode_РусскаяФамилия_ДолженВернутьПриближённыйКлюч(
+    string source,
+    string expectedKey)
   {
     // Act
     IReadOnlyList<string> result = BmpmRussianCyrillicApproxEncoder.Encode(source);
 
     // Assert
-    Assert.Equal(2, result.Count);
-    Assert.Equal(exactKey, result[0]);
-    Assert.Equal(approxKey, result[1]);
+    string key = Assert.Single(result);
+    Assert.Equal(expectedKey, key);
   }
 
   [Theory]

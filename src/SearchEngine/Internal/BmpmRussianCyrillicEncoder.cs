@@ -72,21 +72,18 @@ internal static class BmpmRussianCyrillicEncoder
   /// </summary>
   /// <param name="symbol">Исходная буква.</param>
   /// <returns>Код фонетической группы.</returns>
-  private static char MapSymbol(char symbol)
+  internal static char MapSymbol(char symbol) => symbol switch
   {
-    return symbol switch
-    {
-      'Б' or 'П' => 'П',
-      'В' or 'Ф' => 'Ф',
-      'Г' or 'К' or 'Х' => 'К',
-      'Д' or 'Т' => 'Т',
-      'Ж' or 'Ш' or 'Щ' or 'Ч' => 'Ш',
-      'З' or 'С' or 'Ц' => 'С',
-      'Й' or 'И' or 'Ы' => 'И',
-      'Ю' or 'У' => 'У',
-      'Я' or 'А' => 'А',
-      'Э' or 'Е' => 'Е',
-      _ => symbol
-    };
-  }
+    'Б' or 'П' => 'П',
+    'В' or 'Ф' => 'Ф',
+    'Г' or 'К' or 'Х' => 'К',
+    'Д' or 'Т' => 'Т',
+    'Ж' or 'Ш' or 'Щ' or 'Ч' => 'Ш',
+    'З' or 'С' or 'Ц' => 'С',
+    'Й' or 'И' or 'Ы' => 'И',
+    'Ю' or 'У' => 'У',
+    'Я' or 'А' => 'А',
+    'Э' or 'Е' => 'Е',
+    _ => symbol
+  };
 }
