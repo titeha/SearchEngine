@@ -31,7 +31,8 @@ public class UniquePhoneticTermsBenchmarks
   /// </summary>
   [Params(
       PhoneticAlgorithmBenchMode.MetaPhone,
-      PhoneticAlgorithmBenchMode.Bmpm)]
+      PhoneticAlgorithmBenchMode.Bmpm,
+      PhoneticAlgorithmBenchMode.BmpmApprox)]
   public PhoneticAlgorithmBenchMode Algorithm { get; set; }
 
   [GlobalSetup]
