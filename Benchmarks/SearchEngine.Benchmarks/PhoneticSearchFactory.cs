@@ -16,11 +16,10 @@ internal static class PhoneticSearchFactory
   {
     return mode switch
     {
-      PhoneticAlgorithmBenchMode.MetaPhone => new Search<T>(isPhoneticSearch: true),
+      PhoneticAlgorithmBenchMode.MetaPhone => new Search<T>(isPhoneticSearch: true, phoneticEncoder: Search<T>.PhoneticSearch.MetaPhone),
       PhoneticAlgorithmBenchMode.Bmpm => new Search<T>(isPhoneticSearch: true, phoneticKeyEncoder: BmpmPhoneticEncoder.Encode),
       PhoneticAlgorithmBenchMode.BmpmApprox => new Search<T>(isPhoneticSearch: true, phoneticKeyEncoder: BmpmPhoneticEncoder.EncodeApprox),
-      _ => throw new InvalidOperationException(
-          $"Неизвестный фонетический алгоритм: {mode}.")
+      _ => throw new InvalidOperationException($"Неизвестный фонетический алгоритм: {mode}.")
     };
   }
 }

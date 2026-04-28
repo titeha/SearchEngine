@@ -5,6 +5,11 @@ namespace SearchEngine;
 public partial class Search<T> where T : struct
 {
   /// <summary>
+  /// Минимальная длина фонетического ключа для префиксного поиска.
+  /// </summary>
+  private const int _minPhoneticPrefixLength = 7;
+
+  /// <summary>
   /// Перестраивает индекс фонетических кандидатов для поиска на расстоянии одной правки.
   /// </summary>
   private void RebuildPhoneticCandidateIndex()
@@ -86,11 +91,14 @@ public partial class Search<T> where T : struct
     if (_searchIndex is null || _searchIndex.Count == 0)
       yield break;
 
+    if (searchValue.Length < _minPhoneticPrefixLength)
+      yield break;
+
     IList<string> keys = _searchIndex.Keys;
 
     int index = FindFirstKeyGreaterOrEqual(
-      keys,
-      searchValue);
+        keys,
+        searchValue);
 
     for (; index < keys.Count; index++)
     {
