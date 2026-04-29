@@ -53,19 +53,6 @@ public class DefaultPhoneticSearchTests
   }
 
   [Fact]
-  public void EncodePhonetic_РусскаяЛатиница_ДолженИспользоватьBmpmApprox()
-  {
-    // Arrange
-    Search<int> sut = new(isPhoneticSearch: true);
-
-    // Act
-    string result = sut.EncodePhonetic("Ivanov");
-
-    // Assert
-    Assert.Equal("ИФАНАФ", result);
-  }
-
-  [Fact]
   public async Task FindResult_РусскаяЛатиница_ДолженИскатьФамилиюВКириллическомИндексе()
   {
     // Arrange
@@ -93,6 +80,40 @@ public class DefaultPhoneticSearchTests
     Assert.True(result.IsSuccess);
     Assert.True(ContainsId(result.Value!, 1));
     Assert.False(ContainsId(result.Value!, 2));
+  }
+
+  [Theory]
+  [InlineData("Smith")]
+  [InlineData("Johnson")]
+  [InlineData("Williams")]
+  public void EncodePhonetic_НерусскаяЛатиница_ДолженВернутьПустойКлюч(string source)
+  {
+    // Arrange
+    Search<int> sut = new(isPhoneticSearch: true);
+
+    // Act
+    string result = sut.EncodePhonetic(source);
+
+    // Assert
+    Assert.Equal(string.Empty, result);
+  }
+
+  [Theory]
+  [InlineData("Ivanov", "ИФАНАФ")]
+  [InlineData("Petrova", "ПИТРАФА")]
+  [InlineData("Shcherbakov", "ШИРПАКАФ")]
+  public void EncodePhonetic_РусскаяЛатиница_ДолженИспользоватьBmpmApprox(
+    string source,
+    string expected)
+  {
+    // Arrange
+    Search<int> sut = new(isPhoneticSearch: true);
+
+    // Act
+    string result = sut.EncodePhonetic(source);
+
+    // Assert
+    Assert.Equal(expected, result);
   }
 
   private static bool ContainsId(SearchResultList<int> result, int id)

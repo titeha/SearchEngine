@@ -8,6 +8,15 @@ public class TestSearch<T> : Search<T> where T : struct
 
   public TestSearch(bool isPhoneticSearch) : base(isPhoneticSearch) { }
 
+  /// <summary>
+  /// Создаёт тестовый поисковый движок с возможностью подменить фонетический кодировщик.
+  /// </summary>
+  /// <param name="isPhoneticSearch">
+  /// <see langword="true"/>, если нужно использовать фонетический поиск.
+  /// </param>
+  /// <param name="phoneticKeyEncoder">Кодировщик фонетических ключей.</param>
+  public TestSearch(bool isPhoneticSearch, Func<string, IReadOnlyList<string>> phoneticKeyEncoder) : base(isPhoneticSearch, phoneticKeyEncoder) { }
+
   public SortedList<string, IndexList<T>> SearchIndex => _searchIndex!;
 
   public SortedSet<string> SearchList => _searchList;

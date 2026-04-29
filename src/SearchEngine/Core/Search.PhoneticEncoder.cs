@@ -77,14 +77,7 @@ public partial class Search<T> where T : struct
   /// </summary>
   /// <param name="source">Исходная строка.</param>
   /// <returns>Набор фонетических ключей.</returns>
-  private static IReadOnlyList<string> EncodeDefaultPhoneticKeys(string source)
-  {
-    IReadOnlyList<string> keys = BmpmPhoneticEncoder.EncodeApprox(source);
-
-    return keys.Count == 0
-        ? EncodeSinglePhoneticKey(PhoneticSearch.MetaPhone, source)
-        : keys;
-  }
+  private static IReadOnlyList<string> EncodeDefaultPhoneticKeys(string source) => BmpmPhoneticEncoder.EncodeApprox(source);
 
   /// <summary>
   /// Оборачивает кодировщик одного ключа в кодировщик набора ключей.

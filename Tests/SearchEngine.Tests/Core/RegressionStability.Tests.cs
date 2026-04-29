@@ -54,7 +54,7 @@ public class RegressionStabilityTests
   [Fact]
   public void FindResult_ВФонетическомРежиме_ДолженСохранятьBucketСДистанциейБольшеНуля()
   {
-    TestSearch<int> sut = new(true);
+    TestSearch<int> sut = new(isPhoneticSearch: true, phoneticKeyEncoder: EncodeRegressionPhoneticKey);
 
     sut.SearchDisassembling("abc");
     string query = Assert.Single(sut.SearchList);
@@ -74,6 +74,19 @@ public class RegressionStabilityTests
     Assert.True(result.IsSuccess);
     Assert.True(result.Value!.IsHasIndex);
     Assert.True(ContainsIdAtDistance(result.Value, expectedDistance, 5));
+  }
+
+  /// <summary>
+  /// Возвращает стабильный фонетический ключ для regression-тестов.
+  /// </summary>
+  /// <param name="source">Исходная строка.</param>
+  /// <returns>Набор фонетических ключей.</returns>
+  private static IReadOnlyList<string> EncodeRegressionPhoneticKey(string source)
+  {
+    if (string.IsNullOrWhiteSpace(source))
+      return [];
+
+    return [source.ToUpperInvariant()];
   }
 
   private static string CreatePhoneticTargetAtDistanceOne(string query)
