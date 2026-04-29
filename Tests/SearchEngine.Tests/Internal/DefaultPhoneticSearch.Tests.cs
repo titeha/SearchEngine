@@ -53,7 +53,7 @@ public class DefaultPhoneticSearchTests
   }
 
   [Fact]
-  public void EncodePhonetic_Латиница_ДолженИспользоватьРезервныйКодировщик()
+  public void EncodePhonetic_РусскаяЛатиница_ДолженИспользоватьBmpmApprox()
   {
     // Arrange
     Search<int> sut = new(isPhoneticSearch: true);
@@ -62,7 +62,37 @@ public class DefaultPhoneticSearchTests
     string result = sut.EncodePhonetic("Ivanov");
 
     // Assert
-    Assert.False(string.IsNullOrWhiteSpace(result));
+    Assert.Equal("ИФАНАФ", result);
+  }
+
+  [Fact]
+  public async Task FindResult_РусскаяЛатиница_ДолженИскатьФамилиюВКириллическомИндексе()
+  {
+    // Arrange
+    Search<int> sut = new(isPhoneticSearch: true);
+
+    Test<int>[] source =
+    [
+        new() { Id = 1, Text = "Иванов" },
+        new() { Id = 2, Text = "Петров" }
+    ];
+
+    var prepareResult = await sut.PrepareIndexResult(source);
+    Assert.True(prepareResult.IsSuccess);
+
+    SearchRequest request = new()
+    {
+      MatchMode = QueryMatchMode.AnyTerm,
+      SearchLocation = SearchLocation.BeginWord
+    };
+
+    // Act
+    var result = sut.FindResult("Ivanov", request);
+
+    // Assert
+    Assert.True(result.IsSuccess);
+    Assert.True(ContainsId(result.Value!, 1));
+    Assert.False(ContainsId(result.Value!, 2));
   }
 
   private static bool ContainsId(SearchResultList<int> result, int id)

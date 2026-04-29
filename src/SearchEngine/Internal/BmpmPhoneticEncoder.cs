@@ -17,7 +17,7 @@ internal static class BmpmPhoneticEncoder
     return language switch
     {
       BmpmNameLanguage.RussianCyrillic => BmpmRussianCyrillicEncoder.Encode(source),
-      BmpmNameLanguage.RussianLatin => [],
+      BmpmNameLanguage.RussianLatin => BmpmRussianLatinEncoder.Encode(source),
       _ => []
     };
   }
@@ -34,7 +34,7 @@ internal static class BmpmPhoneticEncoder
     return language switch
     {
       BmpmNameLanguage.RussianCyrillic => BmpmRussianCyrillicApproxEncoder.Encode(source),
-      BmpmNameLanguage.RussianLatin => [],
+      BmpmNameLanguage.RussianLatin => BmpmRussianLatinEncoder.EncodeApprox(source),
       _ => []
     };
   }

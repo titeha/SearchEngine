@@ -33,16 +33,35 @@ public class BmpmPhoneticEncoderTests
   }
 
   [Theory]
-  [InlineData("Ivanov")]
-  [InlineData("Petrova")]
-  [InlineData("Shcherbakov")]
-  public void Encode_РусскаяЛатиница_ПокаДолженВернутьПустойНабор(string source)
+  [InlineData("Ivanov", "ИФАНОФ")]
+  [InlineData("Petrova", "ПЕТРОФА")]
+  [InlineData("Shcherbakov", "ШЕРПАКОФ")]
+  public void Encode_РусскаяЛатиница_ДолженВернутьФонетическийКлюч(
+    string source,
+    string expected)
   {
     // Act
     IReadOnlyList<string> result = BmpmPhoneticEncoder.Encode(source);
 
     // Assert
-    Assert.Empty(result);
+    string key = Assert.Single(result);
+    Assert.Equal(expected, key);
+  }
+
+  [Theory]
+  [InlineData("Ivanov", "ИФАНАФ")]
+  [InlineData("Petrova", "ПИТРАФА")]
+  [InlineData("Shcherbakov", "ШИРПАКАФ")]
+  public void EncodeApprox_РусскаяЛатиница_ДолженВернутьПриближённыйФонетическийКлюч(
+    string source,
+    string expected)
+  {
+    // Act
+    IReadOnlyList<string> result = BmpmPhoneticEncoder.EncodeApprox(source);
+
+    // Assert
+    string key = Assert.Single(result);
+    Assert.Equal(expected, key);
   }
 
   [Theory]
@@ -76,10 +95,10 @@ public class BmpmPhoneticEncoderTests
   }
 
   [Theory]
-  [InlineData("Ivanov")]
-  [InlineData("Petrova")]
-  [InlineData("Shcherbakov")]
   [InlineData("Smith")]
+  [InlineData("Johnson")]
+  [InlineData("Иванов Smith")]
+  [InlineData("12345")]
   public void EncodeApprox_НеподдерживаемоеИмя_ДолженВернутьПустойНабор(string source)
   {
     // Act
