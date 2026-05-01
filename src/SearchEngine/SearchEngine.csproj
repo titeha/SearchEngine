@@ -19,6 +19,9 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageReleaseNotes>
+      Фонетический поиск по умолчанию переведён на BMPM-кодировщик с приближённой обработкой русских гласных. Добавлена поддержка русских фамилий в латинской транслитерации.
+    </PackageReleaseNotes>
 
     <PackageProjectUrl>https://github.com/titeha/SearchEngine</PackageProjectUrl>
     <RepositoryUrl>https://github.com/titeha/SearchEngine</RepositoryUrl>
