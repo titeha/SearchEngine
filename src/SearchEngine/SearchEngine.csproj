@@ -10,7 +10,7 @@
 
     <Authors>Artemy Sobolev</Authors>
     <Copyright>Artemy Sobolev</Copyright>
-    <Version>2.0.0</Version>
+    <Version>2.0.1</Version>
 
     <PackageId>Ti-Soft.SearchEngine</PackageId>
     <Title>Ti-Soft.SearchEngine</Title>
@@ -20,11 +20,9 @@
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PackageReleaseNotes>
-      Версия 2.0.0 переводит основной API библиотеки на Result-based контракт: PrepareIndexResult(...) и FindResult(...).
-      Нативный API без явного результата выполнения исключён из production-пути.
-      Фонетический поиск по умолчанию переведён на BMPM-подобный кодировщик с приближённой обработкой русских гласных.
-      Добавлена поддержка русских фамилий в латинской транслитерации.
-      MetaPhone исключён из production-пути и оставлен только для сравнительных бенчмарков.
+      Версия 2.0.1 исправляет распознавание русских фамилий в латинской записи для фонетического поиска.
+      Добавлена поддержка вариантов Papandopulo и Papondopulo для поиска фамилии Папандопуло.
+      Публичный API не изменён.
     </PackageReleaseNotes>
 
     <PackageProjectUrl>https://github.com/titeha/SearchEngine</PackageProjectUrl>

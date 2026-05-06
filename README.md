@@ -70,7 +70,7 @@
 После публикации пакета:
 
 ```bash
-dotnet add package Ti-Soft.SearchEngine --version 2.0.0
+dotnet add package Ti-Soft.SearchEngine --version 2.0.1
 ```
 
 ## Быстрый старт
@@ -134,6 +134,19 @@ foreach (var bucket in result.Value.Items)
     }
 }
 ```
+
+## Что нового в 2.0.1
+
+Версия `2.0.1` — patch-релиз.
+
+Исправлено распознавание русских фамилий в латинской записи для фонетического поиска.
+
+Добавлены regression-тесты для вариантов:
+
+- `Papandopulo`;
+- `Papondopulo`.
+
+Оба варианта теперь корректно находятся при поиске по фамилии `Папандопуло`.
 
 ## Что нового в 2.0.0
 
