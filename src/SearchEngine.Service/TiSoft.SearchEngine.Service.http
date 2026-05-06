@@ -62,7 +62,42 @@ POST {{host}}/v1/search
 Content-Type: application/json
 
 {
-  "query": "Иванов Сергей",
+  "query": "Ivanov",
+  "matchMode": "AllTerms",
+  "searchType": "ExactSearch",
+  "searchLocation": "BeginWord"
+}
+
+###
+
+POST {{host}}/v1/index
+Content-Type: application/json
+
+{
+  "isPhoneticSearch": true,
+  "documents": [
+    {
+      "id": 1,
+      "text": "Иванов Сергей Петрович"
+    },
+    {
+      "id": 2,
+      "text": "Папандопуло Александр"
+    },
+    {
+      "id": 3,
+      "text": "Красный велосипед"
+    }
+  ]
+}
+
+###
+
+POST {{host}}/v1/search
+Content-Type: application/json
+
+{
+  "query": "Ivanov",
   "matchMode": "AllTerms",
   "searchType": "ExactSearch",
   "searchLocation": "BeginWord"
@@ -74,8 +109,8 @@ POST {{host}}/v1/search
 Content-Type: application/json
 
 {
-  "query": "Иванов велосипед",
-  "matchMode": "AnyTerm",
+  "query": "Papandopulo",
+  "matchMode": "AllTerms",
   "searchType": "ExactSearch",
   "searchLocation": "BeginWord"
 }
@@ -86,44 +121,8 @@ POST {{host}}/v1/search
 Content-Type: application/json
 
 {
-  "query": "Иванов"
-}
-
-###
-
-POST {{host}}/v1/search
-Content-Type: application/json
-
-{
-  "query": "Иваноы",
+  "query": "Папандопула",
   "matchMode": "AllTerms",
-  "searchType": "NearSearch",
-  "searchLocation": "BeginWord",
-  "acceptableCountMisprint": 1
-}
-
-###
-
-POST {{host}}/v1/search
-Content-Type: application/json
-
-{
-  "query": "веласипед",
-  "matchMode": "AllTerms",
-  "searchType": "NearSearch",
-  "searchLocation": "BeginWord",
-  "precisionSearch": 70
-}
-
-###
-
-POST {{host}}/v1/search
-Content-Type: application/json
-
-{
-  "query": "Иваноф",
-  "matchMode": "AllTerms",
-  "searchType": "NearSearch",
-  "searchLocation": "BeginWord",
-  "acceptableCountMisprint": 2
+  "searchType": "ExactSearch",
+  "searchLocation": "BeginWord"
 }
