@@ -92,6 +92,79 @@ public sealed class SearchIndexStore
   }
 
   /// <summary>
+  /// Выполняет простой поиск по текущему индексу.
+  /// </summary>
+  /// <param name="request">Запрос на выполнение поиска.</param>
+  /// <param name="error">Ошибка поиска, если операция завершилась неуспешно.</param>
+  /// <returns>Ответ поиска или <see langword="null"/>, если поиск выполнить не удалось.</returns>
+  public SearchQueryResponse? Search(SearchQueryRequest request, out ApiError? error)
+  {
+    if (string.IsNullOrWhiteSpace(request.Query))
+    {
+      error = new ApiError
+      {
+        Code = "EmptyQuery",
+        Message = "Поисковая строка пуста."
+      };
+
+      return null;
+    }
+
+    Search<int>? search;
+
+    lock (_lock)
+    {
+      search = _search;
+    }
+
+    if (search is null)
+    {
+      error = new ApiError
+      {
+        Code = "IndexNotBuilt",
+        Message = "Поисковый индекс ещё не построен."
+      };
+
+      return null;
+    }
+
+    SearchRequest searchRequest = new()
+    {
+      MatchMode = QueryMatchMode.AllTerms,
+      SearchType = SearchType.ExactSearch,
+      SearchLocation = SearchLocation.BeginWord
+    };
+
+    var searchResult = search.FindResult(request.Query, searchRequest);
+
+    if (searchResult.IsFailure)
+    {
+      error = new ApiError
+      {
+        Code = searchResult.Error!.Code.ToString(),
+        Message = searchResult.Error.Message
+      };
+
+      return null;
+    }
+
+    SearchResultBucket[] items = [.. searchResult.Value!.Items
+        .Select(item => new SearchResultBucket
+        {
+          Key = item.Key,
+          Ids = item.Value.Items.ToArray()
+        })];
+
+    error = null;
+
+    return new SearchQueryResponse
+    {
+      IsHasIndex = searchResult.Value.IsHasIndex,
+      Items = items
+    };
+  }
+
+  /// <summary>
   /// Документ, передаваемый в библиотеку SearchEngine для индексации.
   /// </summary>
   /// <param name="Id">Идентификатор документа.</param>

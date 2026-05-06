@@ -23,6 +23,8 @@ app.MapGet("/v1/index", (SearchIndexStore store) => Results.Ok(store.GetStatus()
 
 app.MapPost("/v1/index", BuildIndexAsync);
 
+app.MapPost("/v1/search", Search);
+
 app.MapPost("/v1/index/validate", ValidateIndexRequest);
 
 app.Run();
@@ -66,4 +68,14 @@ static async Task<IResult> BuildIndexAsync(IndexBuildRequest request, SearchInde
     return Results.BadRequest(error);
 
   return Results.Ok(store.GetStatus());
+}
+
+static IResult Search(SearchQueryRequest request, SearchIndexStore store)
+{
+  SearchQueryResponse? response = store.Search(request, out ApiError? error);
+
+  if (error is not null)
+    return Results.BadRequest(error);
+
+  return Results.Ok(response);
 }

@@ -85,6 +85,49 @@ public sealed record IndexStatusResponse
 }
 
 /// <summary>
+/// Запрос на выполнение поиска по текущему индексу.
+/// </summary>
+public sealed record SearchQueryRequest
+{
+  /// <summary>
+  /// Получает поисковую строку.
+  /// </summary>
+  public string? Query { get; init; }
+}
+
+/// <summary>
+/// Ответ на поисковый запрос.
+/// </summary>
+public sealed record SearchQueryResponse
+{
+  /// <summary>
+  /// Получает признак наличия найденных документов.
+  /// </summary>
+  public bool IsHasIndex { get; init; }
+
+  /// <summary>
+  /// Получает найденные документы, сгруппированные по ключу результата.
+  /// </summary>
+  public IReadOnlyList<SearchResultBucket> Items { get; init; } = [];
+}
+
+/// <summary>
+/// Группа найденных документов с одинаковым ключом результата.
+/// </summary>
+public sealed record SearchResultBucket
+{
+  /// <summary>
+  /// Получает ключ группы результата.
+  /// </summary>
+  public int Key { get; init; }
+
+  /// <summary>
+  /// Получает идентификаторы найденных документов.
+  /// </summary>
+  public IReadOnlyList<int> Ids { get; init; } = [];
+}
+
+/// <summary>
 /// Ошибка API сервиса.
 /// </summary>
 public sealed record ApiError

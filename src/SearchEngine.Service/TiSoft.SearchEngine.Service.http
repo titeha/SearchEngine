@@ -39,7 +39,7 @@ POST {{host}}/v1/index
 Content-Type: application/json
 
 {
-  "isPhoneticSearch": true,
+  "isPhoneticSearch": false,
   "documents": [
     {
       "id": 1,
@@ -54,4 +54,13 @@ Content-Type: application/json
       "text": "Красный велосипед"
     }
   ]
+}
+
+###
+
+POST {{host}}/v1/search
+Content-Type: application/json
+
+{
+  "query": "Иванов"
 }
