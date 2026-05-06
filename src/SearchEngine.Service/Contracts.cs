@@ -108,6 +108,16 @@ public sealed record SearchQueryRequest
   /// Получает место поиска внутри слова.
   /// </summary>
   public SearchLocation SearchLocation { get; init; } = SearchLocation.BeginWord;
+
+  /// <summary>
+  /// Получает точность нечёткого поиска в процентах.
+  /// </summary>
+  public int? PrecisionSearch { get; init; }
+
+  /// <summary>
+  /// Получает допустимое количество опечаток.
+  /// </summary>
+  public int? AcceptableCountMisprint { get; init; }
 }
 
 /// <summary>

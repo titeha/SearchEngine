@@ -132,7 +132,9 @@ public sealed class SearchIndexStore
     {
       MatchMode = request.MatchMode,
       SearchType = request.SearchType,
-      SearchLocation = request.SearchLocation
+      SearchLocation = request.SearchLocation,
+      PrecisionSearch = request.PrecisionSearch,
+      AcceptableCountMisprint = request.AcceptableCountMisprint
     };
 
     var searchResult = search.FindResult(request.Query, searchRequest);
