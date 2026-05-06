@@ -131,8 +131,8 @@ public sealed class SearchIndexStore
     SearchRequest searchRequest = new()
     {
       MatchMode = QueryMatchMode.AllTerms,
-      SearchType = SearchType.ExactSearch,
-      SearchLocation = SearchLocation.BeginWord
+      SearchType = request.SearchType,
+      SearchLocation = request.SearchLocation
     };
 
     var searchResult = search.FindResult(request.Query, searchRequest);

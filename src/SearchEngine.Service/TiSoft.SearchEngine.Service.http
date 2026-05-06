@@ -64,3 +64,25 @@ Content-Type: application/json
 {
   "query": "Иванов"
 }
+
+###
+
+POST {{host}}/v1/search
+Content-Type: application/json
+
+{
+  "query": "лосип",
+  "searchType": "ExactSearch",
+  "searchLocation": "InWord"
+}
+
+###
+
+POST {{host}}/v1/search
+Content-Type: application/json
+
+{
+  "query": "Иван",
+  "searchType": "ExactSearch",
+  "searchLocation": "BeginWord"
+}

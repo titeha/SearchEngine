@@ -1,7 +1,11 @@
+using System.Text.Json.Serialization;
+
 using SearchEngine;
 using SearchEngine.Service;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 builder.Services.AddSingleton<SearchIndexStore>();
 

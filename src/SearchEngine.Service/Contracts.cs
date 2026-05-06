@@ -93,6 +93,16 @@ public sealed record SearchQueryRequest
   /// Получает поисковую строку.
   /// </summary>
   public string? Query { get; init; }
+
+  /// <summary>
+  /// Получает тип поиска.
+  /// </summary>
+  public SearchType SearchType { get; init; } = SearchType.ExactSearch;
+
+  /// <summary>
+  /// Получает место поиска внутри слова.
+  /// </summary>
+  public SearchLocation SearchLocation { get; init; } = SearchLocation.BeginWord;
 }
 
 /// <summary>
