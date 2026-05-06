@@ -14,13 +14,17 @@
 
     <PackageId>Ti-Soft.SearchEngine</PackageId>
     <Title>Ti-Soft.SearchEngine</Title>
-    <Description>Библиотека для организации нечёткого и фонетического поиска по строкам БД на русском языке.</Description>
-    <PackageTags>search;fuzzy-search;phonetic-search;database;db;ru;typo-tolerance</PackageTags>
+    <Description>Лёгкая библиотека для нечёткого и фонетического поиска по строковым полям БД на русском языке с Result-based API.</Description>
+    <PackageTags>search;fuzzy-search;phonetic-search;database;db;ru;russian;cyrillic;transliteration;typo-tolerance;result</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PackageReleaseNotes>
-      Фонетический поиск по умолчанию переведён на BMPM-кодировщик с приближённой обработкой русских гласных. Добавлена поддержка русских фамилий в латинской транслитерации.
+      Версия 2.0.0 переводит основной API библиотеки на Result-based контракт: PrepareIndexResult(...) и FindResult(...).
+      Нативный API без явного результата выполнения исключён из production-пути.
+      Фонетический поиск по умолчанию переведён на BMPM-подобный кодировщик с приближённой обработкой русских гласных.
+      Добавлена поддержка русских фамилий в латинской транслитерации.
+      MetaPhone исключён из production-пути и оставлен только для сравнительных бенчмарков.
     </PackageReleaseNotes>
 
     <PackageProjectUrl>https://github.com/titeha/SearchEngine</PackageProjectUrl>
