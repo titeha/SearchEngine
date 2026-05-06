@@ -102,6 +102,41 @@ public class BmpmPhoneticSearchTests
     Assert.False(ContainsId(result.Value!, 3));
   }
 
+  [Theory]
+  [InlineData("Papandopulo")]
+  [InlineData("Papondopulo")]
+  public async Task FindResult_ФонетическийПоиск_ДолженИскатьПапандопулоВЛатинскойЗаписи(
+    string query)
+  {
+    // Arrange
+    Search<int> sut = new(isPhoneticSearch: true);
+
+    Test<int>[] source =
+    [
+        new() { Id = 1, Text = "Папандопуло Александр" },
+        new() { Id = 2, Text = "Иванов Сергей" }
+    ];
+
+    var prepareResult = await sut.PrepareIndexResult(source);
+
+    Assert.True(prepareResult.IsSuccess);
+
+    SearchRequest request = new()
+    {
+      MatchMode = QueryMatchMode.AllTerms,
+      SearchType = SearchType.ExactSearch,
+      SearchLocation = SearchLocation.BeginWord
+    };
+
+    // Act
+    var result = sut.FindResult(query, request);
+
+    // Assert
+    Assert.True(result.IsSuccess);
+    Assert.True(ContainsId(result.Value!, 1));
+    Assert.False(ContainsId(result.Value!, 2));
+  }
+
   private static bool ContainsId(SearchResultList<int> result, int id)
   {
     foreach (var bucket in result.Items)

@@ -22,6 +22,8 @@ public class BmpmNameLanguageDetectorTests
   [InlineData("Petrova")]
   [InlineData("Shcherbakov")]
   [InlineData("Tchaikovsky")]
+  [InlineData("Papandopulo")]
+  [InlineData("Papondopulo")]
   public void Detect_РусскаяЛатиница_ДолженОпределитьРусскуюЛатиницу(string source)
   {
     // Act

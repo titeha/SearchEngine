@@ -7,35 +7,37 @@ internal static class BmpmNameLanguageDetector
 {
   private static readonly string[] _russianLatinMarkers =
   [
-      "SHCH",
-        "SCH",
-        "ZH",
-        "KH",
-        "TS",
-        "CH",
-        "SH",
-        "YU",
-        "YA",
-        "YO",
-        "YE"
+    "SHCH",
+    "SCH",
+    "ZH",
+    "KH",
+    "TS",
+    "CH",
+    "SH",
+    "YU",
+    "YA",
+    "YO",
+    "YE"
   ];
 
   private static readonly string[] _russianLatinEndings =
   [
-      "OV",
-        "EV",
-        "IN",
-        "YN",
-        "OVA",
-        "EVA",
-        "INA",
-        "YNA",
-        "SKY",
-        "SKIY",
-        "SKAYA",
-        "SKAIA",
-        "TSKY",
-        "TSKIY"
+    "OV",
+    "EV",
+    "IN",
+    "YN",
+    "OVA",
+    "EVA",
+    "INA",
+    "YNA",
+    "SKY",
+    "SKIY",
+    "SKAYA",
+    "SKAIA",
+    "TSKY",
+    "TSKIY",
+    "OPULO",
+    "OPULOS"
   ];
 
   /// <summary>
