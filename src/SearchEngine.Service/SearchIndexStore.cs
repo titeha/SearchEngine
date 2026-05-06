@@ -130,7 +130,7 @@ public sealed class SearchIndexStore
 
     SearchRequest searchRequest = new()
     {
-      MatchMode = QueryMatchMode.AllTerms,
+      MatchMode = request.MatchMode,
       SearchType = request.SearchType,
       SearchLocation = request.SearchLocation
     };

@@ -95,6 +95,11 @@ public sealed record SearchQueryRequest
   public string? Query { get; init; }
 
   /// <summary>
+  /// Получает режим объединения результатов по словам поискового запроса.
+  /// </summary>
+  public QueryMatchMode MatchMode { get; init; } = QueryMatchMode.AllTerms;
+
+  /// <summary>
   /// Получает тип поиска.
   /// </summary>
   public SearchType SearchType { get; init; } = SearchType.ExactSearch;

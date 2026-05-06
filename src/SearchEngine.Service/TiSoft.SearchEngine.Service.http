@@ -62,27 +62,29 @@ POST {{host}}/v1/search
 Content-Type: application/json
 
 {
-  "query": "Иванов"
-}
-
-###
-
-POST {{host}}/v1/search
-Content-Type: application/json
-
-{
-  "query": "лосип",
-  "searchType": "ExactSearch",
-  "searchLocation": "InWord"
-}
-
-###
-
-POST {{host}}/v1/search
-Content-Type: application/json
-
-{
-  "query": "Иван",
+  "query": "Иванов Сергей",
+  "matchMode": "AllTerms",
   "searchType": "ExactSearch",
   "searchLocation": "BeginWord"
+}
+
+###
+
+POST {{host}}/v1/search
+Content-Type: application/json
+
+{
+  "query": "Иванов велосипед",
+  "matchMode": "AnyTerm",
+  "searchType": "ExactSearch",
+  "searchLocation": "BeginWord"
+}
+
+    ###
+
+POST {{host}}/v1/search
+Content-Type: application/json
+
+{
+  "query": "Иванов"
 }
