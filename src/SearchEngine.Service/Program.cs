@@ -21,6 +21,8 @@ app.MapGet("/v1/info", () => Results.Ok(new
 
 app.MapGet("/v1/index", (SearchIndexStore store) => Results.Ok(store.GetStatus()));
 
+app.MapPost("/v1/index", BuildIndexAsync);
+
 app.MapPost("/v1/index/validate", ValidateIndexRequest);
 
 app.Run();
@@ -54,4 +56,14 @@ static IResult ValidateIndexRequest(IndexBuildRequest request)
     SearchableDocumentCount = searchableDocumentCount,
     IsPhoneticSearch = request.IsPhoneticSearch
   });
+}
+
+static async Task<IResult> BuildIndexAsync(IndexBuildRequest request, SearchIndexStore store)
+{
+  ApiError? error = await store.BuildAsync(request);
+
+  if (error is not null)
+    return Results.BadRequest(error);
+
+  return Results.Ok(store.GetStatus());
 }

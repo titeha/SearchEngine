@@ -32,3 +32,26 @@ Content-Type: application/json
     }
   ]
 }
+
+###
+
+POST {{host}}/v1/index
+Content-Type: application/json
+
+{
+  "isPhoneticSearch": true,
+  "documents": [
+    {
+      "id": 1,
+      "text": "Иванов Сергей Петрович"
+    },
+    {
+      "id": 2,
+      "text": "Папандопуло Александр"
+    },
+    {
+      "id": 3,
+      "text": "Красный велосипед"
+    }
+  ]
+}

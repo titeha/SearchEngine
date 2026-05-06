@@ -1,12 +1,14 @@
 ﻿namespace SearchEngine.Service;
 
 /// <summary>
-/// Хранит текущее состояние поискового индекса сервиса.
+/// Хранит текущий поисковый индекс сервиса.
 /// </summary>
 public sealed class SearchIndexStore
 {
   private readonly object _lock = new();
+  private readonly SemaphoreSlim _buildLock = new(1, 1);
 
+  private Search<int>? _search;
   private IndexStatusResponse _status = new();
 
   /// <summary>
@@ -17,7 +19,82 @@ public sealed class SearchIndexStore
   {
     lock (_lock)
     {
-      return _status;
+      return _status with
+      {
+        IsReady = _search is not null
+      };
     }
   }
+
+  /// <summary>
+  /// Полностью перестраивает поисковый индекс.
+  /// </summary>
+  /// <param name="request">Запрос на построение индекса.</param>
+  /// <returns>Ошибка построения индекса или <see langword="null"/>, если индекс построен успешно.</returns>
+  public async Task<ApiError?> BuildAsync(IndexBuildRequest request)
+  {
+    if (request.Documents is null || request.Documents.Count == 0)
+      return new ApiError
+      {
+        Code = "EmptyDocuments",
+        Message = "Не переданы документы для индексации."
+      };
+
+    IndexDocument[] documents = [.. request.Documents
+        .Where(document => !string.IsNullOrWhiteSpace(document?.Text))
+        .Select(document => new IndexDocument(document!.Id, document.Text!))];
+
+    if (documents.Length == 0)
+      return new ApiError
+      {
+        Code = "EmptySearchableDocuments",
+        Message = "Документы не содержат пригодного для индексации текста."
+      };
+
+    await _buildLock.WaitAsync().ConfigureAwait(false);
+
+    try
+    {
+      Search<int> search = new(request.IsPhoneticSearch);
+
+      var prepareResult = await search
+          .PrepareIndexResult(documents)
+          .ConfigureAwait(false);
+
+      if (prepareResult.IsFailure)
+        return new ApiError
+        {
+          Code = prepareResult.Error!.Code.ToString(),
+          Message = prepareResult.Error.Message
+        };
+
+      DateTimeOffset createdAtUtc = DateTimeOffset.UtcNow;
+
+      lock (_lock)
+      {
+        _search = search;
+        _status = new IndexStatusResponse
+        {
+          IsReady = true,
+          DocumentCount = request.Documents.Count,
+          SearchableDocumentCount = documents.Length,
+          IsPhoneticSearch = request.IsPhoneticSearch,
+          CreatedAtUtc = createdAtUtc
+        };
+      }
+
+      return null;
+    }
+    finally
+    {
+      _buildLock.Release();
+    }
+  }
+
+  /// <summary>
+  /// Документ, передаваемый в библиотеку SearchEngine для индексации.
+  /// </summary>
+  /// <param name="Id">Идентификатор документа.</param>
+  /// <param name="Text">Текст документа.</param>
+  private sealed record IndexDocument(int Id, string Text) : ISourceData<int>;
 }
