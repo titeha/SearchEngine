@@ -14,8 +14,8 @@
 
     <PackageId>Ti-Soft.SearchEngine</PackageId>
     <Title>Ti-Soft.SearchEngine</Title>
-    <Description>Лёгкая библиотека для нечёткого и фонетического поиска по строковым полям БД на русском языке с Result-based API.</Description>
-    <PackageTags>search;fuzzy-search;phonetic-search;database;db;ru;russian;cyrillic;transliteration;typo-tolerance;result</PackageTags>
+    <Description>Лёгкая embedded-библиотека для нечёткого и фонетического поиска по строковым полям БД на русском языке с Result-based API.</Description>
+    <PackageTags>search;fuzzy-search;phonetic-search;embedded-search;local-search;database;db;ru;russian;cyrillic;transliteration;typo-tolerance;result</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
