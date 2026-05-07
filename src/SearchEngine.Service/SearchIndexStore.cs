@@ -5,11 +5,9 @@
 /// </summary>
 public sealed class SearchIndexStore
 {
-  private readonly object _lock = new();
   private readonly SemaphoreSlim _buildLock = new(1, 1);
 
-  private Search<int>? _search;
-  private IndexStatusResponse _status = new();
+  private SearchIndexSnapshot? _snapshot;
 
   /// <summary>
   /// Возвращает текущее состояние поискового индекса.
@@ -17,13 +15,12 @@ public sealed class SearchIndexStore
   /// <returns>Состояние поискового индекса.</returns>
   public IndexStatusResponse GetStatus()
   {
-    lock (_lock)
-    {
-      return _status with
-      {
-        IsReady = _search is not null
-      };
-    }
+    SearchIndexSnapshot? snapshot = Volatile.Read(ref _snapshot);
+
+    if (snapshot is null)
+      return new IndexStatusResponse();
+
+    return snapshot.Status;
   }
 
   /// <summary>
@@ -40,9 +37,12 @@ public sealed class SearchIndexStore
         Message = "Не переданы документы для индексации."
       };
 
-    IndexDocument[] documents = [.. request.Documents
-        .Where(document => !string.IsNullOrWhiteSpace(document?.Text))
-        .Select(document => new IndexDocument(document!.Id, document.Text!))];
+    IndexDocument[] documents =
+    [
+        .. request.Documents
+                .Where(document => !string.IsNullOrWhiteSpace(document?.Text))
+                .Select(document => new IndexDocument(document!.Id, document.Text!))
+    ];
 
     if (documents.Length == 0)
       return new ApiError
@@ -70,18 +70,18 @@ public sealed class SearchIndexStore
 
       DateTimeOffset createdAtUtc = DateTimeOffset.UtcNow;
 
-      lock (_lock)
+      IndexStatusResponse status = new()
       {
-        _search = search;
-        _status = new IndexStatusResponse
-        {
-          IsReady = true,
-          DocumentCount = request.Documents.Count,
-          SearchableDocumentCount = documents.Length,
-          IsPhoneticSearch = request.IsPhoneticSearch,
-          CreatedAtUtc = createdAtUtc
-        };
-      }
+        IsReady = true,
+        DocumentCount = request.Documents.Count,
+        SearchableDocumentCount = documents.Length,
+        IsPhoneticSearch = request.IsPhoneticSearch,
+        CreatedAtUtc = createdAtUtc
+      };
+
+      SearchIndexSnapshot snapshot = new(search, status);
+
+      Volatile.Write(ref _snapshot, snapshot);
 
       return null;
     }
@@ -110,14 +110,9 @@ public sealed class SearchIndexStore
       return null;
     }
 
-    Search<int>? search;
+    SearchIndexSnapshot? snapshot = Volatile.Read(ref _snapshot);
 
-    lock (_lock)
-    {
-      search = _search;
-    }
-
-    if (search is null)
+    if (snapshot is null)
     {
       error = new ApiError
       {
@@ -137,7 +132,7 @@ public sealed class SearchIndexStore
       AcceptableCountMisprint = request.AcceptableCountMisprint
     };
 
-    var searchResult = search.FindResult(request.Query, searchRequest);
+    var searchResult = snapshot.Search.FindResult(request.Query, searchRequest);
 
     if (searchResult.IsFailure)
     {
@@ -150,12 +145,15 @@ public sealed class SearchIndexStore
       return null;
     }
 
-    SearchResultBucket[] items = [.. searchResult.Value!.Items
-        .Select(item => new SearchResultBucket
-        {
-          Key = item.Key,
-          Ids = item.Value.Items.ToArray()
-        })];
+    SearchResultBucket[] items =
+    [
+        .. searchResult.Value!.Items
+                .Select(item => new SearchResultBucket
+                {
+                    Key = item.Key,
+                    Ids = item.Value.Items.ToArray()
+                })
+    ];
 
     error = null;
 
@@ -165,6 +163,15 @@ public sealed class SearchIndexStore
       Items = items
     };
   }
+
+  /// <summary>
+  /// Готовый снимок поискового индекса.
+  /// </summary>
+  /// <param name="Search">Готовый поисковый индекс.</param>
+  /// <param name="Status">Состояние готового поискового индекса.</param>
+  private sealed record SearchIndexSnapshot(
+      Search<int> Search,
+      IndexStatusResponse Status);
 
   /// <summary>
   /// Документ, передаваемый в библиотеку SearchEngine для индексации.
