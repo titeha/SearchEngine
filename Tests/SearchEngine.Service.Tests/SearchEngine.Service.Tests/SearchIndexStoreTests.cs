@@ -140,6 +140,77 @@ public sealed class SearchIndexStoreTests
   }
 
   /// <summary>
+  /// Проверяет, что без фонетического индекса латинская запись не находит кириллическую фамилию.
+  /// </summary>
+  [Fact]
+  public async Task Search_БезФонетическогоИндекса_НеИщетРусскуюФамилиюВЛатинскойЗаписи()
+  {
+    // Arrange
+    SearchIndexStore sut = new();
+
+    IndexBuildRequest buildRequest = CreateBuildRequest(
+        isPhoneticSearch: false,
+        (1, "Иванов Сергей Петрович"),
+        (2, "Папандопуло Александр"));
+
+    ApiError? buildError = await sut.BuildAsync(buildRequest);
+
+    // Act
+    SearchQueryResponse? searchResult = sut.Search(
+        new SearchQueryRequest
+        {
+          Query = "Ivanov"
+        },
+        out ApiError? searchError);
+
+    // Assert
+    Assert.Null(buildError);
+    Assert.Null(searchError);
+    Assert.NotNull(searchResult);
+    Assert.False(ContainsId(searchResult, 1));
+    Assert.False(ContainsId(searchResult, 2));
+  }
+
+  /// <summary>
+  /// Проверяет, что фонетический индекс ищет русские фамилии в латинской записи.
+  /// </summary>
+  /// <param name="query">Поисковая строка в латинской записи.</param>
+  /// <param name="expectedId">Ожидаемый идентификатор документа.</param>
+  [Theory]
+  [InlineData("Ivanov", 1)]
+  [InlineData("Papandopulo", 2)]
+  [InlineData("Papondopulo", 2)]
+  public async Task Search_СФонетическимИндексом_ИщетРусскиеФамилииВЛатинскойЗаписи(
+      string query,
+      int expectedId)
+  {
+    // Arrange
+    SearchIndexStore sut = new();
+
+    IndexBuildRequest buildRequest = CreateBuildRequest(
+        isPhoneticSearch: true,
+        (1, "Иванов Сергей Петрович"),
+        (2, "Папандопуло Александр"),
+        (3, "Красный велосипед"));
+
+    ApiError? buildError = await sut.BuildAsync(buildRequest);
+
+    // Act
+    SearchQueryResponse? searchResult = sut.Search(
+        new SearchQueryRequest
+        {
+          Query = query
+        },
+        out ApiError? searchError);
+
+    // Assert
+    Assert.Null(buildError);
+    Assert.Null(searchError);
+    Assert.NotNull(searchResult);
+    Assert.True(ContainsId(searchResult, expectedId));
+  }
+
+  /// <summary>
   /// Создаёт запрос на построение индекса.
   /// </summary>
   /// <param name="documents">Документы для индексации.</param>
@@ -147,16 +218,28 @@ public sealed class SearchIndexStoreTests
   private static IndexBuildRequest CreateBuildRequest(
       params (int Id, string Text)[] documents)
   {
+    return CreateBuildRequest(false, documents);
+  }
+
+  /// <summary>
+  /// Создаёт запрос на построение индекса.
+  /// </summary>
+  /// <param name="isPhoneticSearch">Признак включения фонетического поиска.</param>
+  /// <param name="documents">Документы для индексации.</param>
+  /// <returns>Запрос на построение индекса.</returns>
+  private static IndexBuildRequest CreateBuildRequest(
+      bool isPhoneticSearch,
+      params (int Id, string Text)[] documents)
+  {
     return new IndexBuildRequest
     {
-      IsPhoneticSearch = false,
-      Documents = documents
+      IsPhoneticSearch = isPhoneticSearch,
+      Documents = [.. documents
             .Select(document => new IndexDocumentRequest
             {
               Id = document.Id,
               Text = document.Text
-            })
-            .ToArray()
+            })]
     };
   }
 
