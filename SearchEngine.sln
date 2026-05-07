@@ -22,6 +22,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Benchmarks", "Benchmarks", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SearchEngine.Service", "src\SearchEngine.Service\SearchEngine.Service.csproj", "{8F4EC03D-4C0C-42FD-BDFE-2B33ACB1962A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SearchEngine.Service.Tests", "Tests\SearchEngine.Service.Tests\SearchEngine.Service.Tests\SearchEngine.Service.Tests.csproj", "{E8DB6DDE-28DA-4E63-B8B3-FB5181E3135D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,6 +46,10 @@ Global
 		{8F4EC03D-4C0C-42FD-BDFE-2B33ACB1962A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8F4EC03D-4C0C-42FD-BDFE-2B33ACB1962A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8F4EC03D-4C0C-42FD-BDFE-2B33ACB1962A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E8DB6DDE-28DA-4E63-B8B3-FB5181E3135D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E8DB6DDE-28DA-4E63-B8B3-FB5181E3135D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E8DB6DDE-28DA-4E63-B8B3-FB5181E3135D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E8DB6DDE-28DA-4E63-B8B3-FB5181E3135D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -53,6 +59,7 @@ Global
 		{39E497A1-7EE6-4A9B-BC5E-85BCE3737A58} = {7A369112-1B79-488E-ADD3-8C9B5CB10413}
 		{523F6510-958F-4035-80A6-84FE7F7E6AC9} = {7C205016-E394-4D49-B81A-40AD5598FA4E}
 		{8F4EC03D-4C0C-42FD-BDFE-2B33ACB1962A} = {5551A15F-D766-499E-8CBD-360AC6252D16}
+		{E8DB6DDE-28DA-4E63-B8B3-FB5181E3135D} = {7A369112-1B79-488E-ADD3-8C9B5CB10413}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {CEA74CE2-A7A3-4BB7-8CF0-90F6E2A76DC1}
