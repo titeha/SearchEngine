@@ -143,6 +143,88 @@ public sealed class SearchEngineServiceSearchEndpointTests
   }
 
   /// <summary>
+  /// Проверяет, что нечёткий поиск через допустимое количество опечаток возвращает найденный документ.
+  /// </summary>
+  /// <param name="query">Поисковая строка с опечаткой.</param>
+  /// <param name="acceptableCountMisprint">Допустимая взвешенная дистанция.</param>
+  [Theory]
+  [InlineData("Иваноы", 1)]
+  [InlineData("Иваноф", 2)]
+  public async Task PostSearch_НечеткийПоискЧерезКоличествоОпечаток_ВозвращаетДокумент(
+      string query,
+      int acceptableCountMisprint)
+  {
+    // Arrange
+    await using WebApplicationFactory<Program> factory = new();
+
+    using HttpClient client = factory.CreateClient();
+
+    await BuildIndexAsync(client);
+
+    object request = new
+    {
+      query,
+      matchMode = "AllTerms",
+      searchType = "NearSearch",
+      searchLocation = "BeginWord",
+      acceptableCountMisprint
+    };
+
+    // Act
+    HttpResponseMessage response = await client.PostAsJsonAsync("/v1/search", request);
+
+    SearchQueryResponse? searchResult =
+        await response.Content.ReadFromJsonAsync<SearchQueryResponse>();
+
+    // Assert
+    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+    Assert.NotNull(searchResult);
+    Assert.True(searchResult.IsHasIndex);
+    Assert.True(ContainsId(searchResult, 1));
+    Assert.False(ContainsId(searchResult, 2));
+    Assert.False(ContainsId(searchResult, 3));
+  }
+
+  /// <summary>
+  /// Проверяет, что нечёткий поиск через процент точности возвращает найденный документ.
+  /// </summary>
+  [Fact]
+  public async Task PostSearch_НечеткийПоискЧерезПроцентТочности_ВозвращаетДокумент()
+  {
+    // Arrange
+    await using WebApplicationFactory<Program> factory = new();
+
+    using HttpClient client = factory.CreateClient();
+
+    await BuildIndexAsync(client);
+
+    object request = new
+    {
+      query = "веласипед",
+      matchMode = "AllTerms",
+      searchType = "NearSearch",
+      searchLocation = "BeginWord",
+      precisionSearch = 70
+    };
+
+    // Act
+    HttpResponseMessage response = await client.PostAsJsonAsync("/v1/search", request);
+
+    SearchQueryResponse? searchResult =
+        await response.Content.ReadFromJsonAsync<SearchQueryResponse>();
+
+    // Assert
+    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+    Assert.NotNull(searchResult);
+    Assert.True(searchResult.IsHasIndex);
+    Assert.False(ContainsId(searchResult, 1));
+    Assert.False(ContainsId(searchResult, 2));
+    Assert.True(ContainsId(searchResult, 3));
+  }
+
+  /// <summary>
   /// Строит тестовый индекс через HTTP API сервиса.
   /// </summary>
   /// <param name="client">HTTP-клиент тестового сервера.</param>
