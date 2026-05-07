@@ -61,8 +61,8 @@ public sealed class SearchIndexStoreTests
     SearchIndexStore sut = new();
 
     IndexBuildRequest buildRequest = CreateBuildRequest(
-        (1, "Иванов Сергей Петрович"),
-        (2, "Папандопуло Александр"));
+        [(1, "Иванов Сергей Петрович"),
+        (2, "Папандопуло Александр")]);
 
     // Act
     ApiError? buildError = await sut.BuildAsync(buildRequest);
@@ -98,10 +98,10 @@ public sealed class SearchIndexStoreTests
     SearchIndexStore sut = new();
 
     IndexBuildRequest firstBuildRequest = CreateBuildRequest(
-        (1, "Иванов Сергей Петрович"));
+        [(1, "Иванов Сергей Петрович")]);
 
     IndexBuildRequest secondBuildRequest = CreateBuildRequest(
-        (2, "Петров Сергей Петрович"));
+        [(2, "Петров Сергей Петрович")]);
 
     // Act
     ApiError? firstBuildError = await sut.BuildAsync(firstBuildRequest);
@@ -151,8 +151,8 @@ public sealed class SearchIndexStoreTests
 
     IndexBuildRequest buildRequest = CreateBuildRequest(
         isPhoneticSearch: false,
-        (1, "Иванов Сергей Петрович"),
-        (2, "Папандопуло Александр"));
+        [(1, "Иванов Сергей Петрович"),
+        (2, "Папандопуло Александр")]);
 
     ApiError? buildError = await sut.BuildAsync(buildRequest);
 
@@ -190,9 +190,9 @@ public sealed class SearchIndexStoreTests
 
     IndexBuildRequest buildRequest = CreateBuildRequest(
         isPhoneticSearch: true,
-        (1, "Иванов Сергей Петрович"),
+        [(1, "Иванов Сергей Петрович"),
         (2, "Папандопуло Александр"),
-        (3, "Красный велосипед"));
+        (3, "Красный велосипед")]);
 
     ApiError? buildError = await sut.BuildAsync(buildRequest);
 
@@ -227,9 +227,9 @@ public sealed class SearchIndexStoreTests
     SearchIndexStore sut = new();
 
     IndexBuildRequest buildRequest = CreateBuildRequest(
-        (1, "Иванов Сергей Петрович"),
+        [(1, "Иванов Сергей Петрович"),
         (2, "Папандопуло Александр"),
-        (3, "Красный велосипед"));
+        (3, "Красный велосипед")]);
 
     ApiError? buildError = await sut.BuildAsync(buildRequest);
 
@@ -263,9 +263,9 @@ public sealed class SearchIndexStoreTests
     SearchIndexStore sut = new();
 
     IndexBuildRequest buildRequest = CreateBuildRequest(
-        (1, "Иванов Сергей Петрович"),
+        [(1, "Иванов Сергей Петрович"),
         (2, "Папандопуло Александр"),
-        (3, "Красный велосипед"));
+        (3, "Красный велосипед")]);
 
     ApiError? buildError = await sut.BuildAsync(buildRequest);
 
@@ -287,6 +287,151 @@ public sealed class SearchIndexStoreTests
     Assert.False(ContainsId(searchResult, 1));
     Assert.False(ContainsId(searchResult, 2));
     Assert.True(ContainsId(searchResult, 3));
+  }
+
+  /// <summary>
+  /// Проверяет, что построение индекса без документов возвращает прикладную ошибку.
+  /// </summary>
+  [Fact]
+  public async Task BuildAsync_БезДокументов_ВозвращаетОшибку()
+  {
+    // Arrange
+    SearchIndexStore sut = new();
+
+    IndexBuildRequest request = new()
+    {
+      IsPhoneticSearch = false,
+      Documents = []
+    };
+
+    // Act
+    ApiError? error = await sut.BuildAsync(request);
+    IndexStatusResponse status = sut.GetStatus();
+
+    // Assert
+    Assert.NotNull(error);
+    Assert.Equal("EmptyDocuments", error.Code);
+
+    Assert.False(status.IsReady);
+    Assert.Equal(0, status.DocumentCount);
+    Assert.Equal(0, status.SearchableDocumentCount);
+  }
+
+  /// <summary>
+  /// Проверяет, что построение индекса без пригодного текста возвращает прикладную ошибку.
+  /// </summary>
+  [Fact]
+  public async Task BuildAsync_БезПригодногоТекста_ВозвращаетОшибку()
+  {
+    // Arrange
+    SearchIndexStore sut = new();
+
+    IndexBuildRequest request = new()
+    {
+      IsPhoneticSearch = false,
+      Documents =
+        [
+            new()
+            {
+                Id = 1,
+                Text = string.Empty
+            },
+            new()
+            {
+                Id = 2,
+                Text = "   "
+            },
+            null
+        ]
+    };
+
+    // Act
+    ApiError? error = await sut.BuildAsync(request);
+    IndexStatusResponse status = sut.GetStatus();
+
+    // Assert
+    Assert.NotNull(error);
+    Assert.Equal("EmptySearchableDocuments", error.Code);
+
+    Assert.False(status.IsReady);
+    Assert.Equal(0, status.DocumentCount);
+    Assert.Equal(0, status.SearchableDocumentCount);
+  }
+
+  /// <summary>
+  /// Проверяет, что пустая поисковая строка возвращает прикладную ошибку.
+  /// </summary>
+  [Fact]
+  public void Search_СПустымЗапросом_ВозвращаетОшибку()
+  {
+    // Arrange
+    SearchIndexStore sut = new();
+
+    SearchQueryRequest request = new()
+    {
+      Query = "   "
+    };
+
+    // Act
+    SearchQueryResponse? result = sut.Search(request, out ApiError? error);
+
+    // Assert
+    Assert.Null(result);
+    Assert.NotNull(error);
+    Assert.Equal("EmptyQuery", error.Code);
+  }
+
+  /// <summary>
+  /// Проверяет, что ошибка повторного построения индекса не сбрасывает уже опубликованный индекс.
+  /// </summary>
+  [Fact]
+  public async Task BuildAsync_ПриОшибкеПовторногоПостроения_НеСбрасываетТекущийИндекс()
+  {
+    // Arrange
+    SearchIndexStore sut = new();
+
+    IndexBuildRequest validRequest = CreateBuildRequest(
+        [(1, "Иванов Сергей Петрович")]);
+
+    IndexBuildRequest invalidRequest = new()
+    {
+      IsPhoneticSearch = false,
+      Documents =
+        [
+            new()
+            {
+                Id = 2,
+                Text = string.Empty
+            }
+        ]
+    };
+
+    // Act
+    ApiError? validBuildError = await sut.BuildAsync(validRequest);
+    ApiError? invalidBuildError = await sut.BuildAsync(invalidRequest);
+
+    IndexStatusResponse status = sut.GetStatus();
+
+    SearchQueryResponse? searchResult = sut.Search(
+        new SearchQueryRequest
+        {
+          Query = "Иванов"
+        },
+        out ApiError? searchError);
+
+    // Assert
+    Assert.Null(validBuildError);
+
+    Assert.NotNull(invalidBuildError);
+    Assert.Equal("EmptySearchableDocuments", invalidBuildError.Code);
+
+    Assert.True(status.IsReady);
+    Assert.Equal(1, status.DocumentCount);
+    Assert.Equal(1, status.SearchableDocumentCount);
+
+    Assert.Null(searchError);
+    Assert.NotNull(searchResult);
+    Assert.True(ContainsId(searchResult, 1));
   }
 
   /// <summary>
@@ -325,8 +470,5 @@ public sealed class SearchIndexStoreTests
   /// <param name="response">Ответ поиска.</param>
   /// <param name="id">Идентификатор документа.</param>
   /// <returns><see langword="true"/>, если идентификатор найден.</returns>
-  private static bool ContainsId(SearchQueryResponse response, int id)
-  {
-    return response.Items.Any(bucket => bucket.Ids.Contains(id));
-  }
+  private static bool ContainsId(SearchQueryResponse response, int id) => response.Items.Any(bucket => bucket.Ids.Contains(id));
 }
