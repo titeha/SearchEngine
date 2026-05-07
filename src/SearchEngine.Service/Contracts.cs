@@ -153,6 +153,42 @@ public sealed record SearchResultBucket
 }
 
 /// <summary>
+/// Ответ со справочниками допустимых параметров поиска.
+/// </summary>
+public sealed record SearchOptionsResponse
+{
+  /// <summary>
+  /// Получает допустимые режимы объединения слов запроса.
+  /// </summary>
+  public string[] MatchModes { get; init; } = [];
+
+  /// <summary>
+  /// Получает допустимые типы поиска.
+  /// </summary>
+  public string[] SearchTypes { get; init; } = [];
+
+  /// <summary>
+  /// Получает допустимые места поиска внутри слова.
+  /// </summary>
+  public string[] SearchLocations { get; init; } = [];
+
+  /// <summary>
+  /// Получает режим объединения слов запроса по умолчанию.
+  /// </summary>
+  public string DefaultMatchMode { get; init; } = string.Empty;
+
+  /// <summary>
+  /// Получает тип поиска по умолчанию.
+  /// </summary>
+  public string DefaultSearchType { get; init; } = string.Empty;
+
+  /// <summary>
+  /// Получает место поиска внутри слова по умолчанию.
+  /// </summary>
+  public string DefaultSearchLocation { get; init; } = string.Empty;
+}
+
+/// <summary>
 /// Ошибка API сервиса.
 /// </summary>
 public sealed record ApiError

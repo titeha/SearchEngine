@@ -8,6 +8,10 @@ GET {{host}}/v1/info
 
 ###
 
+GET {{host}}/v1/search/options
+
+###
+
 GET {{host}}/v1/index
 
 ###

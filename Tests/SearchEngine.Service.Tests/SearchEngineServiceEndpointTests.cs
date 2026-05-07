@@ -3,6 +3,8 @@ using System.Net.Http.Json;
 
 using Microsoft.AspNetCore.Mvc.Testing;
 
+using SearchEngine.Service;
+
 namespace SearchEngineService.Tests;
 
 /// <summary>
@@ -66,6 +68,75 @@ public sealed class SearchEngineServiceEndpointTests
 
     // Assert
     Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+  }
+
+  /// <summary>
+  /// Проверяет, что endpoint справочников поиска возвращает допустимые параметры.
+  /// </summary>
+  [Fact]
+  public async Task GetSearchOptions_ДолженВернутьДопустимыеПараметрыПоиска()
+  {
+    // Arrange
+    await using WebApplicationFactory<Program> factory = new();
+
+    using HttpClient client = factory.CreateClient();
+
+    // Act
+    SearchOptionsResponse? response =
+        await client.GetFromJsonAsync<SearchOptionsResponse>("/v1/search/options");
+
+    // Assert
+    Assert.NotNull(response);
+
+    Assert.Contains("AllTerms", response.MatchModes);
+    Assert.Contains("AnyTerm", response.MatchModes);
+    Assert.Contains("SoftAllTerms", response.MatchModes);
+
+    Assert.Contains("ExactSearch", response.SearchTypes);
+    Assert.Contains("NearSearch", response.SearchTypes);
+
+    Assert.Contains("BeginWord", response.SearchLocations);
+    Assert.Contains("InWord", response.SearchLocations);
+
+    Assert.Equal("AllTerms", response.DefaultMatchMode);
+    Assert.Equal("ExactSearch", response.DefaultSearchType);
+    Assert.Equal("BeginWord", response.DefaultSearchLocation);
+  }
+
+  /// <summary>
+  /// Ответ endpoint-а справочников параметров поиска.
+  /// </summary>
+  private sealed record SearchOptionsResponse
+  {
+    /// <summary>
+    /// Получает допустимые режимы объединения слов запроса.
+    /// </summary>
+    public string[] MatchModes { get; init; } = [];
+
+    /// <summary>
+    /// Получает допустимые типы поиска.
+    /// </summary>
+    public string[] SearchTypes { get; init; } = [];
+
+    /// <summary>
+    /// Получает допустимые места поиска внутри слова.
+    /// </summary>
+    public string[] SearchLocations { get; init; } = [];
+
+    /// <summary>
+    /// Получает режим объединения слов запроса по умолчанию.
+    /// </summary>
+    public string? DefaultMatchMode { get; init; }
+
+    /// <summary>
+    /// Получает тип поиска по умолчанию.
+    /// </summary>
+    public string? DefaultSearchType { get; init; }
+
+    /// <summary>
+    /// Получает место поиска внутри слова по умолчанию.
+    /// </summary>
+    public string? DefaultSearchLocation { get; init; }
   }
 
   /// <summary>

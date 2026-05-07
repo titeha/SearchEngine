@@ -29,6 +29,8 @@ app.MapPost("/v1/index", BuildIndexAsync);
 
 app.MapPost("/v1/search", Search);
 
+app.MapGet("/v1/search/options", GetSearchOptions);
+
 app.MapPost("/v1/index/validate", ValidateIndexRequest);
 
 app.Run();
@@ -61,6 +63,19 @@ static IResult ValidateIndexRequest(IndexBuildRequest request)
     DocumentCount = request.Documents.Count,
     SearchableDocumentCount = searchableDocumentCount,
     IsPhoneticSearch = request.IsPhoneticSearch
+  });
+}
+
+static IResult GetSearchOptions()
+{
+  return Results.Ok(new SearchOptionsResponse
+  {
+    MatchModes = Enum.GetNames<QueryMatchMode>(),
+    SearchTypes = Enum.GetNames<SearchType>(),
+    SearchLocations = Enum.GetNames<SearchLocation>(),
+    DefaultMatchMode = nameof(QueryMatchMode.AllTerms),
+    DefaultSearchType = nameof(SearchType.ExactSearch),
+    DefaultSearchLocation = nameof(SearchLocation.BeginWord)
   });
 }
 
