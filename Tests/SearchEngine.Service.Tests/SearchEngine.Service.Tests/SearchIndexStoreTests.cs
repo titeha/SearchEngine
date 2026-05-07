@@ -1,4 +1,5 @@
-﻿using SearchEngine.Service;
+﻿using SearchEngine;
+using SearchEngine.Service;
 
 namespace SearchEngineService.Tests;
 
@@ -211,15 +212,90 @@ public sealed class SearchIndexStoreTests
   }
 
   /// <summary>
+  /// Проверяет, что нечёткий поиск через допустимое количество опечаток находит документ.
+  /// </summary>
+  /// <param name="query">Поисковая строка с опечаткой.</param>
+  /// <param name="acceptableCountMisprint">Допустимая взвешенная дистанция.</param>
+  [Theory]
+  [InlineData("Иваноы", 1)]
+  [InlineData("Иваноф", 2)]
+  public async Task Search_НечеткийПоискЧерезКоличествоОпечаток_НаходитДокумент(
+      string query,
+      int acceptableCountMisprint)
+  {
+    // Arrange
+    SearchIndexStore sut = new();
+
+    IndexBuildRequest buildRequest = CreateBuildRequest(
+        (1, "Иванов Сергей Петрович"),
+        (2, "Папандопуло Александр"),
+        (3, "Красный велосипед"));
+
+    ApiError? buildError = await sut.BuildAsync(buildRequest);
+
+    // Act
+    SearchQueryResponse? searchResult = sut.Search(
+        new SearchQueryRequest
+        {
+          Query = query,
+          SearchType = SearchType.NearSearch,
+          SearchLocation = SearchLocation.BeginWord,
+          AcceptableCountMisprint = acceptableCountMisprint
+        },
+        out ApiError? searchError);
+
+    // Assert
+    Assert.Null(buildError);
+    Assert.Null(searchError);
+    Assert.NotNull(searchResult);
+    Assert.True(ContainsId(searchResult, 1));
+    Assert.False(ContainsId(searchResult, 2));
+    Assert.False(ContainsId(searchResult, 3));
+  }
+
+  /// <summary>
+  /// Проверяет, что нечёткий поиск через процент точности находит документ.
+  /// </summary>
+  [Fact]
+  public async Task Search_НечеткийПоискЧерезПроцентТочности_НаходитДокумент()
+  {
+    // Arrange
+    SearchIndexStore sut = new();
+
+    IndexBuildRequest buildRequest = CreateBuildRequest(
+        (1, "Иванов Сергей Петрович"),
+        (2, "Папандопуло Александр"),
+        (3, "Красный велосипед"));
+
+    ApiError? buildError = await sut.BuildAsync(buildRequest);
+
+    // Act
+    SearchQueryResponse? searchResult = sut.Search(
+        new SearchQueryRequest
+        {
+          Query = "веласипед",
+          SearchType = SearchType.NearSearch,
+          SearchLocation = SearchLocation.BeginWord,
+          PrecisionSearch = 70
+        },
+        out ApiError? searchError);
+
+    // Assert
+    Assert.Null(buildError);
+    Assert.Null(searchError);
+    Assert.NotNull(searchResult);
+    Assert.False(ContainsId(searchResult, 1));
+    Assert.False(ContainsId(searchResult, 2));
+    Assert.True(ContainsId(searchResult, 3));
+  }
+
+  /// <summary>
   /// Создаёт запрос на построение индекса.
   /// </summary>
   /// <param name="documents">Документы для индексации.</param>
   /// <returns>Запрос на построение индекса.</returns>
   private static IndexBuildRequest CreateBuildRequest(
-      params (int Id, string Text)[] documents)
-  {
-    return CreateBuildRequest(false, documents);
-  }
+      params (int Id, string Text)[] documents) => CreateBuildRequest(false, documents);
 
   /// <summary>
   /// Создаёт запрос на построение индекса.
