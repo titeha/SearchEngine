@@ -83,3 +83,10 @@ static IResult Search(SearchQueryRequest request, SearchIndexStore store)
 
   return Results.Ok(response);
 }
+
+/// <summary>
+/// Точка входа сервиса, открытая для интеграционных тестов.
+/// </summary>
+public partial class Program
+{
+}
