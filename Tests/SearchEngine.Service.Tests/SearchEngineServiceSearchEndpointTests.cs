@@ -225,31 +225,111 @@ public sealed class SearchEngineServiceSearchEndpointTests
   }
 
   /// <summary>
+  /// Проверяет, что без фонетического индекса латинская запись не находит кириллическую фамилию через HTTP API.
+  /// </summary>
+  [Fact]
+  public async Task PostSearch_БезФонетическогоИндекса_НеИщетРусскуюФамилиюВЛатинскойЗаписи()
+  {
+    // Arrange
+    await using WebApplicationFactory<Program> factory = new();
+
+    using HttpClient client = factory.CreateClient();
+
+    await BuildIndexAsync(client);
+
+    object request = new
+    {
+      query = "Ivanov",
+      matchMode = "AllTerms",
+      searchType = "ExactSearch",
+      searchLocation = "BeginWord"
+    };
+
+    // Act
+    HttpResponseMessage response = await client.PostAsJsonAsync("/v1/search", request);
+
+    SearchQueryResponse? searchResult = await response.Content.ReadFromJsonAsync<SearchQueryResponse>();
+
+    // Assert
+    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+    Assert.NotNull(searchResult);
+    Assert.False(ContainsId(searchResult, 1));
+    Assert.False(ContainsId(searchResult, 2));
+    Assert.False(ContainsId(searchResult, 3));
+  }
+
+  /// <summary>
+  /// Проверяет, что фонетический индекс ищет русские фамилии в латинской записи через HTTP API.
+  /// </summary>
+  /// <param name="query">Поисковая строка в латинской записи.</param>
+  /// <param name="expectedId">Ожидаемый идентификатор документа.</param>
+  [Theory]
+  [InlineData("Ivanov", 1)]
+  [InlineData("Papandopulo", 2)]
+  [InlineData("Papondopulo", 2)]
+  public async Task PostSearch_СФонетическимИндексом_ИщетРусскиеФамилииВЛатинскойЗаписи(
+      string query,
+      int expectedId)
+  {
+    // Arrange
+    await using WebApplicationFactory<Program> factory = new();
+
+    using HttpClient client = factory.CreateClient();
+
+    await BuildIndexAsync(client, isPhoneticSearch: true);
+
+    object request = new
+    {
+      query,
+      matchMode = "AllTerms",
+      searchType = "ExactSearch",
+      searchLocation = "BeginWord"
+    };
+
+    // Act
+    HttpResponseMessage response = await client.PostAsJsonAsync("/v1/search", request);
+
+    SearchQueryResponse? searchResult =
+        await response.Content.ReadFromJsonAsync<SearchQueryResponse>();
+
+    // Assert
+    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+    Assert.NotNull(searchResult);
+    Assert.True(searchResult.IsHasIndex);
+    Assert.True(ContainsId(searchResult, expectedId));
+  }
+
+  /// <summary>
   /// Строит тестовый индекс через HTTP API сервиса.
   /// </summary>
   /// <param name="client">HTTP-клиент тестового сервера.</param>
-  private static async Task BuildIndexAsync(HttpClient client)
+  /// <param name="isPhoneticSearch">Признак включения фонетического поиска.</param>
+  private static async Task BuildIndexAsync(
+      HttpClient client,
+      bool isPhoneticSearch = false)
   {
     IndexBuildRequest request = new()
     {
-      IsPhoneticSearch = false,
+      IsPhoneticSearch = isPhoneticSearch,
       Documents =
         [
-                new()
-                {
-                    Id = 1,
-                    Text = "Иванов Сергей Петрович"
-                },
-                new()
-                {
-                    Id = 2,
-                    Text = "Папандопуло Александр"
-                },
-                new()
-                {
-                    Id = 3,
-                    Text = "Красный велосипед"
-                }
+            new()
+            {
+                Id = 1,
+                Text = "Иванов Сергей Петрович"
+            },
+            new()
+            {
+                Id = 2,
+                Text = "Папандопуло Александр"
+            },
+            new()
+            {
+                Id = 3,
+                Text = "Красный велосипед"
+            }
         ]
     };
 
