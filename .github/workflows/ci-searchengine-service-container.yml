@@ -1,0 +1,78 @@
+name: Check SearchEngine service container
+
+run-name: ${{ github.workflow }} / ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - master
+    paths:
+      - 'src/SearchEngine/**'
+      - 'src/SearchEngine.Service/**'
+      - '.dockerignore'
+      - '.github/workflows/ci-searchengine-service-container.yml'
+
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'src/SearchEngine/**'
+      - 'src/SearchEngine.Service/**'
+      - '.dockerignore'
+      - '.github/workflows/ci-searchengine-service-container.yml'
+
+permissions:
+  contents: read
+
+env:
+  TEST_IMAGE: searchengine-service:test
+
+jobs:
+  check-container:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Получить код
+        uses: actions/checkout@v4
+
+      - name: Настроить Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Собрать Docker-образ сервиса
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: src/SearchEngine.Service/Dockerfile
+          load: true
+          tags: ${{ env.TEST_IMAGE }}
+
+      - name: Запустить контейнер
+        run: |
+          docker run -d \
+            --rm \
+            --name searchengine-service-test \
+            -p 8080:8080 \
+            ${{ env.TEST_IMAGE }}
+
+      - name: Проверить /health
+        run: |
+          for i in {1..30}; do
+            if curl --fail --silent http://localhost:8080/health; then
+              echo
+              echo "Сервис ответил на /health."
+              exit 0
+            fi
+
+            sleep 1
+          done
+
+          echo "Сервис не ответил на /health."
+          docker logs searchengine-service-test
+          exit 1
+
+      - name: Остановить контейнер
+        if: always()
+        run: |
+          docker stop searchengine-service-test || true
