@@ -19,6 +19,7 @@ app.MapGet("/health", () => Results.Ok(new
 app.MapGet("/v1/info", () => Results.Ok(new
 {
   Service = "TiSoft.SearchEngine.Service",
+  ServiceVersion = typeof(SearchIndexStore).Assembly.GetName().Version?.ToString(),
   Status = "ok",
   SearchEngineVersion = typeof(Search<int>).Assembly.GetName().Version?.ToString()
 }));

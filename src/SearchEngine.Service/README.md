@@ -194,6 +194,7 @@ GET {{host}}/v1/info
 ```json
 {
   "service": "TiSoft.SearchEngine.Service",
+  "serviceVersion": "0.2.0.0",
   "status": "ok",
   "searchEngineVersion": "2.0.1.0"
 }

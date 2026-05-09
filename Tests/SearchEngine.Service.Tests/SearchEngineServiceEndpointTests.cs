@@ -50,6 +50,8 @@ public sealed class SearchEngineServiceEndpointTests
     Assert.Equal("TiSoft.SearchEngine.Service", response.Service);
     Assert.Equal("ok", response.Status);
     Assert.False(string.IsNullOrWhiteSpace(response.SearchEngineVersion));
+    Assert.False(string.IsNullOrWhiteSpace(response.ServiceVersion));
+    Assert.StartsWith("0.2.0", response.ServiceVersion);
   }
 
   /// <summary>
@@ -169,5 +171,10 @@ public sealed class SearchEngineServiceEndpointTests
     /// Получает версию библиотеки SearchEngine.
     /// </summary>
     public string? SearchEngineVersion { get; init; }
+
+    /// <summary>
+    /// Получает версию сервиса.
+    /// </summary>
+    public string? ServiceVersion { get; init; }
   }
 }
