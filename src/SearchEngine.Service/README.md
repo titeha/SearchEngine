@@ -104,13 +104,13 @@ Ctrl + C
 Загрузить образ:
 
 ```powershell
-docker pull ghcr.io/titeha/searchengine-service:0.1.0
+docker pull ghcr.io/titeha/searchengine-service:0.2.0
 ```
 
 Запустить контейнер:
 
 ```powershell
-docker run --rm -p 8080:8080 ghcr.io/titeha/searchengine-service:0.1.0
+docker run --rm -p 8080:8080 ghcr.io/titeha/searchengine-service:0.2.0
 ```
 
 После запуска сервис будет доступен по адресу:
@@ -148,7 +148,7 @@ ghcr.io/titeha/searchengine-service:latest
 Для воспроизводимого запуска лучше использовать версионный тег:
 
 ```text
-ghcr.io/titeha/searchengine-service:0.1.0
+ghcr.io/titeha/searchengine-service:0.2.0
 ```
 
 ## Проверка через `.http`-файл
