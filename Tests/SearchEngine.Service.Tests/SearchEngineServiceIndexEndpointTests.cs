@@ -166,4 +166,89 @@ public sealed class SearchEngineServiceIndexEndpointTests
     Assert.NotNull(error);
     Assert.Equal("EmptySearchableDocuments", error.Code);
   }
+
+  /// <summary>
+  /// Проверяет, что endpoint готовности до построения индекса возвращает 503.
+  /// </summary>
+  [Fact]
+  public async Task GetReady_ДоПостроенияИндекса_ВозвращаетServiceUnavailable()
+  {
+    // Arrange
+    await using WebApplicationFactory<Program> factory = new();
+
+    using HttpClient client = factory.CreateClient();
+
+    // Act
+    HttpResponseMessage response = await client.GetAsync("/ready");
+
+    ReadinessResponse? readiness =
+        await response.Content.ReadFromJsonAsync<ReadinessResponse>();
+
+    // Assert
+    Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+
+    Assert.NotNull(readiness);
+    Assert.Equal("not_ready", readiness.Status);
+    Assert.False(readiness.IsReady);
+    Assert.Equal(0, readiness.DocumentCount);
+    Assert.Equal(0, readiness.SearchableDocumentCount);
+    Assert.False(readiness.IsPhoneticSearch);
+    Assert.Null(readiness.CreatedAtUtc);
+  }
+
+  /// <summary>
+  /// Проверяет, что endpoint готовности после построения индекса возвращает 200.
+  /// </summary>
+  [Fact]
+  public async Task GetReady_ПослеПостроенияИндекса_ВозвращаетOk()
+  {
+    // Arrange
+    await using WebApplicationFactory<Program> factory = new();
+
+    using HttpClient client = factory.CreateClient();
+
+    IndexBuildRequest request = new()
+    {
+      IsPhoneticSearch = true,
+      Documents =
+        [
+            new()
+            {
+                Id = 1,
+                Text = "Иванов Сергей Петрович"
+            },
+            new()
+            {
+                Id = 2,
+                Text = "Папандопуло Александр"
+            },
+            new()
+            {
+                Id = 3,
+                Text = "Красный велосипед"
+            }
+        ]
+    };
+
+    HttpResponseMessage buildResponse = await client.PostAsJsonAsync("/v1/index", request);
+
+    buildResponse.EnsureSuccessStatusCode();
+
+    // Act
+    HttpResponseMessage response = await client.GetAsync("/ready");
+
+    ReadinessResponse? readiness =
+        await response.Content.ReadFromJsonAsync<ReadinessResponse>();
+
+    // Assert
+    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+    Assert.NotNull(readiness);
+    Assert.Equal("ready", readiness.Status);
+    Assert.True(readiness.IsReady);
+    Assert.Equal(3, readiness.DocumentCount);
+    Assert.Equal(3, readiness.SearchableDocumentCount);
+    Assert.True(readiness.IsPhoneticSearch);
+    Assert.NotNull(readiness.CreatedAtUtc);
+  }
 }

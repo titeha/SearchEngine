@@ -16,6 +16,8 @@ app.MapGet("/health", () => Results.Ok(new
   Status = "ok"
 }));
 
+app.MapGet("/ready", GetReadiness);
+
 app.MapGet("/v1/info", () => Results.Ok(new
 {
   Service = "TiSoft.SearchEngine.Service",
@@ -65,6 +67,25 @@ static IResult ValidateIndexRequest(IndexBuildRequest request)
     SearchableDocumentCount = searchableDocumentCount,
     IsPhoneticSearch = request.IsPhoneticSearch
   });
+}
+
+static IResult GetReadiness(SearchIndexStore store)
+{
+  IndexStatusResponse status = store.GetStatus();
+
+  ReadinessResponse response = new()
+  {
+    Status = status.IsReady ? "ready" : "not_ready",
+    IsReady = status.IsReady,
+    DocumentCount = status.DocumentCount,
+    SearchableDocumentCount = status.SearchableDocumentCount,
+    IsPhoneticSearch = status.IsPhoneticSearch,
+    CreatedAtUtc = status.CreatedAtUtc
+  };
+
+  return status.IsReady
+      ? Results.Ok(response)
+      : Results.Json(response, statusCode: StatusCodes.Status503ServiceUnavailable);
 }
 
 static IResult GetSearchOptions()

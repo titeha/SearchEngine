@@ -4,6 +4,10 @@ GET {{host}}/health
 
 ###
 
+GET {{host}}/ready
+
+###
+
 GET {{host}}/v1/info
 
 ###

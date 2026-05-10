@@ -189,6 +189,42 @@ public sealed record SearchOptionsResponse
 }
 
 /// <summary>
+/// Ответ проверки готовности сервиса к поиску.
+/// </summary>
+public sealed record ReadinessResponse
+{
+  /// <summary>
+  /// Получает состояние готовности сервиса.
+  /// </summary>
+  public string Status { get; init; } = string.Empty;
+
+  /// <summary>
+  /// Получает признак готовности индекса к поиску.
+  /// </summary>
+  public bool IsReady { get; init; }
+
+  /// <summary>
+  /// Получает количество документов в текущем индексе.
+  /// </summary>
+  public int DocumentCount { get; init; }
+
+  /// <summary>
+  /// Получает количество документов с непустым текстом.
+  /// </summary>
+  public int SearchableDocumentCount { get; init; }
+
+  /// <summary>
+  /// Получает признак включения фонетического поиска.
+  /// </summary>
+  public bool IsPhoneticSearch { get; init; }
+
+  /// <summary>
+  /// Получает дату и время построения индекса в UTC.
+  /// </summary>
+  public DateTimeOffset? CreatedAtUtc { get; init; }
+}
+
+/// <summary>
 /// Ошибка API сервиса.
 /// </summary>
 public sealed record ApiError
