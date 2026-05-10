@@ -3,8 +3,6 @@ using System.Net.Http.Json;
 
 using Microsoft.AspNetCore.Mvc.Testing;
 
-using SearchEngine.Service;
-
 namespace SearchEngineService.Tests;
 
 /// <summary>
@@ -51,7 +49,7 @@ public sealed class SearchEngineServiceEndpointTests
     Assert.Equal("ok", response.Status);
     Assert.False(string.IsNullOrWhiteSpace(response.SearchEngineVersion));
     Assert.False(string.IsNullOrWhiteSpace(response.ServiceVersion));
-    Assert.StartsWith("0.2.0", response.ServiceVersion);
+    Assert.StartsWith("0.3.0", response.ServiceVersion);
   }
 
   /// <summary>
