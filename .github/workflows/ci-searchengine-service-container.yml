@@ -81,6 +81,10 @@ jobs:
             --rm \
             --name searchengine-service-test \
             -p 8080:8080 \
+            --health-interval=5s \
+            --health-timeout=3s \
+            --health-start-period=5s \
+            --health-retries=5 \
             ${{ env.TEST_IMAGE }}
 
       - name: Проверить /health
@@ -96,6 +100,32 @@ jobs:
           done
 
           echo "Сервис не ответил на /health."
+          docker logs searchengine-service-test
+          exit 1
+
+      - name: Проверить Docker HEALTHCHECK
+        run: |
+          for i in {1..30}; do
+            status="$(docker inspect --format '{{.State.Health.Status}}' searchengine-service-test)"
+
+            echo "Docker health status: $status"
+
+            if [ "$status" = "healthy" ]; then
+              echo "Контейнер помечен как healthy."
+              exit 0
+            fi
+
+            if [ "$status" = "unhealthy" ]; then
+              echo "Контейнер помечен как unhealthy."
+              docker logs searchengine-service-test
+              exit 1
+            fi
+
+            sleep 2
+          done
+
+          echo "Контейнер не перешёл в состояние healthy."
+          docker inspect searchengine-service-test
           docker logs searchengine-service-test
           exit 1
 
