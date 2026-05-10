@@ -1,4 +1,6 @@
-﻿using SearchEngine;
+﻿using Microsoft.Extensions.Options;
+
+using SearchEngine;
 using SearchEngine.Service;
 
 namespace SearchEngineService.Tests;
@@ -435,12 +437,72 @@ public sealed class SearchIndexStoreTests
   }
 
   /// <summary>
+  /// Проверяет, что превышение максимального количества документов возвращает прикладную ошибку.
+  /// </summary>
+  [Fact]
+  public async Task BuildAsync_ПриПревышенииКоличестваДокументов_ВозвращаетОшибку()
+  {
+    // Arrange
+    SearchIndexStore sut = new(
+        Options.Create(new SearchEngineServiceOptions
+        {
+          MaxDocumentCount = 1,
+          MaxDocumentTextLength = 10_000
+        }));
+
+    IndexBuildRequest request = CreateBuildRequest(
+        [(1, "Иванов Сергей Петрович"),
+        (2, "Папандопуло Александр")]);
+
+    // Act
+    ApiError? error = await sut.BuildAsync(request);
+    IndexStatusResponse status = sut.GetStatus();
+
+    // Assert
+    Assert.NotNull(error);
+    Assert.Equal("TooManyDocuments", error.Code);
+
+    Assert.False(status.IsReady);
+    Assert.Equal(0, status.DocumentCount);
+    Assert.Equal(0, status.SearchableDocumentCount);
+  }
+
+  /// <summary>
+  /// Проверяет, что слишком длинный текст документа возвращает прикладную ошибку.
+  /// </summary>
+  [Fact]
+  public async Task BuildAsync_ПриСлишкомДлинномТекстеДокумента_ВозвращаетОшибку()
+  {
+    // Arrange
+    SearchIndexStore sut = new(
+        Options.Create(new SearchEngineServiceOptions
+        {
+          MaxDocumentCount = 100,
+          MaxDocumentTextLength = 5
+        }));
+
+    IndexBuildRequest request = CreateBuildRequest(
+        [(1, "Очень длинный текст")]);
+
+    // Act
+    ApiError? error = await sut.BuildAsync(request);
+    IndexStatusResponse status = sut.GetStatus();
+
+    // Assert
+    Assert.NotNull(error);
+    Assert.Equal("DocumentTextTooLong", error.Code);
+
+    Assert.False(status.IsReady);
+    Assert.Equal(0, status.DocumentCount);
+    Assert.Equal(0, status.SearchableDocumentCount);
+  }
+
+  /// <summary>
   /// Создаёт запрос на построение индекса.
   /// </summary>
   /// <param name="documents">Документы для индексации.</param>
   /// <returns>Запрос на построение индекса.</returns>
-  private static IndexBuildRequest CreateBuildRequest(
-      params (int Id, string Text)[] documents) => CreateBuildRequest(false, documents);
+  private static IndexBuildRequest CreateBuildRequest(params (int Id, string Text)[] documents) => CreateBuildRequest(false, documents);
 
   /// <summary>
   /// Создаёт запрос на построение индекса.

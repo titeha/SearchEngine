@@ -1,13 +1,28 @@
-﻿namespace SearchEngine.Service;
+﻿using Microsoft.Extensions.Options;
+
+namespace SearchEngine.Service;
 
 /// <summary>
 /// Хранит текущий поисковый индекс сервиса.
 /// </summary>
-public sealed class SearchIndexStore
+/// <remarks>
+/// Создаёт хранилище поискового индекса.
+/// </remarks>
+/// <param name="options">Настройки поискового сервиса.</param>
+public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> options)
 {
   private readonly SemaphoreSlim _buildLock = new(1, 1);
+  private readonly SearchEngineServiceOptions _options = options.Value;
 
   private SearchIndexSnapshot? _snapshot;
+
+  /// <summary>
+  /// Создаёт хранилище поискового индекса с настройками по умолчанию.
+  /// </summary>
+  public SearchIndexStore()
+      : this(Options.Create(new SearchEngineServiceOptions()))
+  {
+  }
 
   /// <summary>
   /// Возвращает текущее состояние поискового индекса.
@@ -35,6 +50,23 @@ public sealed class SearchIndexStore
       {
         Code = "EmptyDocuments",
         Message = "Не переданы документы для индексации."
+      };
+
+    if (request.Documents.Count > _options.MaxDocumentCount)
+      return new ApiError
+      {
+        Code = "TooManyDocuments",
+        Message = $"Количество документов превышает допустимое значение: {_options.MaxDocumentCount}."
+      };
+
+    IndexDocumentRequest? tooLongDocument = request.Documents
+        .FirstOrDefault(document => document?.Text?.Length > _options.MaxDocumentTextLength);
+
+    if (tooLongDocument is not null)
+      return new ApiError
+      {
+        Code = "DocumentTextTooLong",
+        Message = $"Длина текста документа превышает допустимое значение: {_options.MaxDocumentTextLength}."
       };
 
     IndexDocument[] documents =
