@@ -23,4 +23,7 @@ EXPOSE 8080
 
 COPY --from=build /app/publish .
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD ["dotnet", "SearchEngine.Service.dll", "--healthcheck"]
+
 ENTRYPOINT ["dotnet", "SearchEngine.Service.dll"]

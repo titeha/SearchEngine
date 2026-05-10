@@ -3,6 +3,12 @@ using System.Text.Json.Serialization;
 using SearchEngine;
 using SearchEngine.Service;
 
+if (HealthCheckCommand.IsRequested(args))
+{
+  Environment.ExitCode = await HealthCheckCommand.RunAsync().ConfigureAwait(false);
+  return;
+}
+
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
