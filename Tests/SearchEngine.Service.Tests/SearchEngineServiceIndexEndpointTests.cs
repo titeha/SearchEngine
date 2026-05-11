@@ -1,7 +1,9 @@
-﻿using System.Net;
+﻿using System.Globalization;
+using System.Net;
 using System.Net.Http.Json;
 
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 
 using SearchEngine.Service;
 
@@ -250,5 +252,130 @@ public sealed class SearchEngineServiceIndexEndpointTests
     Assert.Equal(3, readiness.SearchableDocumentCount);
     Assert.True(readiness.IsPhoneticSearch);
     Assert.NotNull(readiness.CreatedAtUtc);
+  }
+
+  /// <summary>
+  /// Проверяет, что endpoint построения индекса возвращает ошибку при превышении количества документов.
+  /// </summary>
+  [Fact]
+  public async Task PostIndex_ПриПревышенииКоличестваДокументов_ВозвращаетBadRequest()
+  {
+    // Arrange
+    await using WebApplicationFactory<Program> factory = CreateFactoryWithLimits(
+        maxDocumentCount: 1,
+        maxDocumentTextLength: 10_000);
+
+    using HttpClient client = factory.CreateClient();
+
+    IndexBuildRequest request = new()
+    {
+      IsPhoneticSearch = false,
+      Documents =
+        [
+            new()
+            {
+                Id = 1,
+                Text = "Иванов Сергей Петрович"
+            },
+            new()
+            {
+                Id = 2,
+                Text = "Папандопуло Александр"
+            }
+        ]
+    };
+
+    // Act
+    HttpResponseMessage response = await client.PostAsJsonAsync("/v1/index", request);
+
+    ApiError? error = await response.Content.ReadFromJsonAsync<ApiError>();
+
+    IndexStatusResponse? status =
+        await client.GetFromJsonAsync<IndexStatusResponse>("/v1/index");
+
+    // Assert
+    Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+    Assert.NotNull(error);
+    Assert.Equal("TooManyDocuments", error.Code);
+
+    Assert.NotNull(status);
+    Assert.False(status.IsReady);
+    Assert.Equal(0, status.DocumentCount);
+    Assert.Equal(0, status.SearchableDocumentCount);
+  }
+
+  /// <summary>
+  /// Проверяет, что endpoint построения индекса возвращает ошибку при слишком длинном тексте документа.
+  /// </summary>
+  [Fact]
+  public async Task PostIndex_ПриСлишкомДлинномТекстеДокумента_ВозвращаетBadRequest()
+  {
+    // Arrange
+    await using WebApplicationFactory<Program> factory = CreateFactoryWithLimits(
+        maxDocumentCount: 100,
+        maxDocumentTextLength: 5);
+
+    using HttpClient client = factory.CreateClient();
+
+    IndexBuildRequest request = new()
+    {
+      IsPhoneticSearch = false,
+      Documents =
+        [
+            new()
+            {
+                Id = 1,
+                Text = "Очень длинный текст"
+            }
+        ]
+    };
+
+    // Act
+    HttpResponseMessage response = await client.PostAsJsonAsync("/v1/index", request);
+
+    ApiError? error = await response.Content.ReadFromJsonAsync<ApiError>();
+
+    IndexStatusResponse? status =
+        await client.GetFromJsonAsync<IndexStatusResponse>("/v1/index");
+
+    // Assert
+    Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+    Assert.NotNull(error);
+    Assert.Equal("DocumentTextTooLong", error.Code);
+
+    Assert.NotNull(status);
+    Assert.False(status.IsReady);
+    Assert.Equal(0, status.DocumentCount);
+    Assert.Equal(0, status.SearchableDocumentCount);
+  }
+
+  /// <summary>
+  /// Создаёт фабрику приложения с тестовыми ограничениями сервиса.
+  /// </summary>
+  /// <param name="maxDocumentCount">Максимальное количество документов.</param>
+  /// <param name="maxDocumentTextLength">Максимальная длина текста одного документа.</param>
+  /// <returns>Фабрика тестового приложения.</returns>
+  private static WebApplicationFactory<Program> CreateFactoryWithLimits(
+      int maxDocumentCount,
+      int maxDocumentTextLength)
+  {
+    return new WebApplicationFactory<Program>()
+        .WithWebHostBuilder(builder =>
+        {
+          builder.ConfigureAppConfiguration((_, configuration) =>
+          {
+            configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                  ["SearchEngineService:MaxDocumentCount"] =
+                        maxDocumentCount.ToString(CultureInfo.InvariantCulture),
+
+                  ["SearchEngineService:MaxDocumentTextLength"] =
+                        maxDocumentTextLength.ToString(CultureInfo.InvariantCulture)
+                });
+          });
+        });
   }
 }

@@ -20,9 +20,7 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
   /// Создаёт хранилище поискового индекса с настройками по умолчанию.
   /// </summary>
   public SearchIndexStore()
-      : this(Options.Create(new SearchEngineServiceOptions()))
-  {
-  }
+      : this(Options.Create(new SearchEngineServiceOptions())) { }
 
   /// <summary>
   /// Возвращает текущее состояние поискового индекса.
