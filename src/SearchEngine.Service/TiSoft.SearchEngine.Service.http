@@ -1,5 +1,20 @@
 ﻿@host = http://localhost:5037
 
+###
+
+# Для проверки ошибок TooManyDocuments и DocumentTextTooLong
+# удобно временно уменьшить настройки сервиса:
+#
+# SearchEngineService:MaxDocumentCount = 1
+# SearchEngineService:MaxDocumentTextLength = 5
+#
+# В Docker это можно сделать так:
+#
+# docker run --rm -p 8080:8080 `
+#   -e SearchEngineService__MaxDocumentCount=1 `
+#   -e SearchEngineService__MaxDocumentTextLength=5 `
+#   searchengine-service:dev
+
 GET {{host}}/health
 
 ###
@@ -133,4 +148,39 @@ Content-Type: application/json
   "matchMode": "AllTerms",
   "searchType": "ExactSearch",
   "searchLocation": "BeginWord"
+}
+
+###
+# Ниже команды для проверки ограничений количества документов и длинны строки
+
+POST {{host}}/v1/index
+Content-Type: application/json
+
+{
+  "isPhoneticSearch": false,
+  "documents": [
+    {
+      "id": 1,
+      "text": "Иванов Сергей Петрович"
+    },
+    {
+      "id": 2,
+      "text": "Папандопуло Александр"
+    }
+  ]
+}
+
+###
+
+POST {{host}}/v1/index
+Content-Type: application/json
+
+{
+  "isPhoneticSearch": false,
+  "documents": [
+    {
+      "id": 1,
+      "text": "Очень длинный текст"
+    }
+  ]
 }
