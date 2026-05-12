@@ -372,6 +372,9 @@ public sealed class SearchEngineServiceIndexEndpointTests
     Assert.NotNull(response);
     Assert.Equal(1, response.MaxDocumentCount);
     Assert.Equal(5, response.MaxDocumentTextLength);
+    Assert.NotNull(response.Snapshot);
+    Assert.True(response.Snapshot.IsEnabled);
+    Assert.Equal("data/test-snapshot.json", response.Snapshot.FilePath);
   }
 
   /// <summary>
@@ -396,7 +399,9 @@ public sealed class SearchEngineServiceIndexEndpointTests
                         maxDocumentCount.ToString(CultureInfo.InvariantCulture),
 
                   ["SearchEngineService:MaxDocumentTextLength"] =
-                        maxDocumentTextLength.ToString(CultureInfo.InvariantCulture)
+                        maxDocumentTextLength.ToString(CultureInfo.InvariantCulture),
+                  ["SearchEngineService:Snapshot:IsEnabled"] = "true",
+                  ["SearchEngineService:Snapshot:FilePath"] = "data/test-snapshot.json"
                 });
           });
         });

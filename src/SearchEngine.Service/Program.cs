@@ -107,7 +107,12 @@ static IResult GetConfig(IOptions<SearchEngineServiceOptions> options)
   return Results.Ok(new SearchEngineServiceConfigResponse
   {
     MaxDocumentCount = value.MaxDocumentCount,
-    MaxDocumentTextLength = value.MaxDocumentTextLength
+    MaxDocumentTextLength = value.MaxDocumentTextLength,
+    Snapshot = new SearchIndexSnapshotConfigResponse
+    {
+      IsEnabled = value.Snapshot.IsEnabled,
+      FilePath = value.Snapshot.FilePath
+    }
   });
 }
 

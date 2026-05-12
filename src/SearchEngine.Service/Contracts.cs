@@ -238,6 +238,27 @@ public sealed record SearchEngineServiceConfigResponse
   /// Получает максимальную длину текста одного документа.
   /// </summary>
   public int MaxDocumentTextLength { get; init; }
+
+  /// <summary>
+  /// Получает настройки снимка поискового индекса.
+  /// </summary>
+  public SearchIndexSnapshotConfigResponse Snapshot { get; init; } = new();
+}
+
+/// <summary>
+/// Ответ с настройками снимка поискового индекса.
+/// </summary>
+public sealed record SearchIndexSnapshotConfigResponse
+{
+  /// <summary>
+  /// Получает признак включения сохранения снимка индекса.
+  /// </summary>
+  public bool IsEnabled { get; init; }
+
+  /// <summary>
+  /// Получает путь к файлу снимка индекса.
+  /// </summary>
+  public string FilePath { get; init; } = string.Empty;
 }
 
 /// <summary>

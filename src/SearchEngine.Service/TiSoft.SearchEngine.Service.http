@@ -31,6 +31,11 @@ GET {{host}}/v1/config
 
 ###
 
+# Настройки snapshot индекса можно переопределить через переменные окружения:
+#
+# SearchEngineService__Snapshot__IsEnabled=true
+# SearchEngineService__Snapshot__FilePath=data/search-index-snapshot.json
+
 GET {{host}}/v1/search/options
 
 ###

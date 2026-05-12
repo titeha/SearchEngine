@@ -124,6 +124,9 @@ public sealed class SearchEngineServiceEndpointTests
     Assert.NotNull(response);
     Assert.Equal(100_000, response.MaxDocumentCount);
     Assert.Equal(10_000, response.MaxDocumentTextLength);
+    Assert.NotNull(response.Snapshot);
+    Assert.False(response.Snapshot.IsEnabled);
+    Assert.Equal("data/search-index-snapshot.json", response.Snapshot.FilePath);
   }
 
   /// <summary>
@@ -213,5 +216,26 @@ public sealed class SearchEngineServiceEndpointTests
     /// Получает максимальную длину текста одного документа.
     /// </summary>
     public int MaxDocumentTextLength { get; init; }
+
+    /// <summary>
+    /// Получает настройки снимка поискового индекса.
+    /// </summary>
+    public SearchIndexSnapshotConfigResponse Snapshot { get; init; } = new();
+  }
+
+  /// <summary>
+  /// Ответ с настройками снимка поискового индекса.
+  /// </summary>
+  private sealed record SearchIndexSnapshotConfigResponse
+  {
+    /// <summary>
+    /// Получает признак включения сохранения снимка индекса.
+    /// </summary>
+    public bool IsEnabled { get; init; }
+
+    /// <summary>
+    /// Получает путь к файлу снимка индекса.
+    /// </summary>
+    public string FilePath { get; init; } = string.Empty;
   }
 }
