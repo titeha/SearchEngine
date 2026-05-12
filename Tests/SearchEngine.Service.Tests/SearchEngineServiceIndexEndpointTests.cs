@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -375,6 +376,124 @@ public sealed class SearchEngineServiceIndexEndpointTests
     Assert.NotNull(response.Snapshot);
     Assert.True(response.Snapshot.IsEnabled);
     Assert.Equal("data/test-snapshot.json", response.Snapshot.FilePath);
+  }
+
+  /// <summary>
+  /// Проверяет, что endpoint построения индекса сохраняет snapshot-файл при включённой настройке snapshot.
+  /// </summary>
+  [Fact]
+  public async Task PostIndex_ПриВключенномSnapshot_СохраняетSnapshotФайл()
+  {
+    // Arrange
+    string filePath = CreateTempSnapshotPath();
+
+    try
+    {
+      await using WebApplicationFactory<Program> factory =
+          CreateFactoryWithSnapshot(filePath);
+
+      using HttpClient client = factory.CreateClient();
+
+      IndexBuildRequest request = new()
+      {
+        IsPhoneticSearch = true,
+        Documents =
+          [
+              new()
+                {
+                    Id = 1,
+                    Text = "Иванов Сергей Петрович"
+                },
+                new()
+                {
+                    Id = 2,
+                    Text = "Папандопуло Александр"
+                }
+          ]
+      };
+
+      // Act
+      HttpResponseMessage response = await client.PostAsJsonAsync("/v1/index", request);
+
+      // Assert
+      Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+      Assert.True(File.Exists(filePath));
+
+      string json = await File.ReadAllTextAsync(filePath);
+
+      Assert.Contains("Иванов Сергей Петрович", json);
+      Assert.Contains("Папандопуло Александр", json);
+      Assert.DoesNotContain("\\u0418", json);
+
+      SearchIndexSnapshotFile? snapshot = JsonSerializer.Deserialize<SearchIndexSnapshotFile>(
+          json,
+          new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+      Assert.NotNull(snapshot);
+      Assert.Equal(1, snapshot.Version);
+      Assert.True(snapshot.IsPhoneticSearch);
+      Assert.Equal(2, snapshot.Documents.Count);
+
+      Assert.Equal(1, snapshot.Documents[0].Id);
+      Assert.Equal("Иванов Сергей Петрович", snapshot.Documents[0].Text);
+
+      Assert.Equal(2, snapshot.Documents[1].Id);
+      Assert.Equal("Папандопуло Александр", snapshot.Documents[1].Text);
+    }
+    finally
+    {
+      DeleteTempSnapshotDirectory(filePath);
+    }
+  }
+
+  /// <summary>
+  /// Создаёт фабрику приложения с включённым snapshot индекса.
+  /// </summary>
+  /// <param name="filePath">Путь к snapshot-файлу.</param>
+  /// <returns>Фабрика тестового приложения.</returns>
+  private static WebApplicationFactory<Program> CreateFactoryWithSnapshot(string filePath)
+  {
+    return new WebApplicationFactory<Program>()
+        .WithWebHostBuilder(builder =>
+        {
+          builder.ConfigureAppConfiguration((_, configuration) =>
+          {
+            configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                  ["SearchEngineService:Snapshot:IsEnabled"] = "true",
+                  ["SearchEngineService:Snapshot:FilePath"] = filePath
+                });
+          });
+        });
+  }
+
+  /// <summary>
+  /// Создаёт временный путь к snapshot-файлу.
+  /// </summary>
+  /// <returns>Временный путь к snapshot-файлу.</returns>
+  private static string CreateTempSnapshotPath()
+  {
+    return Path.Combine(
+        Path.GetTempPath(),
+        "SearchEngine.Service.Tests",
+        Guid.NewGuid().ToString("N"),
+        "search-index-snapshot.json");
+  }
+
+  /// <summary>
+  /// Удаляет временную папку snapshot-файла.
+  /// </summary>
+  /// <param name="filePath">Путь к snapshot-файлу.</param>
+  private static void DeleteTempSnapshotDirectory(string filePath)
+  {
+    string? directoryPath = Path.GetDirectoryName(filePath);
+
+    if (string.IsNullOrWhiteSpace(directoryPath))
+      return;
+
+    if (Directory.Exists(directoryPath))
+      Directory.Delete(directoryPath, recursive: true);
   }
 
   /// <summary>
