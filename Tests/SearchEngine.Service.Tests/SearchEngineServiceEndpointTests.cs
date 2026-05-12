@@ -3,6 +3,8 @@ using System.Net.Http.Json;
 
 using Microsoft.AspNetCore.Mvc.Testing;
 
+using SearchEngine.Service;
+
 namespace SearchEngineService.Tests;
 
 /// <summary>
@@ -104,6 +106,27 @@ public sealed class SearchEngineServiceEndpointTests
   }
 
   /// <summary>
+  /// Проверяет, что endpoint конфигурации возвращает активные настройки сервиса.
+  /// </summary>
+  [Fact]
+  public async Task GetConfig_ДолженВернутьАктивныеНастройкиСервиса()
+  {
+    // Arrange
+    await using WebApplicationFactory<Program> factory = new();
+
+    using HttpClient client = factory.CreateClient();
+
+    // Act
+    SearchEngineServiceConfigResponse? response =
+        await client.GetFromJsonAsync<SearchEngineServiceConfigResponse>("/v1/config");
+
+    // Assert
+    Assert.NotNull(response);
+    Assert.Equal(100_000, response.MaxDocumentCount);
+    Assert.Equal(10_000, response.MaxDocumentTextLength);
+  }
+
+  /// <summary>
   /// Ответ endpoint-а справочников параметров поиска.
   /// </summary>
   private sealed record SearchOptionsResponse
@@ -174,5 +197,21 @@ public sealed class SearchEngineServiceEndpointTests
     /// Получает версию сервиса.
     /// </summary>
     public string? ServiceVersion { get; init; }
+  }
+
+  /// <summary>
+  /// Ответ endpoint-а активной конфигурации сервиса.
+  /// </summary>
+  private sealed record SearchEngineServiceConfigResponse
+  {
+    /// <summary>
+    /// Получает максимальное количество документов для построения индекса.
+    /// </summary>
+    public int MaxDocumentCount { get; init; }
+
+    /// <summary>
+    /// Получает максимальную длину текста одного документа.
+    /// </summary>
+    public int MaxDocumentTextLength { get; init; }
   }
 }

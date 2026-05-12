@@ -225,6 +225,22 @@ public sealed record ReadinessResponse
 }
 
 /// <summary>
+/// Ответ с активными настройками поискового сервиса.
+/// </summary>
+public sealed record SearchEngineServiceConfigResponse
+{
+  /// <summary>
+  /// Получает максимальное количество документов для построения индекса.
+  /// </summary>
+  public int MaxDocumentCount { get; init; }
+
+  /// <summary>
+  /// Получает максимальную длину текста одного документа.
+  /// </summary>
+  public int MaxDocumentTextLength { get; init; }
+}
+
+/// <summary>
 /// Ошибка API сервиса.
 /// </summary>
 public sealed record ApiError

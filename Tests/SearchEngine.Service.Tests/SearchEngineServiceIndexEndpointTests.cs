@@ -352,6 +352,29 @@ public sealed class SearchEngineServiceIndexEndpointTests
   }
 
   /// <summary>
+  /// Проверяет, что endpoint конфигурации возвращает переопределённые настройки сервиса.
+  /// </summary>
+  [Fact]
+  public async Task GetConfig_СПереопределеннымиНастройками_ВозвращаетАктивныеОграничения()
+  {
+    // Arrange
+    await using WebApplicationFactory<Program> factory = CreateFactoryWithLimits(
+        maxDocumentCount: 1,
+        maxDocumentTextLength: 5);
+
+    using HttpClient client = factory.CreateClient();
+
+    // Act
+    SearchEngineServiceConfigResponse? response =
+        await client.GetFromJsonAsync<SearchEngineServiceConfigResponse>("/v1/config");
+
+    // Assert
+    Assert.NotNull(response);
+    Assert.Equal(1, response.MaxDocumentCount);
+    Assert.Equal(5, response.MaxDocumentTextLength);
+  }
+
+  /// <summary>
   /// Создаёт фабрику приложения с тестовыми ограничениями сервиса.
   /// </summary>
   /// <param name="maxDocumentCount">Максимальное количество документов.</param>

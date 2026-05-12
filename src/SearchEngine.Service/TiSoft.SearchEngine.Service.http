@@ -27,6 +27,10 @@ GET {{host}}/v1/info
 
 ###
 
+GET {{host}}/v1/config
+
+###
+
 GET {{host}}/v1/search/options
 
 ###

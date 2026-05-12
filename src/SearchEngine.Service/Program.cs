@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization;
 
+using Microsoft.Extensions.Options;
+
 using SearchEngine;
 using SearchEngine.Service;
 
@@ -33,6 +35,8 @@ app.MapGet("/v1/info", () => Results.Ok(new
   Status = "ok",
   SearchEngineVersion = typeof(Search<int>).Assembly.GetName().Version?.ToString()
 }));
+
+app.MapGet("/v1/config", GetConfig);
 
 app.MapGet("/v1/index", (SearchIndexStore store) => Results.Ok(store.GetStatus()));
 
@@ -94,6 +98,17 @@ static IResult GetReadiness(SearchIndexStore store)
   return status.IsReady
       ? Results.Ok(response)
       : Results.Json(response, statusCode: StatusCodes.Status503ServiceUnavailable);
+}
+
+static IResult GetConfig(IOptions<SearchEngineServiceOptions> options)
+{
+  SearchEngineServiceOptions value = options.Value;
+
+  return Results.Ok(new SearchEngineServiceConfigResponse
+  {
+    MaxDocumentCount = value.MaxDocumentCount,
+    MaxDocumentTextLength = value.MaxDocumentTextLength
+  });
 }
 
 static IResult GetSearchOptions()
