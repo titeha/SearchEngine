@@ -498,6 +498,92 @@ public sealed class SearchIndexStoreTests
   }
 
   /// <summary>
+  /// Проверяет, что после успешного построения индекса сохраняется snapshot-файл.
+  /// </summary>
+  [Fact]
+  public async Task BuildAsync_ПриВключенномSnapshot_СохраняетSnapshotФайл()
+  {
+    // Arrange
+    string filePath = CreateTempSnapshotPath();
+
+    try
+    {
+      SearchEngineServiceOptions options = new()
+      {
+        Snapshot = new SearchIndexSnapshotOptions
+        {
+          IsEnabled = true,
+          FilePath = filePath
+        }
+      };
+
+      SearchIndexSnapshotStorage snapshotStorage = new(
+          Options.Create(options));
+
+      SearchIndexStore sut = new(
+          Options.Create(options),
+          snapshotStorage);
+
+      IndexBuildRequest request = CreateBuildRequest(
+          isPhoneticSearch: true,
+          [(1, "Иванов Сергей Петрович"),
+          (2, "Папандопуло Александр")]);
+
+      // Act
+      ApiError? error = await sut.BuildAsync(request);
+
+      SearchIndexSnapshotFile? snapshot =
+          await snapshotStorage.LoadAsync();
+
+      // Assert
+      Assert.Null(error);
+
+      Assert.NotNull(snapshot);
+      Assert.Equal(1, snapshot.Version);
+      Assert.True(snapshot.IsPhoneticSearch);
+      Assert.Equal(2, snapshot.Documents.Count);
+
+      Assert.Equal(1, snapshot.Documents[0].Id);
+      Assert.Equal("Иванов Сергей Петрович", snapshot.Documents[0].Text);
+
+      Assert.Equal(2, snapshot.Documents[1].Id);
+      Assert.Equal("Папандопуло Александр", snapshot.Documents[1].Text);
+    }
+    finally
+    {
+      DeleteTempSnapshotDirectory(filePath);
+    }
+  }
+
+  /// <summary>
+  /// Создаёт временный путь к snapshot-файлу.
+  /// </summary>
+  /// <returns>Временный путь к snapshot-файлу.</returns>
+  private static string CreateTempSnapshotPath()
+  {
+    return Path.Combine(
+        Path.GetTempPath(),
+        "SearchEngine.Service.Tests",
+        Guid.NewGuid().ToString("N"),
+        "search-index-snapshot.json");
+  }
+
+  /// <summary>
+  /// Удаляет временную папку snapshot-файла.
+  /// </summary>
+  /// <param name="filePath">Путь к snapshot-файлу.</param>
+  private static void DeleteTempSnapshotDirectory(string filePath)
+  {
+    string? directoryPath = Path.GetDirectoryName(filePath);
+
+    if (string.IsNullOrWhiteSpace(directoryPath))
+      return;
+
+    if (Directory.Exists(directoryPath))
+      Directory.Delete(directoryPath, recursive: true);
+  }
+
+  /// <summary>
   /// Создаёт запрос на построение индекса.
   /// </summary>
   /// <param name="documents">Документы для индексации.</param>

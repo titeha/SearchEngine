@@ -9,10 +9,11 @@ namespace SearchEngine.Service;
 /// Создаёт хранилище поискового индекса.
 /// </remarks>
 /// <param name="options">Настройки поискового сервиса.</param>
-public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> options)
+public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> options, SearchIndexSnapshotStorage snapshotStorage)
 {
   private readonly SemaphoreSlim _buildLock = new(1, 1);
   private readonly SearchEngineServiceOptions _options = options.Value;
+  private readonly SearchIndexSnapshotStorage _snapshotStorage = snapshotStorage;
 
   private SearchIndexSnapshot? _snapshot;
 
@@ -21,6 +22,13 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
   /// </summary>
   public SearchIndexStore()
       : this(Options.Create(new SearchEngineServiceOptions())) { }
+
+  /// <summary>
+  /// Создаёт хранилище поискового индекса.
+  /// </summary>
+  /// <param name="options">Настройки поискового сервиса.</param>
+  public SearchIndexStore(IOptions<SearchEngineServiceOptions> options)
+      : this(options, new SearchIndexSnapshotStorage(options)) { }
 
   /// <summary>
   /// Возвращает текущее состояние поискового индекса.
@@ -99,6 +107,33 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
         };
 
       DateTimeOffset createdAtUtc = DateTimeOffset.UtcNow;
+
+      SearchIndexSnapshotFile snapshotFile = new()
+      {
+        Version = 1,
+        IsPhoneticSearch = request.IsPhoneticSearch,
+        CreatedAtUtc = createdAtUtc,
+        Documents = [.. documents.Select(document => new SearchIndexSnapshotDocument
+        {
+          Id = document.Id,
+          Text = document.Text
+        })]
+      };
+
+      try
+      {
+        await _snapshotStorage
+            .SaveAsync(snapshotFile)
+            .ConfigureAwait(false);
+      }
+      catch (Exception exception)
+      {
+        return new ApiError
+        {
+          Code = "SnapshotSaveFailed",
+          Message = $"Не удалось сохранить snapshot поискового индекса: {exception.Message}"
+        };
+      }
 
       IndexStatusResponse status = new()
       {
