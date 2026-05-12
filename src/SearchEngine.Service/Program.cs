@@ -17,6 +17,7 @@ builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.C
 
 builder.Services.Configure<SearchEngineServiceOptions>(builder.Configuration.GetSection("SearchEngineService"));
 
+builder.Services.AddSingleton<SearchIndexSnapshotStorage>();
 builder.Services.AddSingleton<SearchIndexStore>();
 
 WebApplication app = builder.Build();
