@@ -136,6 +136,39 @@ public sealed class SearchIndexSnapshotStorageTests
   }
 
   /// <summary>
+  /// Проверяет, что snapshot-файл сохраняет кириллицу в читаемом виде.
+  /// </summary>
+  [Fact]
+  public async Task SaveAsync_ПриВключенномSnapshot_СохраняетКириллицуБезUnicodeEscaping()
+  {
+    // Arrange
+    string filePath = CreateTempSnapshotPath();
+
+    try
+    {
+      SearchIndexSnapshotStorage sut = CreateStorage(
+          isEnabled: true,
+          filePath: filePath);
+
+      SearchIndexSnapshotFile snapshot = CreateSnapshot();
+
+      // Act
+      await sut.SaveAsync(snapshot);
+
+      string json = await File.ReadAllTextAsync(filePath);
+
+      // Assert
+      Assert.Contains("Иванов Сергей Петрович", json);
+      Assert.Contains("Папандопуло Александр", json);
+      Assert.DoesNotContain("\\u0418", json);
+    }
+    finally
+    {
+      DeleteTempSnapshotDirectory(filePath);
+    }
+  }
+
+  /// <summary>
   /// Создаёт тестовое хранилище snapshot.
   /// </summary>
   /// <param name="isEnabled">Признак включения snapshot.</param>

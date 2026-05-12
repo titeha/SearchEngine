@@ -1,4 +1,6 @@
-﻿using System.Text.Json;
+﻿using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Unicode;
 
 using Microsoft.Extensions.Options;
 
@@ -11,7 +13,10 @@ public sealed class SearchIndexSnapshotStorage
 {
   private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web)
   {
-    WriteIndented = true
+    WriteIndented = true,
+    Encoder = JavaScriptEncoder.Create(
+        [UnicodeRanges.BasicLatin,
+        UnicodeRanges.Cyrillic])
   };
 
   private readonly SearchEngineServiceOptions _options;
