@@ -363,3 +363,8 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# SearchEngine.Service local snapshot files
+src/SearchEngine.Service/data/
+data/search-index-snapshot.json
+data/debug-search-index-snapshot.json
