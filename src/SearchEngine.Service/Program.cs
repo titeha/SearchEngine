@@ -19,6 +19,7 @@ builder.Services.Configure<SearchEngineServiceOptions>(builder.Configuration.Get
 
 builder.Services.AddSingleton<SearchIndexSnapshotStorage>();
 builder.Services.AddSingleton<SearchIndexStore>();
+builder.Services.AddHostedService<SearchIndexRestoreHostedService>();
 
 WebApplication app = builder.Build();
 
@@ -114,6 +115,7 @@ static IResult GetConfig(IOptions<SearchEngineServiceOptions> options)
     Snapshot = new SearchIndexSnapshotConfigResponse
     {
       IsEnabled = value.Snapshot.IsEnabled,
+      AutoRestoreOnStart = value.Snapshot.AutoRestoreOnStart,
       FilePath = value.Snapshot.FilePath
     }
   });

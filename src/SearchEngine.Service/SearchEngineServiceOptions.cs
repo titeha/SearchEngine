@@ -35,4 +35,9 @@ public sealed class SearchIndexSnapshotOptions
   /// Получает или задаёт путь к файлу снимка индекса.
   /// </summary>
   public string FilePath { get; set; } = "data/search-index-snapshot.json";
+
+  /// <summary>
+  /// Получает или задаёт признак автоматического восстановления индекса при старте сервиса.
+  /// </summary>
+  public bool AutoRestoreOnStart { get; set; }
 }

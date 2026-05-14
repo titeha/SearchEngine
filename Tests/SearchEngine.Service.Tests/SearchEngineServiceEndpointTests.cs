@@ -126,6 +126,7 @@ public sealed class SearchEngineServiceEndpointTests
     Assert.Equal(10_000, response.MaxDocumentTextLength);
     Assert.NotNull(response.Snapshot);
     Assert.False(response.Snapshot.IsEnabled);
+    Assert.False(response.Snapshot.AutoRestoreOnStart);
     Assert.Equal("data/search-index-snapshot.json", response.Snapshot.FilePath);
   }
 
@@ -232,6 +233,11 @@ public sealed class SearchEngineServiceEndpointTests
     /// Получает признак включения сохранения снимка индекса.
     /// </summary>
     public bool IsEnabled { get; init; }
+
+    /// <summary>
+    /// Получает признак автоматического восстановления индекса при старте сервиса.
+    /// </summary>
+    public bool AutoRestoreOnStart { get; init; }
 
     /// <summary>
     /// Получает путь к файлу снимка индекса.

@@ -582,6 +582,67 @@ public sealed class SearchEngineServiceIndexEndpointTests
   }
 
   /// <summary>
+  /// Проверяет, что сервис автоматически восстанавливает индекс из snapshot при старте.
+  /// </summary>
+  [Fact]
+  public async Task StartAsync_ПриВключенномAutoRestore_ВосстанавливаетИндексИзSnapshot()
+  {
+    // Arrange
+    string filePath = CreateTempSnapshotPath();
+
+    try
+    {
+      DateTimeOffset createdAtUtc = new(2026, 5, 12, 10, 0, 0, TimeSpan.Zero);
+
+      await SaveSnapshotAsync(filePath, createdAtUtc);
+
+      await using WebApplicationFactory<Program> factory =
+          CreateFactoryWithAutoRestoreSnapshot(filePath);
+
+      using HttpClient client = factory.CreateClient();
+
+      // Act
+      IndexStatusResponse? status =
+          await client.GetFromJsonAsync<IndexStatusResponse>("/v1/index");
+
+      HttpResponseMessage readyResponse = await client.GetAsync("/ready");
+
+      HttpResponseMessage searchResponse = await client.PostAsJsonAsync(
+          "/v1/search",
+          new
+          {
+            query = "Ivanov",
+            matchMode = "AllTerms",
+            searchType = "ExactSearch",
+            searchLocation = "BeginWord"
+          });
+
+      SearchQueryResponse? searchResult =
+          await searchResponse.Content.ReadFromJsonAsync<SearchQueryResponse>();
+
+      // Assert
+      Assert.NotNull(status);
+      Assert.True(status.IsReady);
+      Assert.Equal(2, status.DocumentCount);
+      Assert.Equal(2, status.SearchableDocumentCount);
+      Assert.True(status.IsPhoneticSearch);
+      Assert.Equal(createdAtUtc, status.CreatedAtUtc);
+
+      Assert.Equal(HttpStatusCode.OK, readyResponse.StatusCode);
+      Assert.Equal(HttpStatusCode.OK, searchResponse.StatusCode);
+
+      Assert.NotNull(searchResult);
+      Assert.True(searchResult.IsHasIndex);
+      Assert.True(ContainsId(searchResult, 1));
+      Assert.False(ContainsId(searchResult, 2));
+    }
+    finally
+    {
+      DeleteTempSnapshotDirectory(filePath);
+    }
+  }
+
+  /// <summary>
   /// Сохраняет тестовый snapshot-файл поискового индекса.
   /// </summary>
   /// <param name="filePath">Путь к snapshot-файлу.</param>
@@ -649,11 +710,35 @@ public sealed class SearchEngineServiceIndexEndpointTests
                 new Dictionary<string, string?>
                 {
                   ["SearchEngineService:Snapshot:IsEnabled"] = "true",
+                  ["SearchEngineService:Snapshot:AutoRestoreOnStart"] = "false",
                   ["SearchEngineService:Snapshot:FilePath"] = filePath
                 });
           });
         });
   }
+  /// <summary>
+  /// Создаёт фабрику приложения с включённым автоматическим восстановлением snapshot индекса.
+  /// </summary>
+  /// <param name="filePath">Путь к snapshot-файлу.</param>
+  /// <returns>Фабрика тестового приложения.</returns>
+  private static WebApplicationFactory<Program> CreateFactoryWithAutoRestoreSnapshot(string filePath)
+  {
+    return new WebApplicationFactory<Program>()
+        .WithWebHostBuilder(builder =>
+        {
+          builder.ConfigureAppConfiguration((_, configuration) =>
+          {
+            configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                  ["SearchEngineService:Snapshot:IsEnabled"] = "true",
+                  ["SearchEngineService:Snapshot:AutoRestoreOnStart"] = "true",
+                  ["SearchEngineService:Snapshot:FilePath"] = filePath
+                });
+          });
+        });
+  }
+
 
   /// <summary>
   /// Создаёт временный путь к snapshot-файлу.
@@ -707,6 +792,7 @@ public sealed class SearchEngineServiceIndexEndpointTests
                   ["SearchEngineService:MaxDocumentTextLength"] =
                         maxDocumentTextLength.ToString(CultureInfo.InvariantCulture),
                   ["SearchEngineService:Snapshot:IsEnabled"] = "true",
+                  ["SearchEngineService:Snapshot:AutoRestoreOnStart"] = "false",
                   ["SearchEngineService:Snapshot:FilePath"] = "data/test-snapshot.json"
                 });
           });

@@ -256,6 +256,11 @@ public sealed record SearchIndexSnapshotConfigResponse
   public bool IsEnabled { get; init; }
 
   /// <summary>
+  /// Получает признак автоматического восстановления индекса при старте сервиса.
+  /// </summary>
+  public bool AutoRestoreOnStart { get; init; }
+
+  /// <summary>
   /// Получает путь к файлу снимка индекса.
   /// </summary>
   public string FilePath { get; init; } = string.Empty;
