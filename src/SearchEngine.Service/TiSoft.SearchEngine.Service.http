@@ -125,6 +125,10 @@ Content-Type: application/json
 
 ###
 
+POST {{host}}/v1/index/restore
+
+###
+
 POST {{host}}/v1/search
 Content-Type: application/json
 

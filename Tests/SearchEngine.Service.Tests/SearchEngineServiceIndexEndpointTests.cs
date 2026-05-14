@@ -5,6 +5,7 @@ using System.Text.Json;
 
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 using SearchEngine.Service;
 
@@ -445,6 +446,192 @@ public sealed class SearchEngineServiceIndexEndpointTests
       DeleteTempSnapshotDirectory(filePath);
     }
   }
+
+  /// <summary>
+  /// Проверяет, что endpoint восстановления индекса возвращает ошибку при выключенном snapshot.
+  /// </summary>
+  [Fact]
+  public async Task PostIndexRestore_ПриВыключенномSnapshot_ВозвращаетBadRequest()
+  {
+    // Arrange
+    await using WebApplicationFactory<Program> factory = new();
+
+    using HttpClient client = factory.CreateClient();
+
+    // Act
+    HttpResponseMessage response = await client.PostAsync("/v1/index/restore", content: null);
+
+    ApiError? error = await response.Content.ReadFromJsonAsync<ApiError>();
+
+    IndexStatusResponse? status =
+        await client.GetFromJsonAsync<IndexStatusResponse>("/v1/index");
+
+    // Assert
+    Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+    Assert.NotNull(error);
+    Assert.Equal("SnapshotDisabled", error.Code);
+
+    Assert.NotNull(status);
+    Assert.False(status.IsReady);
+    Assert.Equal(0, status.DocumentCount);
+    Assert.Equal(0, status.SearchableDocumentCount);
+  }
+
+  /// <summary>
+  /// Проверяет, что endpoint восстановления индекса возвращает ошибку при отсутствующем snapshot-файле.
+  /// </summary>
+  [Fact]
+  public async Task PostIndexRestore_ПриОтсутствующемSnapshot_ВозвращаетBadRequest()
+  {
+    // Arrange
+    string filePath = CreateTempSnapshotPath();
+
+    try
+    {
+      await using WebApplicationFactory<Program> factory =
+          CreateFactoryWithSnapshot(filePath);
+
+      using HttpClient client = factory.CreateClient();
+
+      // Act
+      HttpResponseMessage response = await client.PostAsync("/v1/index/restore", content: null);
+
+      ApiError? error = await response.Content.ReadFromJsonAsync<ApiError>();
+
+      IndexStatusResponse? status =
+          await client.GetFromJsonAsync<IndexStatusResponse>("/v1/index");
+
+      // Assert
+      Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+      Assert.NotNull(error);
+      Assert.Equal("SnapshotNotFound", error.Code);
+
+      Assert.NotNull(status);
+      Assert.False(status.IsReady);
+      Assert.Equal(0, status.DocumentCount);
+      Assert.Equal(0, status.SearchableDocumentCount);
+    }
+    finally
+    {
+      DeleteTempSnapshotDirectory(filePath);
+    }
+  }
+
+  /// <summary>
+  /// Проверяет, что endpoint восстановления индекса восстанавливает индекс из snapshot-файла.
+  /// </summary>
+  [Fact]
+  public async Task PostIndexRestore_ПриСуществующемSnapshot_ВосстанавливаетИндекс()
+  {
+    // Arrange
+    string filePath = CreateTempSnapshotPath();
+
+    try
+    {
+      DateTimeOffset createdAtUtc = new(2026, 5, 12, 10, 0, 0, TimeSpan.Zero);
+
+      await SaveSnapshotAsync(filePath, createdAtUtc);
+
+      await using WebApplicationFactory<Program> factory =
+          CreateFactoryWithSnapshot(filePath);
+
+      using HttpClient client = factory.CreateClient();
+
+      // Act
+      HttpResponseMessage restoreResponse = await client.PostAsync("/v1/index/restore", content: null);
+
+      IndexStatusResponse? status =
+          await restoreResponse.Content.ReadFromJsonAsync<IndexStatusResponse>();
+
+      HttpResponseMessage searchResponse = await client.PostAsJsonAsync(
+          "/v1/search",
+          new
+          {
+            query = "Ivanov",
+            matchMode = "AllTerms",
+            searchType = "ExactSearch",
+            searchLocation = "BeginWord"
+          });
+
+      SearchQueryResponse? searchResult =
+          await searchResponse.Content.ReadFromJsonAsync<SearchQueryResponse>();
+
+      // Assert
+      Assert.Equal(HttpStatusCode.OK, restoreResponse.StatusCode);
+
+      Assert.NotNull(status);
+      Assert.True(status.IsReady);
+      Assert.Equal(2, status.DocumentCount);
+      Assert.Equal(2, status.SearchableDocumentCount);
+      Assert.True(status.IsPhoneticSearch);
+      Assert.Equal(createdAtUtc, status.CreatedAtUtc);
+
+      Assert.Equal(HttpStatusCode.OK, searchResponse.StatusCode);
+
+      Assert.NotNull(searchResult);
+      Assert.True(searchResult.IsHasIndex);
+      Assert.True(ContainsId(searchResult, 1));
+      Assert.False(ContainsId(searchResult, 2));
+    }
+    finally
+    {
+      DeleteTempSnapshotDirectory(filePath);
+    }
+  }
+
+  /// <summary>
+  /// Сохраняет тестовый snapshot-файл поискового индекса.
+  /// </summary>
+  /// <param name="filePath">Путь к snapshot-файлу.</param>
+  /// <param name="createdAtUtc">Дата и время создания snapshot-файла в UTC.</param>
+  private static async Task SaveSnapshotAsync(
+      string filePath,
+      DateTimeOffset createdAtUtc)
+  {
+    SearchEngineServiceOptions options = new()
+    {
+      Snapshot = new SearchIndexSnapshotOptions
+      {
+        IsEnabled = true,
+        FilePath = filePath
+      }
+    };
+
+    SearchIndexSnapshotStorage storage = new(
+        Options.Create(options));
+
+    SearchIndexSnapshotFile snapshot = new()
+    {
+      Version = 1,
+      IsPhoneticSearch = true,
+      CreatedAtUtc = createdAtUtc,
+      Documents =
+        [
+            new()
+            {
+                Id = 1,
+                Text = "Иванов Сергей Петрович"
+            },
+            new()
+            {
+                Id = 2,
+                Text = "Папандопуло Александр"
+            }
+        ]
+    };
+
+    await storage.SaveAsync(snapshot);
+  }
+
+  /// <summary>
+  /// Проверяет наличие идентификатора документа в ответе поиска.
+  /// </summary>
+  /// <param name="response">Ответ поиска.</param>
+  /// <param name="id">Идентификатор документа.</param>
+  /// <returns><see langword="true"/>, если идентификатор найден.</returns>
+  private static bool ContainsId(SearchQueryResponse response, int id) => response.Items.Any(bucket => bucket.Ids.Contains(id));
 
   /// <summary>
   /// Создаёт фабрику приложения с включённым snapshot индекса.

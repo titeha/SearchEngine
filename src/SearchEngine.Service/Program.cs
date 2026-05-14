@@ -43,6 +43,8 @@ app.MapGet("/v1/index", (SearchIndexStore store) => Results.Ok(store.GetStatus()
 
 app.MapPost("/v1/index", BuildIndexAsync);
 
+app.MapPost("/v1/index/restore", RestoreIndexAsync);
+
 app.MapPost("/v1/search", Search);
 
 app.MapGet("/v1/search/options", GetSearchOptions);
@@ -133,6 +135,18 @@ static IResult GetSearchOptions()
 static async Task<IResult> BuildIndexAsync(IndexBuildRequest request, SearchIndexStore store)
 {
   ApiError? error = await store.BuildAsync(request);
+
+  if (error is not null)
+    return Results.BadRequest(error);
+
+  return Results.Ok(store.GetStatus());
+}
+
+static async Task<IResult> RestoreIndexAsync(
+    SearchIndexStore store,
+    CancellationToken cancellationToken)
+{
+  ApiError? error = await store.RestoreAsync(cancellationToken);
 
   if (error is not null)
     return Results.BadRequest(error);
