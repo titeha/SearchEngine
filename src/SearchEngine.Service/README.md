@@ -25,9 +25,15 @@
 - фонетический поиск;
 - поиск русских фамилий в латинской записи;
 - ограничение количества документов и длины текста через конфигурацию;
-- получение допустимых параметров поиска.
+- получение допустимых параметров поиска;
+- сохранение snapshot индекса в файл;
+- ручное восстановление индекса из snapshot-файла.
 
-Индекс хранится только в памяти процесса. После перезапуска сервиса индекс нужно построить заново.
+По умолчанию индекс хранится только в памяти процесса.
+
+Если включён snapshot, сервис может сохранить исходные документы индекса в файл и затем восстановить индекс через `POST /v1/index/restore`.
+
+Автоматическое восстановление индекса при старте сервиса пока не выполняется.
 
 ## Запуск из Visual Studio
 
@@ -197,24 +203,6 @@ docker inspect --format "{{.State.Health.Status}}" searchengine-service-healthch
 healthy
 ```
 
-## Проверка локального Docker-контейнера
-
-Для проверки запуска контейнера используется `/health`, потому что после старта контейнера индекс ещё не построен.
-
-Endpoint `/ready` до построения индекса вернёт `503 Service Unavailable`, и это нормальное поведение.
-
-Информация о сервисе доступна по адресу:
-
-```text
-http://localhost:8080/v1/info
-```
-
-Остановить контейнер можно сочетанием клавиш:
-
-```text
-Ctrl + C
-```
-
 ## Запуск опубликованного контейнера
 
 Опубликованный Docker-образ сервиса доступен в GitHub Container Registry.
@@ -222,13 +210,13 @@ Ctrl + C
 Загрузить образ:
 
 ```powershell
-docker pull ghcr.io/titeha/searchengine-service:0.2.0
+docker pull ghcr.io/titeha/searchengine-service:0.3.0
 ```
 
 Запустить контейнер:
 
 ```powershell
-docker run --rm -p 8080:8080 ghcr.io/titeha/searchengine-service:0.2.0
+docker run --rm -p 8080:8080 ghcr.io/titeha/searchengine-service:0.3.0
 ```
 
 После запуска сервис будет доступен по адресу:
@@ -270,7 +258,7 @@ ghcr.io/titeha/searchengine-service:latest
 Для воспроизводимого запуска лучше использовать версионный тег:
 
 ```text
-ghcr.io/titeha/searchengine-service:0.2.0
+ghcr.io/titeha/searchengine-service:0.3.0
 ```
 
 ## Проверка через `.http`-файл
@@ -316,13 +304,13 @@ GET {{host}}/v1/info
 ```json
 {
   "service": "TiSoft.SearchEngine.Service",
-  "serviceVersion": "0.2.0.0",
+  "serviceVersion": "0.3.0.0",
   "status": "ok",
   "searchEngineVersion": "2.0.1.0"
 }
 ```
 
-Версии могут отображаться в формате сборки, например `0.2.0.0` для сервиса и `2.0.1.0` для библиотеки.
+Версии могут отображаться в формате сборки, например `0.3.0.0` для сервиса и `2.0.1.0` для библиотеки.
 
 ## Активная конфигурация сервиса
 
@@ -339,7 +327,11 @@ GET {{host}}/v1/config
 ```json
 {
   "maxDocumentCount": 100000,
-  "maxDocumentTextLength": 10000
+  "maxDocumentTextLength": 10000,
+  "snapshot": {
+    "isEnabled": false,
+    "filePath": "data/search-index-snapshot.json"
+  }
 }
 ```
 
@@ -357,7 +349,11 @@ docker run --rm -p 8080:8080 `
 ```json
 {
   "maxDocumentCount": 1,
-  "maxDocumentTextLength": 5
+  "maxDocumentTextLength": 5,
+  "snapshot": {
+    "isEnabled": false,
+    "filePath": "data/search-index-snapshot.json"
+  }
 }
 ```
 
@@ -426,7 +422,11 @@ GET {{host}}/v1/search/options
 {
   "SearchEngineService": {
     "MaxDocumentCount": 100000,
-    "MaxDocumentTextLength": 10000
+    "MaxDocumentTextLength": 10000,
+    "Snapshot": {
+      "IsEnabled": false,
+      "FilePath": "data/search-index-snapshot.json"
+    }
   }
 }
 ```
@@ -435,8 +435,9 @@ GET {{host}}/v1/search/options
 
 | Параметр | Описание | Значение по умолчанию |
 |---|---|---|
-| MaxDocumentCount | максимальное количество документов для построения индекса | 100000
-| MaxDocumentTextLength | максимальная длина текста одного документа | 10000
+| `MaxDocumentCount` | максимальное количество документов для построения индекса | `100000` |
+| `MaxDocumentTextLength` | максимальная длина текста одного документа | `10000` |
+
 
 Если количество документов превышает MaxDocumentCount, endpoint POST /v1/index возвращает ошибку:
 
@@ -458,7 +459,10 @@ GET {{host}}/v1/search/options
 
 Текущие значения этих настроек можно проверить через endpoint `GET /v1/config`.
 
-### Настройки через Docker environment variables
+> Функции snapshot и восстановления индекса доступны в текущей версии исходного кода.
+> В опубликованном контейнере они появятся после следующего контейнерного релиза.
+
+## Настройки через Docker environment variables
 
 При запуске контейнера настройки можно переопределить через переменные окружения.
 
@@ -466,12 +470,12 @@ GET {{host}}/v1/search/options
 
 ```powershell
 docker run --rm -p 8080:8080 `
--e SearchEngineService__MaxDocumentCount=50000 `
+  -e SearchEngineService__MaxDocumentCount=50000 `
   -e SearchEngineService__MaxDocumentTextLength=20000 `
   ghcr.io/titeha/searchengine-service:0.3.0
 ```
 
-Для вложенных настроек используется двойное подчёркивание __.
+Для вложенных настроек используется двойное подчёркивание `__`.
 
 Например:
 
@@ -483,6 +487,55 @@ SearchEngineService__MaxDocumentCount
 
 ```text
 SearchEngineService:MaxDocumentCount
+```
+
+## Snapshot индекса
+
+Snapshot позволяет сохранить данные, из которых можно восстановить поисковый индекс после перезапуска сервиса.
+
+Сервис сохраняет не внутреннюю структуру индекса, а исходные документы и настройки индексации:
+
+- версию snapshot-формата;
+- признак включения фонетического поиска;
+- дату и время создания snapshot;
+- список документов `id` / `text`.
+
+Snapshot по умолчанию выключен.
+
+Пример настройки:
+
+```json
+{
+  "SearchEngineService": {
+    "Snapshot": {
+      "IsEnabled": true,
+      "FilePath": "data/search-index-snapshot.json"
+    }
+  }
+}
+```
+
+Через Docker environment variables:
+
+```powershell
+docker run --rm -p 8080:8080 `
+  -e SearchEngineService__Snapshot__IsEnabled=true `
+  -e SearchEngineService__Snapshot__FilePath=data/search-index-snapshot.json `
+  ghcr.io/titeha/searchengine-service:0.3.0
+```
+
+Для вложенных настроек используется двойное подчёркивание `__`.
+
+Например:
+
+```text
+SearchEngineService__Snapshot__IsEnabled
+```
+
+соответствует настройке:
+
+```text
+SearchEngineService:Snapshot:IsEnabled
 ```
 
 ## Состояние индекса
@@ -572,6 +625,63 @@ Content-Type: application/json
   "searchableDocumentCount": 3,
   "isPhoneticSearch": true,
   "createdAtUtc": "..."
+}
+```
+
+## Восстановление индекса из snapshot
+
+Endpoint восстанавливает поисковый индекс из snapshot-файла.
+
+```http
+POST {{host}}/v1/index/restore
+```
+
+Если snapshot выключен, endpoint вернёт ошибку:
+
+```json
+{
+  "code": "SnapshotDisabled",
+  "message": "Восстановление snapshot поискового индекса отключено."
+}
+```
+
+Если snapshot включён, но файл отсутствует, endpoint вернёт ошибку:
+
+```json
+{
+  "code": "SnapshotNotFound",
+  "message": "Snapshot-файл поискового индекса не найден."
+}
+```
+
+Если snapshot-файл найден и успешно прочитан, сервис построит индекс заново из сохранённых документов.
+
+Пример успешного ответа:
+
+```json
+{
+  "isReady": true,
+  "documentCount": 3,
+  "searchableDocumentCount": 3,
+  "isPhoneticSearch": true,
+  "createdAtUtc": "..."
+}
+```
+
+После восстановления можно проверить готовность:
+
+```http
+GET {{host}}/ready
+```
+
+И выполнить обычный поиск:
+
+```http
+POST {{host}}/v1/search
+Content-Type: application/json
+
+{
+  "query": "Ivanov"
 }
 ```
 
@@ -722,13 +832,13 @@ Content-Type: application/json
 
 Сейчас сервис:
 
-- хранит индекс только в памяти;
 - поддерживает один общий индекс;
-- строит индекс только из документов, переданных во входящем JSON;
-- ограничивает размер входящих данных через настройки `SearchEngineService`;
+- строит индекс из документов, переданных во входящем JSON;
+- может сохранять snapshot индекса в файл;
+- может вручную восстанавливать индекс из snapshot-файла;
+- не восстанавливает индекс автоматически при старте;
 - не подключается к БД для самостоятельного получения данных;
 - не отслеживает изменения в источнике данных;
-- не сохраняет snapshot индекса на диск;
 - не содержит авторизации;
 - Dockerfile используется для локальной и CI-сборки контейнера;
 - контейнер публикуется в GHCR только по релизному тегу `service-v*`;
@@ -794,8 +904,8 @@ Content-Type: application/json
 
 Ближайшие шаги:
 
-1. добавить настройки сервиса через конфигурацию;
-2. добавить сохранение и восстановление snapshot индекса;
+1. добавить автоматическое восстановление индекса из snapshot при старте сервиса;
+2. добавить настройки сервиса через конфигурацию для режима автоматического восстановления;
 3. добавить построение индекса из заранее настроенного источника данных;
 4. добавить безопасное подключение к БД с read-only доступом;
 5. добавить ручную перестройку индекса по имени источника данных;
