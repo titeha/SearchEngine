@@ -267,6 +267,48 @@ public sealed record SearchIndexSnapshotConfigResponse
 }
 
 /// <summary>
+/// Ответ со списком настроенных источников данных.
+/// </summary>
+public sealed record SearchDataSourcesResponse
+{
+  /// <summary>
+  /// Получает безопасное описание источников данных.
+  /// </summary>
+  public IReadOnlyList<SearchDataSourceResponse> Items { get; init; } = [];
+}
+
+/// <summary>
+/// Безопасное описание источника данных.
+/// </summary>
+public sealed record SearchDataSourceResponse
+{
+  /// <summary>
+  /// Получает имя источника данных.
+  /// </summary>
+  public string Name { get; init; } = string.Empty;
+
+  /// <summary>
+  /// Получает признак включения источника данных.
+  /// </summary>
+  public bool IsEnabled { get; init; }
+
+  /// <summary>
+  /// Получает тип источника данных.
+  /// </summary>
+  public string Provider { get; init; } = string.Empty;
+
+  /// <summary>
+  /// Получает признак наличия имени строки подключения.
+  /// </summary>
+  public bool HasConnectionStringName { get; init; }
+
+  /// <summary>
+  /// Получает признак наличия запроса для получения данных.
+  /// </summary>
+  public bool HasQuery { get; init; }
+}
+
+/// <summary>
 /// Ошибка API сервиса.
 /// </summary>
 public sealed record ApiError

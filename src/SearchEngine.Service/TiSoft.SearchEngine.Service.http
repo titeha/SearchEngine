@@ -31,6 +31,10 @@ GET {{host}}/v1/config
 
 ###
 
+GET {{host}}/v1/data-sources
+
+###
+
 # Настройки snapshot индекса можно переопределить через переменные окружения:
 #
 # SearchEngineService__Snapshot__IsEnabled=true

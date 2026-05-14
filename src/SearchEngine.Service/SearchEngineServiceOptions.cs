@@ -19,6 +19,11 @@ public sealed class SearchEngineServiceOptions
   /// Получает или задаёт настройки сохранения снимка индекса.
   /// </summary>
   public SearchIndexSnapshotOptions Snapshot { get; set; } = new();
+
+  /// <summary>
+  /// Получает или задаёт заранее настроенные источники данных для построения индекса.
+  /// </summary>
+  public Dictionary<string, SearchDataSourceOptions> Sources { get; set; } = [];
 }
 
 /// <summary>
@@ -40,4 +45,30 @@ public sealed class SearchIndexSnapshotOptions
   /// Получает или задаёт признак автоматического восстановления индекса при старте сервиса.
   /// </summary>
   public bool AutoRestoreOnStart { get; set; }
+}
+
+/// <summary>
+/// Настройки источника данных для построения поискового индекса.
+/// </summary>
+public sealed class SearchDataSourceOptions
+{
+  /// <summary>
+  /// Получает или задаёт признак включения источника данных.
+  /// </summary>
+  public bool IsEnabled { get; set; } = true;
+
+  /// <summary>
+  /// Получает или задаёт тип источника данных.
+  /// </summary>
+  public string Provider { get; set; } = string.Empty;
+
+  /// <summary>
+  /// Получает или задаёт имя строки подключения.
+  /// </summary>
+  public string ConnectionStringName { get; set; } = string.Empty;
+
+  /// <summary>
+  /// Получает или задаёт запрос для получения данных индекса.
+  /// </summary>
+  public string Query { get; set; } = string.Empty;
 }

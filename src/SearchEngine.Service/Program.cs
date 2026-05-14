@@ -40,6 +40,8 @@ app.MapGet("/v1/info", () => Results.Ok(new
 
 app.MapGet("/v1/config", GetConfig);
 
+app.MapGet("/v1/data-sources", GetDataSources);
+
 app.MapGet("/v1/index", (SearchIndexStore store) => Results.Ok(store.GetStatus()));
 
 app.MapPost("/v1/index", BuildIndexAsync);
@@ -118,6 +120,28 @@ static IResult GetConfig(IOptions<SearchEngineServiceOptions> options)
       AutoRestoreOnStart = value.Snapshot.AutoRestoreOnStart,
       FilePath = value.Snapshot.FilePath
     }
+  });
+}
+
+static IResult GetDataSources(IOptions<SearchEngineServiceOptions> options)
+{
+  SearchDataSourceResponse[] items =
+  [
+      .. options.Value.Sources
+            .OrderBy(source => source.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(source => new SearchDataSourceResponse
+            {
+                Name = source.Key,
+                IsEnabled = source.Value.IsEnabled,
+                Provider = source.Value.Provider,
+                HasConnectionStringName = !string.IsNullOrWhiteSpace(source.Value.ConnectionStringName),
+                HasQuery = !string.IsNullOrWhiteSpace(source.Value.Query)
+            })
+  ];
+
+  return Results.Ok(new SearchDataSourcesResponse
+  {
+    Items = items
   });
 }
 
