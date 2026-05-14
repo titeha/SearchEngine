@@ -556,6 +556,158 @@ public sealed class SearchIndexStoreTests
   }
 
   /// <summary>
+  /// Проверяет, что восстановление индекса при выключенном snapshot возвращает прикладную ошибку.
+  /// </summary>
+  [Fact]
+  public async Task RestoreAsync_ПриВыключенномSnapshot_ВозвращаетОшибку()
+  {
+    // Arrange
+    SearchIndexStore sut = new();
+
+    // Act
+    ApiError? error = await sut.RestoreAsync();
+
+    IndexStatusResponse status = sut.GetStatus();
+
+    // Assert
+    Assert.NotNull(error);
+    Assert.Equal("SnapshotDisabled", error.Code);
+
+    Assert.False(status.IsReady);
+    Assert.Equal(0, status.DocumentCount);
+    Assert.Equal(0, status.SearchableDocumentCount);
+  }
+
+  /// <summary>
+  /// Проверяет, что восстановление индекса при отсутствующем snapshot-файле возвращает прикладную ошибку.
+  /// </summary>
+  [Fact]
+  public async Task RestoreAsync_ПриОтсутствующемSnapshot_ВозвращаетОшибку()
+  {
+    // Arrange
+    string filePath = CreateTempSnapshotPath();
+
+    try
+    {
+      SearchEngineServiceOptions options = new()
+      {
+        Snapshot = new SearchIndexSnapshotOptions
+        {
+          IsEnabled = true,
+          FilePath = filePath
+        }
+      };
+
+      SearchIndexSnapshotStorage snapshotStorage = new(
+          Options.Create(options));
+
+      SearchIndexStore sut = new(
+          Options.Create(options),
+          snapshotStorage);
+
+      // Act
+      ApiError? error = await sut.RestoreAsync();
+
+      IndexStatusResponse status = sut.GetStatus();
+
+      // Assert
+      Assert.NotNull(error);
+      Assert.Equal("SnapshotNotFound", error.Code);
+
+      Assert.False(status.IsReady);
+      Assert.Equal(0, status.DocumentCount);
+      Assert.Equal(0, status.SearchableDocumentCount);
+    }
+    finally
+    {
+      DeleteTempSnapshotDirectory(filePath);
+    }
+  }
+
+  /// <summary>
+  /// Проверяет, что индекс восстанавливается из существующего snapshot-файла.
+  /// </summary>
+  [Fact]
+  public async Task RestoreAsync_ПриСуществующемSnapshot_ВосстанавливаетИндекс()
+  {
+    // Arrange
+    string filePath = CreateTempSnapshotPath();
+
+    try
+    {
+      DateTimeOffset createdAtUtc = new(2026, 5, 12, 10, 0, 0, TimeSpan.Zero);
+
+      SearchEngineServiceOptions options = new()
+      {
+        Snapshot = new SearchIndexSnapshotOptions
+        {
+          IsEnabled = true,
+          FilePath = filePath
+        }
+      };
+
+      SearchIndexSnapshotStorage snapshotStorage = new(
+          Options.Create(options));
+
+      SearchIndexSnapshotFile snapshotFile = new()
+      {
+        Version = 1,
+        IsPhoneticSearch = true,
+        CreatedAtUtc = createdAtUtc,
+        Documents =
+          [
+              new()
+                {
+                    Id = 1,
+                    Text = "Иванов Сергей Петрович"
+                },
+                new()
+                {
+                    Id = 2,
+                    Text = "Папандопуло Александр"
+                }
+          ]
+      };
+
+      await snapshotStorage.SaveAsync(snapshotFile);
+
+      SearchIndexStore sut = new(
+          Options.Create(options),
+          snapshotStorage);
+
+      // Act
+      ApiError? restoreError = await sut.RestoreAsync();
+
+      IndexStatusResponse status = sut.GetStatus();
+
+      SearchQueryResponse? searchResult = sut.Search(
+          new SearchQueryRequest
+          {
+            Query = "Ivanov"
+          },
+          out ApiError? searchError);
+
+      // Assert
+      Assert.Null(restoreError);
+
+      Assert.True(status.IsReady);
+      Assert.Equal(2, status.DocumentCount);
+      Assert.Equal(2, status.SearchableDocumentCount);
+      Assert.True(status.IsPhoneticSearch);
+      Assert.Equal(createdAtUtc, status.CreatedAtUtc);
+
+      Assert.Null(searchError);
+      Assert.NotNull(searchResult);
+      Assert.True(ContainsId(searchResult, 1));
+      Assert.False(ContainsId(searchResult, 2));
+    }
+    finally
+    {
+      DeleteTempSnapshotDirectory(filePath);
+    }
+  }
+
+  /// <summary>
   /// Создаёт временный путь к snapshot-файлу.
   /// </summary>
   /// <returns>Временный путь к snapshot-файлу.</returns>

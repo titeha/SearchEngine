@@ -157,6 +157,129 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
   }
 
   /// <summary>
+  /// Восстанавливает поисковый индекс из snapshot-файла.
+  /// </summary>
+  /// <param name="cancellationToken">Токен отмены операции.</param>
+  /// <returns>Ошибка восстановления или <see langword="null"/>, если индекс восстановлен успешно.</returns>
+  public async Task<ApiError?> RestoreAsync(CancellationToken cancellationToken = default)
+  {
+    if (!_options.Snapshot.IsEnabled)
+      return new ApiError
+      {
+        Code = "SnapshotDisabled",
+        Message = "Восстановление snapshot поискового индекса отключено."
+      };
+
+    await _buildLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+    try
+    {
+      SearchIndexSnapshotFile? snapshotFile;
+
+      try
+      {
+        snapshotFile = await _snapshotStorage
+            .LoadAsync(cancellationToken)
+            .ConfigureAwait(false);
+      }
+      catch (Exception exception)
+      {
+        return new ApiError
+        {
+          Code = "SnapshotLoadFailed",
+          Message = $"Не удалось загрузить snapshot поискового индекса: {exception.Message}"
+        };
+      }
+
+      if (snapshotFile is null)
+        return new ApiError
+        {
+          Code = "SnapshotNotFound",
+          Message = "Snapshot-файл поискового индекса не найден."
+        };
+
+      if (snapshotFile.Version != 1)
+        return new ApiError
+        {
+          Code = "UnsupportedSnapshotVersion",
+          Message = $"Версия snapshot-файла не поддерживается: {snapshotFile.Version}."
+        };
+
+      if (snapshotFile.Documents is null || snapshotFile.Documents.Count == 0)
+        return new ApiError
+        {
+          Code = "SnapshotHasNoDocuments",
+          Message = "Snapshot-файл не содержит документов для восстановления индекса."
+        };
+
+      if (snapshotFile.Documents.Count > _options.MaxDocumentCount)
+        return new ApiError
+        {
+          Code = "TooManyDocuments",
+          Message = $"Количество документов превышает допустимое значение: {_options.MaxDocumentCount}."
+        };
+
+      SearchIndexSnapshotDocument? tooLongDocument = snapshotFile.Documents
+          .FirstOrDefault(document => document.Text.Length > _options.MaxDocumentTextLength);
+
+      if (tooLongDocument is not null)
+        return new ApiError
+        {
+          Code = "DocumentTextTooLong",
+          Message = $"Длина текста документа превышает допустимое значение: {_options.MaxDocumentTextLength}."
+        };
+
+      IndexDocument[] documents =
+      [
+          .. snapshotFile.Documents
+                .Where(document => !string.IsNullOrWhiteSpace(document.Text))
+                .Select(document => new IndexDocument(document.Id, document.Text))
+      ];
+
+      if (documents.Length == 0)
+      {
+        return new ApiError
+        {
+          Code = "SnapshotHasNoSearchableDocuments",
+          Message = "Snapshot-файл не содержит документов с пригодным для индексации текстом."
+        };
+      }
+
+      Search<int> search = new(snapshotFile.IsPhoneticSearch);
+
+      var prepareResult = await search
+          .PrepareIndexResult(documents)
+          .ConfigureAwait(false);
+
+      if (prepareResult.IsFailure)
+        return new ApiError
+        {
+          Code = prepareResult.Error!.Code.ToString(),
+          Message = prepareResult.Error.Message
+        };
+
+      IndexStatusResponse status = new()
+      {
+        IsReady = true,
+        DocumentCount = snapshotFile.Documents.Count,
+        SearchableDocumentCount = documents.Length,
+        IsPhoneticSearch = snapshotFile.IsPhoneticSearch,
+        CreatedAtUtc = snapshotFile.CreatedAtUtc
+      };
+
+      SearchIndexSnapshot snapshot = new(search, status);
+
+      Volatile.Write(ref _snapshot, snapshot);
+
+      return null;
+    }
+    finally
+    {
+      _buildLock.Release();
+    }
+  }
+
+  /// <summary>
   /// Выполняет простой поиск по текущему индексу.
   /// </summary>
   /// <param name="request">Запрос на выполнение поиска.</param>
@@ -216,7 +339,7 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
                 .Select(item => new SearchResultBucket
                 {
                     Key = item.Key,
-                    Ids = item.Value.Items.ToArray()
+                    Ids = [.. item.Value.Items]
                 })
     ];
 
