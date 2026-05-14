@@ -59,6 +59,61 @@ http://localhost:5037/health
 
 Порт может отличаться.
 
+## Локальный snapshot-debug запуск
+
+Для проверки сохранения и автоматического восстановления snapshot индекса не нужно вручную менять `appsettings.json`.
+
+В репозитории есть отдельный PowerShell-скрипт:
+
+```text
+tools/run-service-snapshot-debug.ps1
+```
+
+Запускать его нужно из корня репозитория:
+
+```powershell
+.\tools\run-service-snapshot-debug.ps1
+```
+
+Скрипт временно задаёт переменные окружения только для текущего процесса запуска:
+
+```text
+SearchEngineService__Snapshot__IsEnabled=true
+SearchEngineService__Snapshot__AutoRestoreOnStart=true
+SearchEngineService__Snapshot__FilePath=src/SearchEngine.Service/data/debug-search-index-snapshot.json
+```
+
+После запуска можно проверить активную конфигурацию:
+
+```http
+GET {{host}}/v1/config
+```
+
+Ожидаемый фрагмент ответа:
+
+```json
+{
+  "snapshot": {
+    "isEnabled": true,
+    "autoRestoreOnStart": true,
+    "filePath": "..."
+  }
+}
+```
+
+Проверочный сценарий:
+
+1. запустить сервис через tools/run-service-snapshot-debug.ps1;
+2. выполнить POST /v1/index;
+3. убедиться, что создан snapshot-файл;
+4. остановить сервис;
+5. снова запустить сервис через тот же скрипт;
+6. выполнить GET /ready;
+7. убедиться, что сервис вернул 200 OK;
+8. выполнить поиск, например POST /v1/search с запросом Ivanov.
+
+Snapshot-файл создаётся локально и не должен попадать в Git. Для этого путь src/SearchEngine.Service/data/ добавлен в .gitignore.
+
 ## Локальный запуск через Docker
 
 Сервис можно собрать и запустить в локальном Docker-контейнере.
@@ -459,6 +514,20 @@ GET {{host}}/v1/search/options
 
 Текущие значения этих настроек можно проверить через endpoint `GET /v1/config`.
 
+Ответ будет примерно таким:
+
+```json
+{
+  "maxDocumentCount": 100000,
+  "maxDocumentTextLength": 10000,
+  "snapshot": {
+    "isEnabled": false,
+    "autoRestoreOnStart": false,
+    "filePath": "data/search-index-snapshot.json"
+  }
+}
+```
+
 > Функции snapshot и восстановления индекса доступны в текущей версии исходного кода.
 > В опубликованном контейнере они появятся после следующего контейнерного релиза.
 
@@ -509,17 +578,23 @@ Snapshot по умолчанию выключен.
   "SearchEngineService": {
     "Snapshot": {
       "IsEnabled": true,
+      "AutoRestoreOnStart": false,
       "FilePath": "data/search-index-snapshot.json"
     }
   }
 }
 ```
 
+Параметр `AutoRestoreOnStart` включает автоматическое восстановление индекса из snapshot-файла при старте сервиса.
+
+Если `AutoRestoreOnStart = true`, но snapshot-файл отсутствует или повреждён, сервис не падает. Он продолжает запуск, а индекс остаётся неготовым до ручного построения или восстановления.
+
 Через Docker environment variables:
 
 ```powershell
 docker run --rm -p 8080:8080 `
   -e SearchEngineService__Snapshot__IsEnabled=true `
+  -e SearchEngineService__Snapshot__AutoRestoreOnStart=true `
   -e SearchEngineService__Snapshot__FilePath=data/search-index-snapshot.json `
   ghcr.io/titeha/searchengine-service:0.3.0
 ```
@@ -836,7 +911,7 @@ Content-Type: application/json
 - строит индекс из документов, переданных во входящем JSON;
 - может сохранять snapshot индекса в файл;
 - может вручную восстанавливать индекс из snapshot-файла;
-- не восстанавливает индекс автоматически при старте;
+- автоматическое восстановление индекса при старте доступно только при включённом snapshot и `AutoRestoreOnStart`;
 - не подключается к БД для самостоятельного получения данных;
 - не отслеживает изменения в источнике данных;
 - не содержит авторизации;
@@ -904,12 +979,11 @@ Content-Type: application/json
 
 Ближайшие шаги:
 
-1. добавить автоматическое восстановление индекса из snapshot при старте сервиса;
-2. добавить настройки сервиса через конфигурацию для режима автоматического восстановления;
-3. добавить построение индекса из заранее настроенного источника данных;
-4. добавить безопасное подключение к БД с read-only доступом;
-5. добавить ручную перестройку индекса по имени источника данных;
-6. исследовать мониторинг изменений в БД для актуализации индекса;
-7. добавить базовую защиту API;
-8. добавить нагрузочные проверки сервиса;
-9. добавить документацию по развёртыванию контейнера.
+1. подготовить контейнерный релиз с поддержкой snapshot и auto-restore;
+2. добавить построение индекса из заранее настроенного источника данных;
+3. добавить безопасное подключение к БД с read-only доступом;
+4. добавить ручную перестройку индекса по имени источника данных;
+5. исследовать мониторинг изменений в БД для актуализации индекса;
+6. добавить базовую защиту API;
+7. добавить нагрузочные проверки сервиса;
+8. добавить документацию по развёртыванию контейнера.
