@@ -272,6 +272,11 @@ public sealed record SearchIndexSnapshotConfigResponse
 public sealed record SearchDataSourcesResponse
 {
   /// <summary>
+  /// Получает поддерживаемые provider-ы источников данных.
+  /// </summary>
+  public IReadOnlyList<string> SupportedProviders { get; init; } = [];
+
+  /// <summary>
   /// Получает безопасное описание источников данных.
   /// </summary>
   public IReadOnlyList<SearchDataSourceResponse> Items { get; init; } = [];
@@ -291,6 +296,11 @@ public sealed record SearchDataSourceResponse
   /// Получает признак включения источника данных.
   /// </summary>
   public bool IsEnabled { get; init; }
+
+  /// <summary>
+  /// Получает признак поддержки provider-а источника данных текущим сервисом.
+  /// </summary>
+  public bool IsProviderSupported { get; init; }
 
   /// <summary>
   /// Получает тип источника данных.

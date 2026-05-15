@@ -30,6 +30,7 @@ public sealed class SearchEngineServiceDataSourceEndpointTests
     // Assert
     Assert.NotNull(response);
     Assert.Empty(response.Items);
+    Assert.Empty(response.SupportedProviders);
   }
 
   /// <summary>
@@ -57,6 +58,8 @@ public sealed class SearchEngineServiceDataSourceEndpointTests
     Assert.Equal("postgres", source.Provider);
     Assert.True(source.HasConnectionStringName);
     Assert.True(source.HasQuery);
+    Assert.Empty(response.SupportedProviders);
+    Assert.False(source.IsProviderSupported);
   }
 
   /// <summary>

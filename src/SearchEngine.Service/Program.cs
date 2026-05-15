@@ -20,6 +20,7 @@ builder.Services.Configure<SearchEngineServiceOptions>(builder.Configuration.Get
 builder.Services.AddSingleton<SearchIndexSnapshotStorage>();
 builder.Services.AddSingleton<SearchIndexStore>();
 builder.Services.AddHostedService<SearchIndexRestoreHostedService>();
+builder.Services.AddSingleton<SearchDataSourceReaderRegistry>();
 
 WebApplication app = builder.Build();
 
@@ -123,7 +124,9 @@ static IResult GetConfig(IOptions<SearchEngineServiceOptions> options)
   });
 }
 
-static IResult GetDataSources(IOptions<SearchEngineServiceOptions> options)
+static IResult GetDataSources(
+    IOptions<SearchEngineServiceOptions> options,
+    SearchDataSourceReaderRegistry registry)
 {
   SearchDataSourceResponse[] items =
   [
@@ -134,6 +137,7 @@ static IResult GetDataSources(IOptions<SearchEngineServiceOptions> options)
                 Name = source.Key,
                 IsEnabled = source.Value.IsEnabled,
                 Provider = source.Value.Provider,
+                IsProviderSupported = registry.IsSupported(source.Value.Provider),
                 HasConnectionStringName = !string.IsNullOrWhiteSpace(source.Value.ConnectionStringName),
                 HasQuery = !string.IsNullOrWhiteSpace(source.Value.Query)
             })
@@ -141,6 +145,7 @@ static IResult GetDataSources(IOptions<SearchEngineServiceOptions> options)
 
   return Results.Ok(new SearchDataSourcesResponse
   {
+    SupportedProviders = registry.GetSupportedProviders(),
     Items = items
   });
 }
