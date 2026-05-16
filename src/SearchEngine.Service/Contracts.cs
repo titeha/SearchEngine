@@ -17,6 +17,22 @@ public sealed record IndexBuildRequest
 }
 
 /// <summary>
+/// Запрос на построение индекса из заранее настроенного источника данных.
+/// </summary>
+public sealed record IndexBuildFromSourceRequest
+{
+  /// <summary>
+  /// Получает имя заранее настроенного источника данных.
+  /// </summary>
+  public string? SourceName { get; init; }
+
+  /// <summary>
+  /// Получает признак включения фонетического поиска.
+  /// </summary>
+  public bool IsPhoneticSearch { get; init; }
+}
+
+/// <summary>
 /// Документ, передаваемый в сервис для последующей индексации.
 /// </summary>
 public sealed record IndexDocumentRequest

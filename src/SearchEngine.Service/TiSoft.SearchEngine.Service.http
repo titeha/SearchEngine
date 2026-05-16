@@ -35,6 +35,16 @@ GET {{host}}/v1/data-sources
 
 ###
 
+POST {{host}}/v1/index/from-source
+Content-Type: application/json
+
+{
+  "sourceName": "products",
+  "isPhoneticSearch": true
+}
+
+###
+
 # Настройки snapshot индекса можно переопределить через переменные окружения:
 #
 # SearchEngineService__Snapshot__IsEnabled=true
