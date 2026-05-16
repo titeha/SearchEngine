@@ -24,6 +24,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SearchEngine.Service", "src
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SearchEngine.Service.Tests", "Tests\SearchEngine.Service.Tests\SearchEngine.Service.Tests.csproj", "{E8DB6DDE-28DA-4E63-B8B3-FB5181E3135D}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Smoke", "Smoke", "{462A270E-DDB7-40D6-8C59-CDD2FA66BF46}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SearchEngine.Service.LoadSmoke", "tools\SearchEngine.Service.LoadSmoke\SearchEngine.Service.LoadSmoke.csproj", "{9BF612EE-F632-49B7-AB17-088EB3759101}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -50,6 +54,10 @@ Global
 		{E8DB6DDE-28DA-4E63-B8B3-FB5181E3135D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E8DB6DDE-28DA-4E63-B8B3-FB5181E3135D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E8DB6DDE-28DA-4E63-B8B3-FB5181E3135D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9BF612EE-F632-49B7-AB17-088EB3759101}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9BF612EE-F632-49B7-AB17-088EB3759101}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9BF612EE-F632-49B7-AB17-088EB3759101}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9BF612EE-F632-49B7-AB17-088EB3759101}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -60,6 +68,8 @@ Global
 		{523F6510-958F-4035-80A6-84FE7F7E6AC9} = {7C205016-E394-4D49-B81A-40AD5598FA4E}
 		{8F4EC03D-4C0C-42FD-BDFE-2B33ACB1962A} = {5551A15F-D766-499E-8CBD-360AC6252D16}
 		{E8DB6DDE-28DA-4E63-B8B3-FB5181E3135D} = {7A369112-1B79-488E-ADD3-8C9B5CB10413}
+		{462A270E-DDB7-40D6-8C59-CDD2FA66BF46} = {7C205016-E394-4D49-B81A-40AD5598FA4E}
+		{9BF612EE-F632-49B7-AB17-088EB3759101} = {462A270E-DDB7-40D6-8C59-CDD2FA66BF46}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {CEA74CE2-A7A3-4BB7-8CF0-90F6E2A76DC1}
