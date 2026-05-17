@@ -29,8 +29,8 @@ public sealed class SearchEngineServiceDataSourceEndpointTests
 
     // Assert
     Assert.NotNull(response);
+    Assert.Contains("in-memory", response.SupportedProviders);
     Assert.Empty(response.Items);
-    Assert.Empty(response.SupportedProviders);
   }
 
   /// <summary>
@@ -58,7 +58,7 @@ public sealed class SearchEngineServiceDataSourceEndpointTests
     Assert.Equal("postgres", source.Provider);
     Assert.True(source.HasConnectionStringName);
     Assert.True(source.HasQuery);
-    Assert.Empty(response.SupportedProviders);
+    Assert.Contains("in-memory", response.SupportedProviders);
     Assert.False(source.IsProviderSupported);
   }
 

@@ -63,6 +63,11 @@ public sealed class SearchDataSourceOptions
   public string Provider { get; set; } = string.Empty;
 
   /// <summary>
+  /// Получает или задаёт документы in-memory источника данных.
+  /// </summary>
+  public List<SearchDataSourceDocumentOptions> Documents { get; set; } = [];
+
+  /// <summary>
   /// Получает или задаёт имя строки подключения.
   /// </summary>
   public string ConnectionStringName { get; set; } = string.Empty;
@@ -71,4 +76,20 @@ public sealed class SearchDataSourceOptions
   /// Получает или задаёт запрос для получения данных индекса.
   /// </summary>
   public string Query { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Настройки документа in-memory источника данных.
+/// </summary>
+public sealed class SearchDataSourceDocumentOptions
+{
+  /// <summary>
+  /// Получает или задаёт идентификатор документа.
+  /// </summary>
+  public int Id { get; set; }
+
+  /// <summary>
+  /// Получает или задаёт текст документа.
+  /// </summary>
+  public string Text { get; set; } = string.Empty;
 }

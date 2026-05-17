@@ -189,6 +189,59 @@ public sealed class SearchEngineServiceIndexFromSourceEndpointTests
   }
 
   /// <summary>
+  /// Проверяет, что индекс строится из встроенного in-memory источника данных.
+  /// </summary>
+  [Fact]
+  public async Task PostIndexFromSource_СInMemoryProvider_СтроитИндекс()
+  {
+    // Arrange
+    await using WebApplicationFactory<Program> factory = CreateFactoryWithInMemoryDataSource();
+
+    using HttpClient client = factory.CreateClient();
+
+    object request = new
+    {
+      sourceName = "demo",
+      isPhoneticSearch = true
+    };
+
+    // Act
+    HttpResponseMessage buildResponse = await client.PostAsJsonAsync("/v1/index/from-source", request);
+
+    IndexStatusResponse? status =
+        await buildResponse.Content.ReadFromJsonAsync<IndexStatusResponse>();
+
+    HttpResponseMessage searchResponse = await client.PostAsJsonAsync(
+        "/v1/search",
+        new
+        {
+          query = "Ivanov",
+          matchMode = "AllTerms",
+          searchType = "ExactSearch",
+          searchLocation = "BeginWord"
+        });
+
+    SearchQueryResponse? searchResult =
+        await searchResponse.Content.ReadFromJsonAsync<SearchQueryResponse>();
+
+    // Assert
+    Assert.Equal(HttpStatusCode.OK, buildResponse.StatusCode);
+
+    Assert.NotNull(status);
+    Assert.True(status.IsReady);
+    Assert.Equal(2, status.DocumentCount);
+    Assert.Equal(2, status.SearchableDocumentCount);
+    Assert.True(status.IsPhoneticSearch);
+
+    Assert.Equal(HttpStatusCode.OK, searchResponse.StatusCode);
+
+    Assert.NotNull(searchResult);
+    Assert.True(searchResult.IsHasIndex);
+    Assert.True(ContainsId(searchResult, 1));
+    Assert.False(ContainsId(searchResult, 2));
+  }
+
+  /// <summary>
   /// Создаёт фабрику приложения с тестовым источником данных.
   /// </summary>
   /// <param name="isEnabled">Признак включения источника данных.</param>
@@ -217,6 +270,33 @@ public sealed class SearchEngineServiceIndexFromSourceEndpointTests
 
           if (registerReader)
             builder.ConfigureServices(services => services.AddSingleton<ISearchDataSourceReader, TestSearchDataSourceReader>());
+        });
+  }
+
+  /// <summary>
+  /// Создаёт фабрику приложения с in-memory источником данных.
+  /// </summary>
+  /// <returns>Фабрика тестового приложения.</returns>
+  private static WebApplicationFactory<Program> CreateFactoryWithInMemoryDataSource()
+  {
+    return new WebApplicationFactory<Program>()
+        .WithWebHostBuilder(builder =>
+        {
+          builder.ConfigureAppConfiguration((_, configuration) =>
+          {
+            configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                  ["SearchEngineService:Sources:demo:IsEnabled"] = "true",
+                  ["SearchEngineService:Sources:demo:Provider"] = "in-memory",
+
+                  ["SearchEngineService:Sources:demo:Documents:0:Id"] = "1",
+                  ["SearchEngineService:Sources:demo:Documents:0:Text"] = "Иванов Сергей Петрович",
+
+                  ["SearchEngineService:Sources:demo:Documents:1:Id"] = "2",
+                  ["SearchEngineService:Sources:demo:Documents:1:Text"] = "Папандопуло Александр"
+                });
+          });
         });
   }
 
