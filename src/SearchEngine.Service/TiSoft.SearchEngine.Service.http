@@ -35,6 +35,19 @@ GET {{host}}/v1/data-sources
 
 ###
 
+# Работает при запуске через:
+# .\tools\run-service-demo-source.ps1
+
+POST {{host}}/v1/index/from-source
+Content-Type: application/json
+
+{
+  "sourceName": "demo",
+  "isPhoneticSearch": true
+}
+
+###
+
 POST {{host}}/v1/index/from-source
 Content-Type: application/json
 
@@ -210,4 +223,18 @@ Content-Type: application/json
       "text": "Очень длинный текст"
     }
   ]
+}
+
+###
+
+# Проверка индекса, построенного из demo in-memory источника
+
+POST {{host}}/v1/search
+Content-Type: application/json
+
+{
+  "query": "Ivanov",
+  "matchMode": "AllTerms",
+  "searchType": "ExactSearch",
+  "searchLocation": "BeginWord"
 }
