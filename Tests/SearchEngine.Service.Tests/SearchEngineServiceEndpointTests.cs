@@ -51,7 +51,7 @@ public sealed class SearchEngineServiceEndpointTests
     Assert.Equal("ok", response.Status);
     Assert.False(string.IsNullOrWhiteSpace(response.SearchEngineVersion));
     Assert.False(string.IsNullOrWhiteSpace(response.ServiceVersion));
-    Assert.StartsWith("0.5.0", response.ServiceVersion);
+    Assert.StartsWith("0.6.0", response.ServiceVersion);
   }
 
   /// <summary>
