@@ -9,19 +9,7 @@ $projectPath = Join-Path $repoRoot "src/SearchEngine.Service/SearchEngine.Servic
 
 $environmentKeys = @(
     "ASPNETCORE_ENVIRONMENT",
-    "ASPNETCORE_URLS",
-
-    "SearchEngineService__Sources__demo__IsEnabled",
-    "SearchEngineService__Sources__demo__Provider",
-
-    "SearchEngineService__Sources__demo__Documents__0__Id",
-    "SearchEngineService__Sources__demo__Documents__0__Text",
-
-    "SearchEngineService__Sources__demo__Documents__1__Id",
-    "SearchEngineService__Sources__demo__Documents__1__Text",
-
-    "SearchEngineService__Sources__demo__Documents__2__Id",
-    "SearchEngineService__Sources__demo__Documents__2__Text"
+    "ASPNETCORE_URLS"
 )
 
 $previousValues = @{}
@@ -31,23 +19,12 @@ foreach ($key in $environmentKeys) {
 }
 
 try {
-    $env:ASPNETCORE_ENVIRONMENT = "Development"
+    $env:ASPNETCORE_ENVIRONMENT = "DemoSource"
     $env:ASPNETCORE_URLS = $Url
-
-    $env:SearchEngineService__Sources__demo__IsEnabled = "true"
-    $env:SearchEngineService__Sources__demo__Provider = "in-memory"
-
-    $env:SearchEngineService__Sources__demo__Documents__0__Id = "1"
-    $env:SearchEngineService__Sources__demo__Documents__0__Text = "Иванов Сергей Петрович"
-
-    $env:SearchEngineService__Sources__demo__Documents__1__Id = "2"
-    $env:SearchEngineService__Sources__demo__Documents__1__Text = "Папандопуло Александр"
-
-    $env:SearchEngineService__Sources__demo__Documents__2__Id = "3"
-    $env:SearchEngineService__Sources__demo__Documents__2__Text = "Красный велосипед"
 
     Write-Host "Запуск SearchEngine.Service с demo in-memory источником данных"
     Write-Host "URL: $Url"
+    Write-Host "Environment: DemoSource"
     Write-Host "Источник данных: demo"
     Write-Host ""
     Write-Host "Проверка источника:"
