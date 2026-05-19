@@ -388,6 +388,7 @@ GET {{host}}/v1/config
   "maxDocumentTextLength": 10000,
   "snapshot": {
     "isEnabled": false,
+    "autoRestoreOnStart": false,
     "filePath": "data/search-index-snapshot.json"
   }
 }
@@ -433,7 +434,9 @@ GET {{host}}/v1/data-sources
 
 ```json
 {
-  "supportedProviders": [],
+  "supportedProviders": [
+    "in-memory"
+  ],
   "items": []
 }
 ```
@@ -603,70 +606,6 @@ GET {{host}}/v1/search/options
   }
 }
 ```
-
-## Источники данных
-
-Сервис поддерживает конфигурационные профили источников данных.
-
-Пока сервис только показывает безопасное описание настроенных профилей. Построение индекса из БД будет добавлено отдельным шагом.
-
-```http
-GET {{host}}/v1/data-sources
-```
-
-При стандартной конфигурации источники данных не заданы.
-
-Пример ответа:
-
-```json
-{
-  "items": []
-}
-```
-
-Пример настройки профиля источника данных:
-
-```json
-{
-  "SearchEngineService": {
-    "Sources": {
-      "products": {
-        "IsEnabled": true,
-        "Provider": "postgres",
-        "ConnectionStringName": "PRODUCTS_DB",
-        "Query": "select id, name as text from products where is_active = true"
-      }
-    }
-  }
-}
-```
-
-Endpoint `GET /v1/data-sources` возвращает только безопасное описание профилей.
-
-Пример ответа:
-
-```json
-{
-  "items": [
-    {
-      "name": "products",
-      "isEnabled": true,
-      "provider": "postgres",
-      "hasConnectionStringName": true,
-      "hasQuery": true
-    }
-  ]
-}
-```
-
-Endpoint не возвращает:
-
-- строку подключения;
-- имя переменной окружения со строкой подключения как секрет;
-- SQL-запрос;
-- параметры доступа к БД.
-
-Это сделано намеренно: профиль источника данных должен быть настроен на стороне сервиса, а внешний клиент должен работать только с именем заранее разрешённого профиля.
 
 ## Настройки через Docker environment variables
 
@@ -911,6 +850,131 @@ Content-Type: application/json
 
 После этого можно выполнять обычный поиск через `POST /v1/search`.
 
+## Demo in-memory источник данных
+
+Для локальной проверки построения индекса из источника данных не нужно подключать БД и не нужно менять основной `appsettings.json`.
+
+В репозитории есть отдельный demo-конфиг:
+
+```text
+src/SearchEngine.Service/appsettings.DemoSource.json
+```
+
+Он содержит источник данных demo с provider-ом in-memory и тремя документами:
+
+- Иванов Сергей Петрович;
+- Папандопуло Александр;
+- Красный велосипед.
+
+Для запуска demo-сценария используется скрипт:
+
+```text
+tools/run-service-demo-source.ps1
+```
+
+Запуск из корня репозитория:
+
+```powershell
+.\tools\run-service-demo-source.ps1
+```
+
+Если порт 5037 занят:
+
+```powershell
+.\tools\run-service-demo-source.ps1 -Url "<http://localhost:5040>"
+```
+
+Скрипт запускает сервис с окружением:
+
+```text
+ASPNETCORE_ENVIRONMENT=DemoSource
+```
+
+Поэтому сервис подхватывает файл:
+
+```text
+appsettings.DemoSource.json
+```
+
+После запуска можно использовать отдельный .http-файл:
+
+```text
+src/SearchEngine.Service/SearchEngine.Service.DemoSource.http
+```
+
+Запросы в этом файле нужно выполнять сверху вниз:
+
+1. GET /health;
+2. GET /v1/config;
+3. GET /v1/data-sources;
+4. GET /v1/index;
+5. POST /v1/index/from-source;
+6. GET /v1/index;
+7. GET /ready;
+8. POST /v1/search.
+
+Ожидаемый результат после POST /v1/index/from-source:
+
+```json
+{
+  "isReady": true,
+  "documentCount": 3,
+  "searchableDocumentCount": 3,
+  "isPhoneticSearch": true,
+  "createdAtUtc": "..."
+}
+```
+
+После этого запрос:
+
+```http
+POST {{host}}/v1/search
+Content-Type: application/json
+
+{
+  "query": "Ivanov",
+  "matchMode": "AllTerms",
+  "searchType": "ExactSearch",
+  "searchLocation": "BeginWord"
+}
+```
+
+должен найти документ с id = 1.
+
+Запрос:
+
+```http
+POST {{host}}/v1/search
+Content-Type: application/json
+
+{
+  "query": "Papandopulo",
+  "matchMode": "AllTerms",
+  "searchType": "ExactSearch",
+  "searchLocation": "BeginWord"
+}
+```
+
+должен найти документ с id = 2.
+
+Запрос:
+
+```http
+POST {{host}}/v1/search
+Content-Type: application/json
+
+{
+  "query": "лосип",
+  "matchMode": "AllTerms",
+  "searchType": "ExactSearch",
+  "searchLocation": "InWord"
+}
+```
+
+должен найти документ с id = 3.
+
+Demo in-memory источник нужен только для локальной проверки и демонстрации полного сценария без внешней БД.
+
 ## Восстановление индекса из snapshot
 
 Endpoint восстанавливает поисковый индекс из snapshot-файла.
@@ -1121,9 +1185,9 @@ Content-Type: application/json
 - может вручную восстанавливать индекс из snapshot-файла;
 - автоматическое восстановление индекса при старте доступно только при включённом snapshot и `AutoRestoreOnStart`;
 - умеет читать конфигурационные профили источников данных;
-- умеет строить индекс из зарегистрированного provider-а источника данных;
+- есть встроенный demo-provider `in-memory`;
 - реальные provider-ы БД пока не подключены;
-- не подключается к БД без заранее зарегистрированного reader-а;
+- сервис не подключается к БД без заранее зарегистрированного reader-а;
 - не отслеживает изменения в источнике данных;
 - не содержит авторизации;
 - Dockerfile используется для локальной и CI-сборки контейнера;
