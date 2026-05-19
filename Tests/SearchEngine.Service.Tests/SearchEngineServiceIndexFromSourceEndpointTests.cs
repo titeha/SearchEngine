@@ -350,7 +350,7 @@ public sealed class SearchEngineServiceIndexFromSourceEndpointTests
   private static WebApplicationFactory<Program> CreateFactoryWithSqliteDataSource(
       string databasePath)
   {
-    string connectionString = $"Data Source={databasePath}";
+    string connectionString = CreateSqliteConnectionString(databasePath);
 
     return new WebApplicationFactory<Program>()
         .WithWebHostBuilder(builder =>
@@ -383,7 +383,7 @@ public sealed class SearchEngineServiceIndexFromSourceEndpointTests
     if (!string.IsNullOrWhiteSpace(directoryPath))
       Directory.CreateDirectory(directoryPath);
 
-    await using SqliteConnection connection = new($"Data Source={databasePath}");
+    await using SqliteConnection connection = new(CreateSqliteConnectionString(databasePath));
 
     await connection.OpenAsync();
 
@@ -431,13 +431,32 @@ public sealed class SearchEngineServiceIndexFromSourceEndpointTests
   /// <param name="databasePath">Путь к SQLite-файлу.</param>
   private static void DeleteTempSqliteDirectory(string databasePath)
   {
+    SqliteConnection.ClearAllPools();
+
     string? directoryPath = Path.GetDirectoryName(databasePath);
 
     if (string.IsNullOrWhiteSpace(directoryPath))
       return;
 
-    if (Directory.Exists(directoryPath))
-      Directory.Delete(directoryPath, recursive: true);
+    if (!Directory.Exists(directoryPath))
+      return;
+
+    for (int attempt = 0; attempt < 5; attempt++)
+      try
+      {
+        Directory.Delete(directoryPath, recursive: true);
+        return;
+      }
+      catch (IOException) when (attempt < 4)
+      {
+        Thread.Sleep(100);
+      }
+      catch (UnauthorizedAccessException) when (attempt < 4)
+      {
+        Thread.Sleep(100);
+      }
+
+    Directory.Delete(directoryPath, recursive: true);
   }
 
   /// <summary>
@@ -505,5 +524,21 @@ public sealed class SearchEngineServiceIndexFromSourceEndpointTests
 
       return Task.FromResult(documents);
     }
+  }
+
+  /// <summary>
+  /// Создаёт строку подключения к тестовой SQLite-БД.
+  /// </summary>
+  /// <param name="databasePath">Путь к SQLite-файлу.</param>
+  /// <returns>Строка подключения SQLite.</returns>
+  private static string CreateSqliteConnectionString(string databasePath)
+  {
+    SqliteConnectionStringBuilder builder = new()
+    {
+      DataSource = databasePath,
+      Pooling = false
+    };
+
+    return builder.ToString();
   }
 }
