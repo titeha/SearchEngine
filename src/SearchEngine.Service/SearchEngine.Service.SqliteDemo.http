@@ -66,6 +66,24 @@ Content-Type: application/json
 
 ###
 
+# Для проверки InWord-поиска перестраиваем индекс без фонетики.
+# Фонетический индекс используется для Ivanov / Papandopulo,
+# а обычный индекс — для поиска подстроки внутри слова.
+
+POST {{host}}/v1/index/from-source
+Content-Type: application/json
+
+{
+  "sourceName": "sqlite-demo",
+  "isPhoneticSearch": false
+}
+
+###
+
+GET {{host}}/v1/index
+
+###
+
 POST {{host}}/v1/search
 Content-Type: application/json
 
