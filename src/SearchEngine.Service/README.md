@@ -268,13 +268,13 @@ healthy
 Загрузить образ:
 
 ```powershell
-docker pull ghcr.io/titeha/searchengine-service:0.4.0
+docker pull ghcr.io/titeha/searchengine-service:0.5.0
 ```
 
 Запустить контейнер:
 
 ```powershell
-docker run --rm -p 8080:8080 ghcr.io/titeha/searchengine-service:0.4.0
+docker run --rm -p 8080:8080 ghcr.io/titeha/searchengine-service:0.5.0
 ```
 
 После запуска сервис будет доступен по адресу:
@@ -316,7 +316,7 @@ ghcr.io/titeha/searchengine-service:latest
 Для воспроизводимого запуска лучше использовать версионный тег:
 
 ```text
-ghcr.io/titeha/searchengine-service:0.4.0
+ghcr.io/titeha/searchengine-service:0.5.0
 ```
 
 ## Проверка через `.http`-файл
@@ -362,13 +362,13 @@ GET {{host}}/v1/info
 ```json
 {
   "service": "TiSoft.SearchEngine.Service",
-  "serviceVersion": "0.4.0.0",
+  "serviceVersion": "0.5.0.0",
   "status": "ok",
   "searchEngineVersion": "2.0.1.0"
 }
 ```
 
-Версии могут отображаться в формате сборки, например `0.4.0.0` для сервиса и `2.0.1.0` для библиотеки.
+Версии могут отображаться в формате сборки, например `0.5.0.0` для сервиса и `2.0.1.0` для библиотеки.
 
 ## Активная конфигурация сервиса
 
@@ -400,7 +400,7 @@ GET {{host}}/v1/config
 docker run --rm -p 8080:8080 `
   -e SearchEngineService__MaxDocumentCount=1 `
   -e SearchEngineService__MaxDocumentTextLength=5 `
-  ghcr.io/titeha/searchengine-service:0.4.0
+  ghcr.io/titeha/searchengine-service:0.5.0
 ```
 
 то endpoint вернёт:
@@ -617,7 +617,7 @@ GET {{host}}/v1/search/options
 docker run --rm -p 8080:8080 `
   -e SearchEngineService__MaxDocumentCount=50000 `
   -e SearchEngineService__MaxDocumentTextLength=20000 `
-  ghcr.io/titeha/searchengine-service:0.4.0
+  ghcr.io/titeha/searchengine-service:0.5.0
 ```
 
 Для вложенных настроек используется двойное подчёркивание `__`.
@@ -672,7 +672,7 @@ docker run --rm -p 8080:8080 `
   -e SearchEngineService__Snapshot__IsEnabled=true `
   -e SearchEngineService__Snapshot__AutoRestoreOnStart=true `
   -e SearchEngineService__Snapshot__FilePath=data/search-index-snapshot.json `
-  ghcr.io/titeha/searchengine-service:0.4.0
+  ghcr.io/titeha/searchengine-service:0.5.0
 ```
 
 Для вложенных настроек используется двойное подчёркивание `__`.
@@ -1319,7 +1319,7 @@ p99:     2 ms
 
 Ближайшие шаги:
 
-1. добавить первый реальный provider источника данных;
+1. добавить первый реальный DB-provider источника данных;
 2. добавить безопасное подключение к БД с read-only доступом;
 3. добавить ручную перестройку индекса по имени источника данных;
 4. исследовать мониторинг изменений в БД для актуализации индекса;
