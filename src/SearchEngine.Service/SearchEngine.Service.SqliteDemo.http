@@ -1,0 +1,77 @@
+@host = http://localhost:5037
+
+# Этот файл предназначен для успешного SQLite demo-сценария.
+#
+# Перед выполнением запросов нужно запустить сервис из корня репозитория:
+#
+# .\tools\run-service-sqlite-demo.ps1
+#
+# Если сервис запущен на другом порту, измени переменную @host.
+
+GET {{host}}/health
+
+###
+
+GET {{host}}/v1/config
+
+###
+
+GET {{host}}/v1/data-sources
+
+###
+
+GET {{host}}/v1/index
+
+###
+
+POST {{host}}/v1/index/from-source
+Content-Type: application/json
+
+{
+  "sourceName": "sqlite-demo",
+  "isPhoneticSearch": true
+}
+
+###
+
+GET {{host}}/v1/index
+
+###
+
+GET {{host}}/ready
+
+###
+
+POST {{host}}/v1/search
+Content-Type: application/json
+
+{
+  "query": "Ivanov",
+  "matchMode": "AllTerms",
+  "searchType": "ExactSearch",
+  "searchLocation": "BeginWord"
+}
+
+###
+
+POST {{host}}/v1/search
+Content-Type: application/json
+
+{
+  "query": "Papandopulo",
+  "matchMode": "AllTerms",
+  "searchType": "ExactSearch",
+  "searchLocation": "BeginWord"
+}
+
+###
+
+POST {{host}}/v1/search
+Content-Type: application/json
+
+{
+  "query": "лосип",
+  "matchMode": "AllTerms",
+  "searchType": "ExactSearch",
+  "searchLocation": "InWord"
+}
