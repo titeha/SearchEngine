@@ -2,6 +2,7 @@
 using System.Net.Http.Json;
 
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -242,6 +243,74 @@ public sealed class SearchEngineServiceIndexFromSourceEndpointTests
   }
 
   /// <summary>
+  /// Проверяет, что индекс строится из SQLite-источника данных.
+  /// </summary>
+  [Fact]
+  public async Task PostIndexFromSource_СSqliteProvider_СтроитИндекс()
+  {
+    // Arrange
+    string databasePath = CreateTempSqlitePath();
+
+    try
+    {
+      await CreateSqliteDatabaseAsync(databasePath);
+
+      await using WebApplicationFactory<Program> factory =
+          CreateFactoryWithSqliteDataSource(databasePath);
+
+      using HttpClient client = factory.CreateClient();
+
+      object request = new
+      {
+        sourceName = "sqlite-demo",
+        isPhoneticSearch = true
+      };
+
+      // Act
+      HttpResponseMessage buildResponse = await client.PostAsJsonAsync(
+          "/v1/index/from-source",
+          request);
+
+      IndexStatusResponse? status =
+          await buildResponse.Content.ReadFromJsonAsync<IndexStatusResponse>();
+
+      HttpResponseMessage searchResponse = await client.PostAsJsonAsync(
+          "/v1/search",
+          new
+          {
+            query = "Ivanov",
+            matchMode = "AllTerms",
+            searchType = "ExactSearch",
+            searchLocation = "BeginWord"
+          });
+
+      SearchQueryResponse? searchResult =
+          await searchResponse.Content.ReadFromJsonAsync<SearchQueryResponse>();
+
+      // Assert
+      Assert.Equal(HttpStatusCode.OK, buildResponse.StatusCode);
+
+      Assert.NotNull(status);
+      Assert.True(status.IsReady);
+      Assert.Equal(3, status.DocumentCount);
+      Assert.Equal(3, status.SearchableDocumentCount);
+      Assert.True(status.IsPhoneticSearch);
+
+      Assert.Equal(HttpStatusCode.OK, searchResponse.StatusCode);
+
+      Assert.NotNull(searchResult);
+      Assert.True(searchResult.IsHasIndex);
+      Assert.True(ContainsId(searchResult, 1));
+      Assert.False(ContainsId(searchResult, 2));
+      Assert.False(ContainsId(searchResult, 3));
+    }
+    finally
+    {
+      DeleteTempSqliteDirectory(databasePath);
+    }
+  }
+
+  /// <summary>
   /// Создаёт фабрику приложения с тестовым источником данных.
   /// </summary>
   /// <param name="isEnabled">Признак включения источника данных.</param>
@@ -271,6 +340,104 @@ public sealed class SearchEngineServiceIndexFromSourceEndpointTests
           if (registerReader)
             builder.ConfigureServices(services => services.AddSingleton<ISearchDataSourceReader, TestSearchDataSourceReader>());
         });
+  }
+
+  /// <summary>
+  /// Создаёт фабрику приложения с SQLite-источником данных.
+  /// </summary>
+  /// <param name="databasePath">Путь к SQLite-файлу.</param>
+  /// <returns>Фабрика тестового приложения.</returns>
+  private static WebApplicationFactory<Program> CreateFactoryWithSqliteDataSource(
+      string databasePath)
+  {
+    string connectionString = $"Data Source={databasePath}";
+
+    return new WebApplicationFactory<Program>()
+        .WithWebHostBuilder(builder =>
+        {
+          builder.ConfigureAppConfiguration((_, configuration) =>
+          {
+            configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                  ["ConnectionStrings:SQLITE_DEMO"] = connectionString,
+
+                  ["SearchEngineService:Sources:sqlite-demo:IsEnabled"] = "true",
+                  ["SearchEngineService:Sources:sqlite-demo:Provider"] = "sqlite",
+                  ["SearchEngineService:Sources:sqlite-demo:ConnectionStringName"] = "SQLITE_DEMO",
+                  ["SearchEngineService:Sources:sqlite-demo:Query"] =
+                        "select id, text from search_documents order by id"
+                });
+          });
+        });
+  }
+
+  /// <summary>
+  /// Создаёт временную SQLite-БД с тестовыми документами.
+  /// </summary>
+  /// <param name="databasePath">Путь к SQLite-файлу.</param>
+  private static async Task CreateSqliteDatabaseAsync(string databasePath)
+  {
+    string? directoryPath = Path.GetDirectoryName(databasePath);
+
+    if (!string.IsNullOrWhiteSpace(directoryPath))
+      Directory.CreateDirectory(directoryPath);
+
+    await using SqliteConnection connection = new($"Data Source={databasePath}");
+
+    await connection.OpenAsync();
+
+    await using SqliteCommand createCommand = connection.CreateCommand();
+
+    createCommand.CommandText = """
+        create table search_documents
+        (
+            id integer not null primary key,
+            text text not null
+        );
+        """;
+
+    await createCommand.ExecuteNonQueryAsync();
+
+    await using SqliteCommand insertCommand = connection.CreateCommand();
+
+    insertCommand.CommandText = """
+        insert into search_documents (id, text)
+        values
+            (1, 'Иванов Сергей Петрович'),
+            (2, 'Папандопуло Александр'),
+            (3, 'Красный велосипед');
+        """;
+
+    await insertCommand.ExecuteNonQueryAsync();
+  }
+
+  /// <summary>
+  /// Создаёт временный путь к SQLite-файлу.
+  /// </summary>
+  /// <returns>Временный путь к SQLite-файлу.</returns>
+  private static string CreateTempSqlitePath()
+  {
+    return Path.Combine(
+        Path.GetTempPath(),
+        "SearchEngine.Service.Tests",
+        Guid.NewGuid().ToString("N"),
+        "search-demo.db");
+  }
+
+  /// <summary>
+  /// Удаляет временную папку SQLite-файла.
+  /// </summary>
+  /// <param name="databasePath">Путь к SQLite-файлу.</param>
+  private static void DeleteTempSqliteDirectory(string databasePath)
+  {
+    string? directoryPath = Path.GetDirectoryName(databasePath);
+
+    if (string.IsNullOrWhiteSpace(directoryPath))
+      return;
+
+    if (Directory.Exists(directoryPath))
+      Directory.Delete(directoryPath, recursive: true);
   }
 
   /// <summary>

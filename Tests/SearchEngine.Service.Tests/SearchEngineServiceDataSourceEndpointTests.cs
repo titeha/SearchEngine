@@ -30,6 +30,7 @@ public sealed class SearchEngineServiceDataSourceEndpointTests
     // Assert
     Assert.NotNull(response);
     Assert.Contains("in-memory", response.SupportedProviders);
+    Assert.Contains("sqlite", response.SupportedProviders);
     Assert.Empty(response.Items);
   }
 
@@ -59,6 +60,7 @@ public sealed class SearchEngineServiceDataSourceEndpointTests
     Assert.True(source.HasConnectionStringName);
     Assert.True(source.HasQuery);
     Assert.Contains("in-memory", response.SupportedProviders);
+    Assert.Contains("sqlite", response.SupportedProviders);
     Assert.False(source.IsProviderSupported);
   }
 

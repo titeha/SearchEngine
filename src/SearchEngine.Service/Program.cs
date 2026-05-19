@@ -21,6 +21,7 @@ builder.Services.AddSingleton<SearchIndexSnapshotStorage>();
 builder.Services.AddSingleton<SearchIndexStore>();
 builder.Services.AddHostedService<SearchIndexRestoreHostedService>();
 builder.Services.AddSingleton<ISearchDataSourceReader, InMemorySearchDataSourceReader>();
+builder.Services.AddSingleton<ISearchDataSourceReader, SqliteSearchDataSourceReader>();
 builder.Services.AddSingleton<SearchDataSourceReaderRegistry>();
 
 WebApplication app = builder.Build();
