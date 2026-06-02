@@ -311,6 +311,97 @@ public sealed class SearchEngineServiceIndexFromSourceEndpointTests
   }
 
   /// <summary>
+  /// Проверяет, что источник данных без provider-а возвращает прикладную ошибку.
+  /// </summary>
+  [Fact]
+  public async Task PostIndexFromSource_СПустымProvider_ВозвращаетBadRequest()
+  {
+    // Arrange
+    await using WebApplicationFactory<Program> factory = CreateFactoryWithDataSource(
+        isEnabled: true,
+        provider: " ",
+        registerReader: false);
+
+    using HttpClient client = factory.CreateClient();
+
+    object request = new
+    {
+      sourceName = "products",
+      isPhoneticSearch = true
+    };
+
+    // Act
+    HttpResponseMessage response = await client.PostAsJsonAsync("/v1/index/from-source", request);
+
+    ApiError? error = await response.Content.ReadFromJsonAsync<ApiError>();
+
+    // Assert
+    Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    Assert.NotNull(error);
+    Assert.Equal("DataSourceProviderIsEmpty", error.Code);
+  }
+
+  /// <summary>
+  /// Проверяет, что SQLite-источник без имени строки подключения возвращает прикладную ошибку.
+  /// </summary>
+  [Fact]
+  public async Task PostIndexFromSource_СSqliteProviderБезConnectionStringName_ВозвращаетBadRequest()
+  {
+    // Arrange
+    await using WebApplicationFactory<Program> factory = CreateFactoryWithSqliteProfile(
+        connectionStringName: " ",
+        query: "select id, text from search_documents");
+
+    using HttpClient client = factory.CreateClient();
+
+    object request = new
+    {
+      sourceName = "sqlite-demo",
+      isPhoneticSearch = true
+    };
+
+    // Act
+    HttpResponseMessage response = await client.PostAsJsonAsync("/v1/index/from-source", request);
+
+    ApiError? error = await response.Content.ReadFromJsonAsync<ApiError>();
+
+    // Assert
+    Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    Assert.NotNull(error);
+    Assert.Equal("DataSourceConnectionStringNameIsEmpty", error.Code);
+  }
+
+  /// <summary>
+  /// Проверяет, что SQLite-источник без SQL-запроса возвращает прикладную ошибку.
+  /// </summary>
+  [Fact]
+  public async Task PostIndexFromSource_СSqliteProviderБезQuery_ВозвращаетBadRequest()
+  {
+    // Arrange
+    await using WebApplicationFactory<Program> factory = CreateFactoryWithSqliteProfile(
+        connectionStringName: "SQLITE_DEMO",
+        query: " ");
+
+    using HttpClient client = factory.CreateClient();
+
+    object request = new
+    {
+      sourceName = "sqlite-demo",
+      isPhoneticSearch = true
+    };
+
+    // Act
+    HttpResponseMessage response = await client.PostAsJsonAsync("/v1/index/from-source", request);
+
+    ApiError? error = await response.Content.ReadFromJsonAsync<ApiError>();
+
+    // Assert
+    Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    Assert.NotNull(error);
+    Assert.Equal("DataSourceQueryIsEmpty", error.Code);
+  }
+
+  /// <summary>
   /// Создаёт фабрику приложения с тестовым источником данных.
   /// </summary>
   /// <param name="isEnabled">Признак включения источника данных.</param>
@@ -457,6 +548,44 @@ public sealed class SearchEngineServiceIndexFromSourceEndpointTests
       }
 
     Directory.Delete(directoryPath, recursive: true);
+  }
+
+  /// <summary>
+  /// Создаёт фабрику приложения с SQLite-профилем источника данных.
+  /// </summary>
+  /// <param name="connectionStringName">Имя строки подключения.</param>
+  /// <param name="query">SQL-запрос источника данных.</param>
+  /// <returns>Фабрика тестового приложения.</returns>
+  private static WebApplicationFactory<Program> CreateFactoryWithSqliteProfile(
+      string? connectionStringName,
+      string? query)
+  {
+    return new WebApplicationFactory<Program>()
+        .WithWebHostBuilder(builder =>
+        {
+          builder.ConfigureAppConfiguration((_, configuration) =>
+          {
+            Dictionary<string, string?> values = new()
+            {
+              ["SearchEngineService:Sources:sqlite-demo:IsEnabled"] = "true",
+              ["SearchEngineService:Sources:sqlite-demo:Provider"] = "sqlite"
+            };
+
+            if (connectionStringName is not null)
+            {
+              values["SearchEngineService:Sources:sqlite-demo:ConnectionStringName"] =
+                  connectionStringName;
+            }
+
+            if (query is not null)
+            {
+              values["SearchEngineService:Sources:sqlite-demo:Query"] =
+                  query;
+            }
+
+            configuration.AddInMemoryCollection(values);
+          });
+        });
   }
 
   /// <summary>

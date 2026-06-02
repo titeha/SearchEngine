@@ -185,13 +185,11 @@ static async Task<IResult> BuildIndexFromSourceAsync(
     CancellationToken cancellationToken)
 {
   if (string.IsNullOrWhiteSpace(request.SourceName))
-  {
     return Results.BadRequest(new ApiError
     {
       Code = "EmptySourceName",
       Message = "Не указано имя источника данных."
     });
-  }
 
   string sourceName = request.SourceName.Trim();
 
@@ -200,33 +198,32 @@ static async Task<IResult> BuildIndexFromSourceAsync(
       sourceName);
 
   if (source is null)
-  {
     return Results.BadRequest(new ApiError
     {
       Code = "DataSourceNotFound",
       Message = $"Источник данных не найден: {sourceName}."
     });
-  }
 
   if (!source.IsEnabled)
-  {
     return Results.BadRequest(new ApiError
     {
       Code = "DataSourceDisabled",
       Message = $"Источник данных отключён: {sourceName}."
     });
-  }
+
+  ApiError? validationError = ValidateDataSourceProfile(sourceName, source);
+
+  if (validationError is not null)
+    return Results.BadRequest(validationError);
 
   ISearchDataSourceReader? reader = registry.GetReader(source.Provider);
 
   if (reader is null)
-  {
     return Results.BadRequest(new ApiError
     {
       Code = "DataSourceProviderNotSupported",
       Message = $"Provider источника данных не поддерживается: {source.Provider}."
     });
-  }
 
   IReadOnlyList<SearchDataSourceDocument> sourceDocuments;
 
@@ -295,6 +292,40 @@ static SearchDataSourceOptions? FindDataSource(
   foreach (KeyValuePair<string, SearchDataSourceOptions> source in sources)
     if (string.Equals(source.Key, sourceName, StringComparison.OrdinalIgnoreCase))
       return source.Value;
+
+  return null;
+}
+
+static ApiError? ValidateDataSourceProfile(
+    string sourceName,
+    SearchDataSourceOptions source)
+{
+  if (string.IsNullOrWhiteSpace(source.Provider))
+    return new ApiError
+    {
+      Code = "DataSourceProviderIsEmpty",
+      Message = $"Для источника данных не указан provider: {sourceName}."
+    };
+
+  if (string.Equals(
+      source.Provider,
+      SqliteSearchDataSourceReader.ProviderName,
+      StringComparison.OrdinalIgnoreCase))
+  {
+    if (string.IsNullOrWhiteSpace(source.ConnectionStringName))
+      return new ApiError
+      {
+        Code = "DataSourceConnectionStringNameIsEmpty",
+        Message = $"Для SQLite-источника не указано имя строки подключения: {sourceName}."
+      };
+
+    if (string.IsNullOrWhiteSpace(source.Query))
+      return new ApiError
+      {
+        Code = "DataSourceQueryIsEmpty",
+        Message = $"Для SQLite-источника не указан SQL-запрос: {sourceName}."
+      };
+  }
 
   return null;
 }
