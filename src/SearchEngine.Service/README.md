@@ -22,6 +22,7 @@
 - встроенный `in-memory` provider источника данных;
 - SQLite provider источника данных;
 - локальный SQLite demo-сценарий без внешней БД;
+- SQLite demo-сценарий в Docker-контейнере;
 - построение индекса из зарегистрированного provider-а источника данных;
 - простой поиск по текущему индексу;
 - получение активных настроек сервиса;
@@ -301,6 +302,8 @@ http://localhost:8080/health
 ```
 
 Для проверки запуска контейнера используется `/health`, потому что после старта контейнера индекс ещё не построен.
+
+Для проверки SQLite provider-а в контейнере см. раздел `SQLite demo-сценарий в Docker-контейнере`.
 
 Endpoint `/ready` до построения индекса вернёт `503 Service Unavailable`, и это нормальное поведение.
 
@@ -602,6 +605,99 @@ src/SearchEngine.Service/SearchEngine.Service.SqliteDemo.http
 2. поиск `лосип` с `searchLocation = InWord` должен найти `id = 3`.
 
 Такой порядок нужен потому, что фонетический индекс использует phonetic keys, а не обычные строковые ключи слов.
+
+## SQLite demo-сценарий в Docker-контейнере
+
+SQLite provider можно проверить не только локальным запуском сервиса, но и через опубликованный Docker-образ.
+
+Для этого в репозитории есть скрипт:
+
+```text
+tools/run-service-sqlite-demo-container.ps1
+```
+
+Скрипт выполняет следующие действия:
+
+1. создаёт локальную SQLite-БД с demo-документами;
+2. запускает опубликованный Docker-образ сервиса;
+3. монтирует папку с SQLite-БД внутрь контейнера;
+4. передаёт строку подключения через environment variable;
+5. запускает сервис с окружением `SqliteDemo`.
+
+Запуск из корня репозитория:
+
+```powershell
+.\tools\run-service-sqlite-demo-container.ps1
+```
+
+По умолчанию используется образ:
+
+```text
+ghcr.io/titeha/searchengine-service:0.6.0
+```
+
+И порт:
+
+```text
+8080
+```
+
+Если порт `8080` занят:
+
+```powershell
+.\tools\run-service-sqlite-demo-container.ps1 -Port 8090
+```
+
+Можно явно указать образ:
+
+```powershell
+.\tools\run-service-sqlite-demo-container.ps1 `
+  -Image "ghcr.io/titeha/searchengine-service:0.6.0" `
+  -Port 8080
+```
+
+Скрипт создаёт SQLite-БД локально:
+
+```text
+src/SearchEngine.Service/data/sqlite-demo-container/search-demo.db
+```
+
+Эта папка добавлена в `.gitignore`, поэтому локальная demo-БД не должна попадать в Git.
+
+Внутри контейнера БД монтируется как:
+
+```text
+/data/search-demo.db
+```
+
+Строка подключения передаётся так:
+
+```text
+ConnectionStrings__SQLITE_DEMO=Data Source=/data/search-demo.db;Mode=ReadOnly;Pooling=False
+```
+
+Для ручной проверки есть отдельный `.http`-файл:
+
+```text
+src/SearchEngine.Service/SearchEngine.Service.SqliteDemo.Container.http
+```
+
+Запросы в нём нужно выполнять сверху вниз.
+
+Ожидаемый сценарий:
+
+1. `GET /health` возвращает `200 OK`;
+2. `GET /v1/info` показывает версию сервиса;
+3. `GET /v1/data-sources` показывает источник `sqlite-demo`;
+4. `POST /v1/index/from-source` строит индекс из SQLite-БД;
+5. `GET /ready` возвращает `200 OK`;
+6. поиск `Ivanov` находит `id = 1`;
+7. поиск `Papandopulo` находит `id = 2`;
+8. после перестроения индекса без фонетики поиск `лосип` с `InWord` находит `id = 3`.
+
+Для проверки фонетики индекс строится с `isPhoneticSearch = true`.
+
+Для проверки поиска внутри слова индекс перестраивается с `isPhoneticSearch = false`, потому что фонетический индекс использует phonetic keys, а не обычные строковые ключи слов.
 
 ## Допустимые параметры поиска
 
@@ -1304,6 +1400,7 @@ Content-Type: application/json
 - автоматическое восстановление индекса при старте доступно только при включённом snapshot и `AutoRestoreOnStart`;
 - умеет читать конфигурационные профили источников данных;
 - есть встроенные provider-ы `in-memory` и `sqlite`;
+- SQLite provider проверяется локально и через Docker demo-сценарий;
 - provider-ы PostgreSQL, SQL Server и других БД пока не подключены;
 - сервис не подключается к БД без заранее зарегистрированного reader-а;
 - не отслеживает изменения в источнике данных;
@@ -1443,4 +1540,4 @@ p99:     2 ms
 4. исследовать мониторинг изменений в БД для актуализации индекса;
 5. добавить базовую защиту API;
 6. расширить нагрузочные проверки сервиса до полноценного benchmark/high-load сценария;
-7. добавить документацию по развёртыванию контейнера.
+7. добавить документацию по production-развёртыванию контейнера.
