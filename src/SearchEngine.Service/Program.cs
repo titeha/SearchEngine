@@ -22,6 +22,7 @@ builder.Services.AddSingleton<SearchIndexStore>();
 builder.Services.AddHostedService<SearchIndexRestoreHostedService>();
 builder.Services.AddSingleton<ISearchDataSourceReader, InMemorySearchDataSourceReader>();
 builder.Services.AddSingleton<ISearchDataSourceReader, SqliteSearchDataSourceReader>();
+builder.Services.AddSingleton<SearchDataSourceProfileValidator>();
 builder.Services.AddSingleton<SearchDataSourceReaderRegistry>();
 
 WebApplication app = builder.Build();
@@ -181,6 +182,7 @@ static async Task<IResult> BuildIndexFromSourceAsync(
     IndexBuildFromSourceRequest request,
     IOptions<SearchEngineServiceOptions> options,
     SearchDataSourceReaderRegistry registry,
+    SearchDataSourceProfileValidator validator,
     SearchIndexStore store,
     CancellationToken cancellationToken)
 {
@@ -211,7 +213,7 @@ static async Task<IResult> BuildIndexFromSourceAsync(
       Message = $"Источник данных отключён: {sourceName}."
     });
 
-  ApiError? validationError = ValidateDataSourceProfile(sourceName, source);
+  ApiError? validationError = validator.Validate(sourceName, source);
 
   if (validationError is not null)
     return Results.BadRequest(validationError);
@@ -292,40 +294,6 @@ static SearchDataSourceOptions? FindDataSource(
   foreach (KeyValuePair<string, SearchDataSourceOptions> source in sources)
     if (string.Equals(source.Key, sourceName, StringComparison.OrdinalIgnoreCase))
       return source.Value;
-
-  return null;
-}
-
-static ApiError? ValidateDataSourceProfile(
-    string sourceName,
-    SearchDataSourceOptions source)
-{
-  if (string.IsNullOrWhiteSpace(source.Provider))
-    return new ApiError
-    {
-      Code = "DataSourceProviderIsEmpty",
-      Message = $"Для источника данных не указан provider: {sourceName}."
-    };
-
-  if (string.Equals(
-      source.Provider,
-      SqliteSearchDataSourceReader.ProviderName,
-      StringComparison.OrdinalIgnoreCase))
-  {
-    if (string.IsNullOrWhiteSpace(source.ConnectionStringName))
-      return new ApiError
-      {
-        Code = "DataSourceConnectionStringNameIsEmpty",
-        Message = $"Для SQLite-источника не указано имя строки подключения: {sourceName}."
-      };
-
-    if (string.IsNullOrWhiteSpace(source.Query))
-      return new ApiError
-      {
-        Code = "DataSourceQueryIsEmpty",
-        Message = $"Для SQLite-источника не указан SQL-запрос: {sourceName}."
-      };
-  }
 
   return null;
 }
