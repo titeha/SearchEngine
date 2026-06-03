@@ -23,6 +23,7 @@ builder.Services.AddHostedService<SearchIndexRestoreHostedService>();
 builder.Services.AddSingleton<ISearchDataSourceReader, InMemorySearchDataSourceReader>();
 builder.Services.AddSingleton<ISearchDataSourceReader, SqliteSearchDataSourceReader>();
 builder.Services.AddSingleton<SearchDataSourceProfileValidator>();
+builder.Services.AddSingleton<SearchIndexFromSourceBuilder>();
 builder.Services.AddSingleton<SearchDataSourceReaderRegistry>();
 
 WebApplication app = builder.Build();
@@ -180,89 +181,17 @@ static async Task<IResult> BuildIndexAsync(IndexBuildRequest request, SearchInde
 
 static async Task<IResult> BuildIndexFromSourceAsync(
     IndexBuildFromSourceRequest request,
-    IOptions<SearchEngineServiceOptions> options,
-    SearchDataSourceReaderRegistry registry,
-    SearchDataSourceProfileValidator validator,
-    SearchIndexStore store,
+    SearchIndexFromSourceBuilder builder,
     CancellationToken cancellationToken)
 {
-  if (string.IsNullOrWhiteSpace(request.SourceName))
-    return Results.BadRequest(new ApiError
-    {
-      Code = "EmptySourceName",
-      Message = "Не указано имя источника данных."
-    });
-
-  string sourceName = request.SourceName.Trim();
-
-  SearchDataSourceOptions? source = FindDataSource(
-      options.Value.Sources,
-      sourceName);
-
-  if (source is null)
-    return Results.BadRequest(new ApiError
-    {
-      Code = "DataSourceNotFound",
-      Message = $"Источник данных не найден: {sourceName}."
-    });
-
-  if (!source.IsEnabled)
-    return Results.BadRequest(new ApiError
-    {
-      Code = "DataSourceDisabled",
-      Message = $"Источник данных отключён: {sourceName}."
-    });
-
-  ApiError? validationError = validator.Validate(sourceName, source);
-
-  if (validationError is not null)
-    return Results.BadRequest(validationError);
-
-  ISearchDataSourceReader? reader = registry.GetReader(source.Provider);
-
-  if (reader is null)
-    return Results.BadRequest(new ApiError
-    {
-      Code = "DataSourceProviderNotSupported",
-      Message = $"Provider источника данных не поддерживается: {source.Provider}."
-    });
-
-  IReadOnlyList<SearchDataSourceDocument> sourceDocuments;
-
-  try
-  {
-    sourceDocuments = await reader
-        .ReadAsync(sourceName, source, cancellationToken)
-        .ConfigureAwait(false);
-  }
-  catch (Exception exception)
-  {
-    return Results.BadRequest(new ApiError
-    {
-      Code = "DataSourceReadFailed",
-      Message = $"Не удалось прочитать данные из источника: {exception.Message}"
-    });
-  }
-
-  IndexBuildRequest buildRequest = new()
-  {
-    IsPhoneticSearch = request.IsPhoneticSearch,
-    Documents =
-      [
-          .. sourceDocuments.Select(document => new IndexDocumentRequest
-            {
-                Id = document.Id,
-                Text = document.Text
-            })
-      ]
-  };
-
-  ApiError? error = await store.BuildAsync(buildRequest);
+  (IndexStatusResponse? status, ApiError? error) = await builder
+      .BuildAsync(request, cancellationToken)
+      .ConfigureAwait(false);
 
   if (error is not null)
     return Results.BadRequest(error);
 
-  return Results.Ok(store.GetStatus());
+  return Results.Ok(status);
 }
 
 static async Task<IResult> RestoreIndexAsync(
@@ -285,17 +214,6 @@ static IResult Search(SearchQueryRequest request, SearchIndexStore store)
     return Results.BadRequest(error);
 
   return Results.Ok(response);
-}
-
-static SearchDataSourceOptions? FindDataSource(
-    IReadOnlyDictionary<string, SearchDataSourceOptions> sources,
-    string sourceName)
-{
-  foreach (KeyValuePair<string, SearchDataSourceOptions> source in sources)
-    if (string.Equals(source.Key, sourceName, StringComparison.OrdinalIgnoreCase))
-      return source.Value;
-
-  return null;
 }
 
 /// <summary>
