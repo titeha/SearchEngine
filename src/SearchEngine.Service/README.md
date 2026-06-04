@@ -23,6 +23,8 @@
 - SQLite provider источника данных;
 - локальный SQLite demo-сценарий без внешней БД;
 - SQLite demo-сценарий в Docker-контейнере;
+- PostgreSQL provider источника данных;
+- локальный PostgreSQL demo-сценарий через Docker-контейнер;
 - построение индекса из зарегистрированного provider-а источника данных;
 - простой поиск по текущему индексу;
 - получение активных настроек сервиса;
@@ -442,6 +444,7 @@ GET {{host}}/v1/data-sources
 {
   "supportedProviders": [
     "in-memory",
+    "postgres",
     "sqlite"
   ],
   "items": []
@@ -454,6 +457,7 @@ GET {{host}}/v1/data-sources
 |---|---|
 | `in-memory` | локальный demo-provider с документами из конфигурации |
 | `sqlite` | provider для чтения документов из SQLite-БД |
+| `postgres` | provider для чтения документов из PostgreSQL-БД |
 
 Другие БД, например PostgreSQL или SQL Server, пока не подключены.
 
@@ -503,7 +507,9 @@ Endpoint не возвращает:
 - SQL-запрос;
 - параметры доступа к БД.
 
-На текущем этапе подключён SQLite provider. Provider-ы PostgreSQL, SQL Server и других БД будут добавляться отдельными шагами. Поэтому профиль может быть описан в конфигурации, но `isProviderSupported`
+На текущем этапе подключены provider-ы `in-memory`, `sqlite` и `postgres`.
+
+Provider-ы SQL Server, MySQL и других БД будут добавляться отдельными шагами.
 
 ### Требования к профилю источника данных
 
@@ -742,6 +748,133 @@ src/SearchEngine.Service/SearchEngine.Service.SqliteDemo.Container.http
 Для проверки фонетики индекс строится с `isPhoneticSearch = true`.
 
 Для проверки поиска внутри слова индекс перестраивается с `isPhoneticSearch = false`, потому что фонетический индекс использует phonetic keys, а не обычные строковые ключи слов.
+
+## PostgreSQL provider
+
+PostgreSQL provider позволяет построить индекс из PostgreSQL-БД.
+
+Provider использует заранее настроенный профиль источника данных.
+
+Пример конфигурации:
+
+```json
+{
+  "SearchEngineService": {
+    "Sources": {
+      "postgres-demo": {
+        "IsEnabled": true,
+        "Provider": "postgres",
+        "ConnectionStringName": "POSTGRES_DEMO",
+        "Query": "select id, text from search_documents order by id"
+      }
+    }
+  },
+  "ConnectionStrings": {
+    "POSTGRES_DEMO": "Host=localhost;Port=55432;Database=search_demo;Username=search;Password=search;Pooling=false"
+  }
+}
+```
+
+Для PostgreSQL provider-а обязательны:
+
+- `ConnectionStringName`;
+- `Query`.
+
+`ConnectionStringName` — это имя строки подключения. Сервис сначала ищет его в секции `ConnectionStrings`, а если не находит, пробует прочитать как обычный конфигурационный ключ или environment variable.
+
+SQL-запрос должен вернуть две колонки:
+
+| Колонка | Описание |
+|---|---|
+| `id` | целочисленный идентификатор документа |
+| `text` | текст документа для индексации |
+
+Endpoint `GET /v1/data-sources` не возвращает SQL-запрос и строку подключения. Он показывает только безопасное описание профиля.
+
+## PostgreSQL demo-сценарий
+
+Для локальной проверки PostgreSQL provider-а не нужно устанавливать PostgreSQL вручную.
+
+В репозитории есть скрипт:
+
+```text
+tools/run-service-postgres-demo.ps1
+```
+
+Скрипт выполняет следующие действия:
+
+1. запускает временный PostgreSQL-контейнер;
+2. создаёт demo-БД;
+3. загружает данные из `tools/postgres-demo/seed.sql`;
+4. запускает `SearchEngine.Service` с окружением `PostgresDemo`;
+5. передаёт строку подключения через environment variable.
+
+Запуск из корня репозитория:
+
+```powershell
+.\tools\run-service-postgres-demo.ps1
+```
+
+Если порт сервиса `5037` занят:
+
+```powershell
+.\tools\run-service-postgres-demo.ps1 -Url "http://localhost:5040"
+```
+
+Если порт PostgreSQL `55432` занят:
+
+```powershell
+.\tools\run-service-postgres-demo.ps1 -PostgresPort 55433
+```
+
+По умолчанию используется образ:
+
+```text
+postgres:16-alpine
+```
+
+Можно указать другой образ:
+
+```powershell
+.\tools\run-service-postgres-demo.ps1 -PostgresImage "postgres:17-alpine"
+```
+
+Сервис подхватывает файл:
+
+```text
+src/SearchEngine.Service/appsettings.PostgresDemo.json
+```
+
+Demo-данные лежат в файле:
+
+```text
+tools/postgres-demo/seed.sql
+```
+
+Для ручной проверки есть отдельный `.http`-файл:
+
+```text
+src/SearchEngine.Service/SearchEngine.Service.PostgresDemo.http
+```
+
+Запросы в нём нужно выполнять сверху вниз.
+
+Ожидаемый сценарий:
+
+1. `GET /health` возвращает `200 OK`;
+2. `GET /v1/config` возвращает активную конфигурацию;
+3. `GET /v1/data-sources` показывает источник `postgres-demo`;
+4. `POST /v1/index/from-source` строит индекс из PostgreSQL;
+5. `GET /ready` возвращает `200 OK`;
+6. поиск `Ivanov` находит `id = 1`;
+7. поиск `Papandopulo` находит `id = 2`;
+8. после перестроения индекса без фонетики поиск `лосип` с `InWord` находит `id = 3`.
+
+Для проверки фонетики индекс строится с `isPhoneticSearch = true`.
+
+Для проверки поиска внутри слова индекс перестраивается с `isPhoneticSearch = false`, потому что фонетический индекс использует phonetic keys, а не обычные строковые ключи слов.
+
+После остановки скрипта PostgreSQL demo-контейнер удаляется.
 
 ## Допустимые параметры поиска
 
@@ -1090,7 +1223,7 @@ Content-Type: application/json
 }
 ```
 
-Если для SQLite-источника не указано имя строки подключения:
+Если для SQLite или PostgreSQL источника не указано имя строки подключения:
 
 ```json
 {
@@ -1099,7 +1232,7 @@ Content-Type: application/json
 }
 ```
 
-Если для SQLite-источника не указан SQL-запрос:
+Если для SQLite или PostgreSQL источника не указан SQL-запрос:
 
 ```json
 {
@@ -1481,9 +1614,9 @@ Content-Type: application/json
 - может вручную восстанавливать индекс из snapshot-файла;
 - автоматическое восстановление индекса при старте доступно только при включённом snapshot и `AutoRestoreOnStart`;
 - умеет читать конфигурационные профили источников данных;
-- есть встроенные provider-ы `in-memory` и `sqlite`;
+- есть встроенные provider-ы `in-memory`, `sqlite` и `postgres`;
 - SQLite provider проверяется локально и через Docker demo-сценарий;
-- provider-ы PostgreSQL, SQL Server и других БД пока не подключены;
+- provider-ы SQL Server, MySQL и других БД пока не подключены;
 - сервис не подключается к БД без заранее зарегистрированного reader-а;
 - не отслеживает изменения в источнике данных;
 - не содержит авторизации;
@@ -1616,8 +1749,8 @@ p99:     2 ms
 
 Ближайшие шаги:
 
-1. добавить provider для PostgreSQL или SQL Server;
-2. добавить безопасное подключение к БД с read-only доступом;
+1. добавить provider для SQL Server или MySQL;
+2. добавить безопасные рекомендации по read-only доступу к БД;
 3. добавить ручную перестройку индекса по имени источника данных;
 4. исследовать мониторинг изменений в БД для актуализации индекса;
 5. добавить базовую защиту API;
