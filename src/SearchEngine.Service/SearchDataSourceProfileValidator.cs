@@ -28,6 +28,12 @@ public sealed class SearchDataSourceProfileValidator
         StringComparison.OrdinalIgnoreCase))
       return ValidateSqliteSource(sourceName, source);
 
+    if (string.Equals(
+    source.Provider,
+    PostgresSearchDataSourceReader.ProviderName,
+    StringComparison.OrdinalIgnoreCase))
+      return ValidatePostgresSource(sourceName, source);
+
     return null;
   }
 
@@ -54,6 +60,37 @@ public sealed class SearchDataSourceProfileValidator
         Code = "DataSourceQueryIsEmpty",
         Message = $"Для SQLite-источника не указан SQL-запрос: {sourceName}."
       };
+
+    return null;
+  }
+
+  /// <summary>
+  /// Проверяет настройки PostgreSQL-источника данных.
+  /// </summary>
+  /// <param name="sourceName">Имя источника данных.</param>
+  /// <param name="source">Настройки источника данных.</param>
+  /// <returns>Ошибка валидации или <see langword="null"/>, если профиль корректен.</returns>
+  private static ApiError? ValidatePostgresSource(
+      string sourceName,
+      SearchDataSourceOptions source)
+  {
+    if (string.IsNullOrWhiteSpace(source.ConnectionStringName))
+    {
+      return new ApiError
+      {
+        Code = "DataSourceConnectionStringNameIsEmpty",
+        Message = $"Для PostgreSQL-источника не указано имя строки подключения: {sourceName}."
+      };
+    }
+
+    if (string.IsNullOrWhiteSpace(source.Query))
+    {
+      return new ApiError
+      {
+        Code = "DataSourceQueryIsEmpty",
+        Message = $"Для PostgreSQL-источника не указан SQL-запрос: {sourceName}."
+      };
+    }
 
     return null;
   }

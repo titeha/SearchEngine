@@ -111,7 +111,7 @@ public sealed class SearchEngineServiceIndexFromSourceEndpointTests
     // Arrange
     await using WebApplicationFactory<Program> factory = CreateFactoryWithDataSource(
         isEnabled: true,
-        provider: "postgres",
+        provider: "oracle",
         registerReader: false);
 
     using HttpClient client = factory.CreateClient();
@@ -402,6 +402,34 @@ public sealed class SearchEngineServiceIndexFromSourceEndpointTests
   }
 
   /// <summary>
+  /// Проверяет, что PostgreSQL-источник без строки подключения возвращает ошибку чтения источника.
+  /// </summary>
+  [Fact]
+  public async Task PostIndexFromSource_СPostgresProviderБезConnectionString_ВозвращаетBadRequest()
+  {
+    // Arrange
+    await using WebApplicationFactory<Program> factory = CreateFactoryWithPostgresDataSourceWithoutConnectionString();
+
+    using HttpClient client = factory.CreateClient();
+
+    object request = new
+    {
+      sourceName = "products",
+      isPhoneticSearch = true
+    };
+
+    // Act
+    HttpResponseMessage response = await client.PostAsJsonAsync("/v1/index/from-source", request);
+
+    ApiError? error = await response.Content.ReadFromJsonAsync<ApiError>();
+
+    // Assert
+    Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    Assert.NotNull(error);
+    Assert.Equal("DataSourceReadFailed", error.Code);
+  }
+
+  /// <summary>
   /// Создаёт фабрику приложения с тестовым источником данных.
   /// </summary>
   /// <param name="isEnabled">Признак включения источника данных.</param>
@@ -430,6 +458,30 @@ public sealed class SearchEngineServiceIndexFromSourceEndpointTests
 
           if (registerReader)
             builder.ConfigureServices(services => services.AddSingleton<ISearchDataSourceReader, TestSearchDataSourceReader>());
+        });
+  }
+
+  /// <summary>
+  /// Создаёт фабрику приложения с PostgreSQL-источником без строки подключения.
+  /// </summary>
+  /// <returns>Фабрика тестового приложения.</returns>
+  private static WebApplicationFactory<Program> CreateFactoryWithPostgresDataSourceWithoutConnectionString()
+  {
+    return new WebApplicationFactory<Program>()
+        .WithWebHostBuilder(builder =>
+        {
+          builder.ConfigureAppConfiguration((_, configuration) =>
+          {
+            configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                  ["SearchEngineService:Sources:products:IsEnabled"] = "true",
+                  ["SearchEngineService:Sources:products:Provider"] = "postgres",
+                  ["SearchEngineService:Sources:products:ConnectionStringName"] = "POSTGRES_DEMO",
+                  ["SearchEngineService:Sources:products:Query"] =
+                        "select id, text from search_documents"
+                });
+          });
         });
   }
 

@@ -31,6 +31,7 @@ public sealed class SearchEngineServiceDataSourceEndpointTests
     Assert.NotNull(response);
     Assert.Contains("in-memory", response.SupportedProviders);
     Assert.Contains("sqlite", response.SupportedProviders);
+    Assert.Contains("postgres", response.SupportedProviders);
     Assert.Empty(response.Items);
   }
 
@@ -61,7 +62,8 @@ public sealed class SearchEngineServiceDataSourceEndpointTests
     Assert.True(source.HasQuery);
     Assert.Contains("in-memory", response.SupportedProviders);
     Assert.Contains("sqlite", response.SupportedProviders);
-    Assert.False(source.IsProviderSupported);
+    Assert.True(source.IsProviderSupported);
+    Assert.Contains("postgres", response.SupportedProviders);
   }
 
   /// <summary>

@@ -125,14 +125,85 @@ public sealed class SearchDataSourceProfileValidatorTests
   /// Проверяет, что неизвестный provider проходит базовую проверку.
   /// </summary>
   [Fact]
-  public void Validate_НеизвестныйProvider_НеВозвращаетОшибку()
+  public void Validate_НеподдерживаемыйProvider_НеВозвращаетОшибкуВалидации()
   {
     // Arrange
     SearchDataSourceProfileValidator sut = new();
 
     SearchDataSourceOptions source = new()
     {
-      Provider = "postgres"
+      Provider = "oracle"
+    };
+
+    // Act
+    ApiError? result = sut.Validate("products", source);
+
+    // Assert
+    Assert.Null(result);
+  }
+
+  /// <summary>
+  /// Проверяет, что PostgreSQL-профиль без имени строки подключения возвращает прикладную ошибку.
+  /// </summary>
+  [Fact]
+  public void Validate_PostgresБезConnectionStringName_ВозвращаетОшибку()
+  {
+    // Arrange
+    SearchDataSourceProfileValidator sut = new();
+
+    SearchDataSourceOptions source = new()
+    {
+      Provider = "postgres",
+      ConnectionStringName = " ",
+      Query = "select id, text from search_documents"
+    };
+
+    // Act
+    ApiError? result = sut.Validate("products", source);
+
+    // Assert
+    Assert.NotNull(result);
+    Assert.Equal("DataSourceConnectionStringNameIsEmpty", result.Code);
+  }
+
+  /// <summary>
+  /// Проверяет, что PostgreSQL-профиль без SQL-запроса возвращает прикладную ошибку.
+  /// </summary>
+  [Fact]
+  public void Validate_PostgresБезQuery_ВозвращаетОшибку()
+  {
+    // Arrange
+    SearchDataSourceProfileValidator sut = new();
+
+    SearchDataSourceOptions source = new()
+    {
+      Provider = "postgres",
+      ConnectionStringName = "POSTGRES_DEMO",
+      Query = " "
+    };
+
+    // Act
+    ApiError? result = sut.Validate("products", source);
+
+    // Assert
+    Assert.NotNull(result);
+    Assert.Equal("DataSourceQueryIsEmpty", result.Code);
+  }
+
+  /// <summary>
+  /// Проверяет, что корректный PostgreSQL-профиль проходит проверку.
+  /// </summary>
+  [Fact]
+  public void Validate_КорректныйPostgresПрофиль_НеВозвращаетОшибку()
+  {
+    // Arrange
+    SearchDataSourceProfileValidator sut = new();
+
+    SearchDataSourceOptions source = new()
+    {
+      Provider = "postgres",
+      ConnectionStringName = "POSTGRES_DEMO",
+      Query = "select id, text from search_documents"
     };
 
     // Act

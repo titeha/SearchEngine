@@ -22,6 +22,7 @@ builder.Services.AddSingleton<SearchIndexStore>();
 builder.Services.AddHostedService<SearchIndexRestoreHostedService>();
 builder.Services.AddSingleton<ISearchDataSourceReader, InMemorySearchDataSourceReader>();
 builder.Services.AddSingleton<ISearchDataSourceReader, SqliteSearchDataSourceReader>();
+builder.Services.AddSingleton<ISearchDataSourceReader, PostgresSearchDataSourceReader>();
 builder.Services.AddSingleton<SearchDataSourceProfileValidator>();
 builder.Services.AddSingleton<SearchIndexFromSourceBuilder>();
 builder.Services.AddSingleton<SearchDataSourceReaderRegistry>();

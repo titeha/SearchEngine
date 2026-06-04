@@ -106,7 +106,7 @@ public sealed class SearchIndexFromSourceBuilderTests
           ["products"] = new()
           {
             IsEnabled = true,
-            Provider = "postgres"
+            Provider = "oracle"
           }
         });
 
