@@ -138,20 +138,20 @@ public abstract class SqlQuerySearchDataSourceReader : ISearchDataSourceReader
   /// <param name="columnName">Имя обязательной колонки.</param>
   /// <returns>Индекс колонки в результате запроса.</returns>
   private static int GetRequiredColumnOrdinal(
-      DbDataReader reader,
-      string sourceName,
-      string columnName)
+    DbDataReader reader,
+    string sourceName,
+    string columnName)
   {
-    try
+    for (int columnIndex = 0; columnIndex < reader.FieldCount; columnIndex++)
     {
-      return reader.GetOrdinal(columnName);
+      string readerColumnName = reader.GetName(columnIndex);
+
+      if (string.Equals(readerColumnName, columnName, StringComparison.OrdinalIgnoreCase))
+        return columnIndex;
     }
-    catch (IndexOutOfRangeException exception)
-    {
-      throw new InvalidOperationException(
-          $"SQL-запрос источника данных должен возвращать колонку '{columnName}': {sourceName}.",
-          exception);
-    }
+
+    throw new InvalidOperationException(
+        $"SQL-запрос источника данных должен возвращать колонку '{columnName}': {sourceName}.");
   }
 
   /// <summary>
@@ -162,13 +162,11 @@ public abstract class SqlQuerySearchDataSourceReader : ISearchDataSourceReader
   private string ResolveConnectionString(SearchDataSourceOptions options)
   {
     if (string.IsNullOrWhiteSpace(options.ConnectionStringName))
-      throw new InvalidOperationException(
-          $"Для {_providerDisplayName}-источника не задано имя строки подключения.");
+      throw new InvalidOperationException($"Для {_providerDisplayName}-источника не задано имя строки подключения.");
 
     string connectionStringName = options.ConnectionStringName.Trim();
 
-    string? connectionString =
-        _configuration.GetConnectionString(connectionStringName);
+    string? connectionString = _configuration.GetConnectionString(connectionStringName);
 
     if (string.IsNullOrWhiteSpace(connectionString))
       connectionString = _configuration[connectionStringName];
