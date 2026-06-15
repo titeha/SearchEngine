@@ -50,6 +50,47 @@ public sealed class SearchDataSourceReaderRegistryTests
   }
 
   /// <summary>
+  /// Проверяет, что registry убирает пробелы вокруг имени provider-а.
+  /// </summary>
+  [Fact]
+  public void GetReader_ПриПробелахВProvider_ВозвращаетReader()
+  {
+    // Arrange
+    TestSearchDataSourceReader reader = new("postgres");
+
+    SearchDataSourceReaderRegistry sut = new(
+    [
+        reader
+    ]);
+
+    // Act
+    ISearchDataSourceReader? result = sut.GetReader(" postgres ");
+
+    // Assert
+    Assert.True(sut.IsSupported(" postgres "));
+    Assert.Same(reader, result);
+  }
+
+  /// <summary>
+  /// Проверяет, что registry хранит нормализованное имя provider-а.
+  /// </summary>
+  [Fact]
+  public void GetSupportedProviders_ПриПробелахВProviderReader_ВозвращаетНормализованноеИмя()
+  {
+    // Arrange
+    SearchDataSourceReaderRegistry sut = new(
+    [
+        new TestSearchDataSourceReader(" postgres ")
+    ]);
+
+    // Act
+    string[] result = sut.GetSupportedProviders();
+
+    // Assert
+    Assert.Equal(["postgres"], result);
+  }
+
+  /// <summary>
   /// Тестовый reader источника данных.
   /// </summary>
   /// <param name="provider">Имя provider-а.</param>
@@ -57,6 +98,14 @@ public sealed class SearchDataSourceReaderRegistryTests
   {
     /// <inheritdoc />
     public string Provider { get; } = provider;
+
+    /// <inheritdoc />
+    public ApiError? ValidateProfile(
+        string sourceName,
+        SearchDataSourceOptions options)
+    {
+      return null;
+    }
 
     /// <inheritdoc />
     public Task<IReadOnlyList<SearchDataSourceDocument>> ReadAsync(

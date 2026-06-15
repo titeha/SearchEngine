@@ -24,6 +24,17 @@ public sealed class SqliteSearchDataSourceReader(IConfiguration configuration) :
   public string Provider => ProviderName;
 
   /// <inheritdoc />
+  public ApiError? ValidateProfile(
+      string sourceName,
+      SearchDataSourceOptions options)
+  {
+    return SearchDataSourceProfileValidation.ValidateSqlQuerySource(
+        sourceName,
+        "SQLite",
+        options);
+  }
+
+  /// <inheritdoc />
   public async Task<IReadOnlyList<SearchDataSourceDocument>> ReadAsync(
       string sourceName,
       SearchDataSourceOptions options,

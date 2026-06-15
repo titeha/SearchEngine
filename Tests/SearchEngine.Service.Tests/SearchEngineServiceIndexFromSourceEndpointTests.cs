@@ -684,6 +684,14 @@ public sealed class SearchEngineServiceIndexFromSourceEndpointTests
     public string Provider => "test";
 
     /// <inheritdoc />
+    public ApiError? ValidateProfile(
+        string sourceName,
+        SearchDataSourceOptions options)
+    {
+      return null;
+    }
+
+    /// <inheritdoc />
     public Task<IReadOnlyList<SearchDataSourceDocument>> ReadAsync(
         string sourceName,
         SearchDataSourceOptions options,

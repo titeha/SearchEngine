@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 using Microsoft.Extensions.Options;
 
@@ -23,9 +23,9 @@ builder.Services.AddHostedService<SearchIndexRestoreHostedService>();
 builder.Services.AddSingleton<ISearchDataSourceReader, InMemorySearchDataSourceReader>();
 builder.Services.AddSingleton<ISearchDataSourceReader, SqliteSearchDataSourceReader>();
 builder.Services.AddSingleton<ISearchDataSourceReader, PostgresSearchDataSourceReader>();
+builder.Services.AddSingleton<SearchDataSourceReaderRegistry>();
 builder.Services.AddSingleton<SearchDataSourceProfileValidator>();
 builder.Services.AddSingleton<SearchIndexFromSourceBuilder>();
-builder.Services.AddSingleton<SearchDataSourceReaderRegistry>();
 
 WebApplication app = builder.Build();
 

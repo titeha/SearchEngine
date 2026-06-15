@@ -26,6 +26,17 @@ public sealed class PostgresSearchDataSourceReader : ISearchDataSourceReader
   public string Provider => ProviderName;
 
   /// <inheritdoc />
+  public ApiError? ValidateProfile(
+      string sourceName,
+      SearchDataSourceOptions options)
+  {
+    return SearchDataSourceProfileValidation.ValidateSqlQuerySource(
+        sourceName,
+        "PostgreSQL",
+        options);
+  }
+
+  /// <inheritdoc />
   public async Task<IReadOnlyList<SearchDataSourceDocument>> ReadAsync(
       string sourceName,
       SearchDataSourceOptions options,

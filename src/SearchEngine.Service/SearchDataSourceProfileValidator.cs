@@ -5,6 +5,17 @@
 /// </summary>
 public sealed class SearchDataSourceProfileValidator
 {
+  private readonly SearchDataSourceReaderRegistry _registry;
+
+  /// <summary>
+  /// Создаёт валидатор профилей источников данных.
+  /// </summary>
+  /// <param name="registry">Registry reader-ов источников данных.</param>
+  public SearchDataSourceProfileValidator(SearchDataSourceReaderRegistry registry)
+  {
+    _registry = registry;
+  }
+
   /// <summary>
   /// Проверяет настройки профиля источника данных.
   /// </summary>
@@ -22,76 +33,16 @@ public sealed class SearchDataSourceProfileValidator
         Message = $"Для источника данных не указан provider: {sourceName}."
       };
 
-    if (string.Equals(
-        source.Provider,
-        SqliteSearchDataSourceReader.ProviderName,
-        StringComparison.OrdinalIgnoreCase))
-      return ValidateSqliteSource(sourceName, source);
+    string provider = source.Provider.Trim();
 
-    if (string.Equals(
-    source.Provider,
-    PostgresSearchDataSourceReader.ProviderName,
-    StringComparison.OrdinalIgnoreCase))
-      return ValidatePostgresSource(sourceName, source);
-
-    return null;
-  }
-
-  /// <summary>
-  /// Проверяет настройки SQLite-источника данных.
-  /// </summary>
-  /// <param name="sourceName">Имя источника данных.</param>
-  /// <param name="source">Настройки источника данных.</param>
-  /// <returns>Ошибка валидации или <see langword="null"/>, если профиль корректен.</returns>
-  private static ApiError? ValidateSqliteSource(
-      string sourceName,
-      SearchDataSourceOptions source)
-  {
-    if (string.IsNullOrWhiteSpace(source.ConnectionStringName))
+    ISearchDataSourceReader? reader = _registry.GetReader(provider);
+    if (reader is null)
       return new ApiError
       {
-        Code = "DataSourceConnectionStringNameIsEmpty",
-        Message = $"Для SQLite-источника не указано имя строки подключения: {sourceName}."
+        Code = "DataSourceProviderNotSupported",
+        Message = $"Provider источника данных не поддерживается: {provider}."
       };
 
-    if (string.IsNullOrWhiteSpace(source.Query))
-      return new ApiError
-      {
-        Code = "DataSourceQueryIsEmpty",
-        Message = $"Для SQLite-источника не указан SQL-запрос: {sourceName}."
-      };
-
-    return null;
-  }
-
-  /// <summary>
-  /// Проверяет настройки PostgreSQL-источника данных.
-  /// </summary>
-  /// <param name="sourceName">Имя источника данных.</param>
-  /// <param name="source">Настройки источника данных.</param>
-  /// <returns>Ошибка валидации или <see langword="null"/>, если профиль корректен.</returns>
-  private static ApiError? ValidatePostgresSource(
-      string sourceName,
-      SearchDataSourceOptions source)
-  {
-    if (string.IsNullOrWhiteSpace(source.ConnectionStringName))
-    {
-      return new ApiError
-      {
-        Code = "DataSourceConnectionStringNameIsEmpty",
-        Message = $"Для PostgreSQL-источника не указано имя строки подключения: {sourceName}."
-      };
-    }
-
-    if (string.IsNullOrWhiteSpace(source.Query))
-    {
-      return new ApiError
-      {
-        Code = "DataSourceQueryIsEmpty",
-        Message = $"Для PostgreSQL-источника не указан SQL-запрос: {sourceName}."
-      };
-    }
-
-    return null;
+    return reader.ValidateProfile(sourceName, source);
   }
 }

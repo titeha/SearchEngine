@@ -14,7 +14,8 @@ public sealed class SearchDataSourceReaderRegistry
   public SearchDataSourceReaderRegistry(IEnumerable<ISearchDataSourceReader> readers)
   {
     _readers = readers
-        .GroupBy(reader => reader.Provider, StringComparer.OrdinalIgnoreCase)
+        .Where(reader => !string.IsNullOrWhiteSpace(reader.Provider))
+        .GroupBy(reader => NormalizeProvider(reader.Provider)!, StringComparer.OrdinalIgnoreCase)
         .ToDictionary(
             group => group.Key,
             group => group.First(),
@@ -32,7 +33,12 @@ public sealed class SearchDataSourceReaderRegistry
   /// </summary>
   /// <param name="provider">Имя provider-а.</param>
   /// <returns><see langword="true"/>, если provider поддерживается.</returns>
-  public bool IsSupported(string provider) => !string.IsNullOrWhiteSpace(provider) && _readers.ContainsKey(provider);
+  public bool IsSupported(string provider)
+  {
+    string? normalizedProvider = NormalizeProvider(provider);
+
+    return normalizedProvider is not null && _readers.ContainsKey(normalizedProvider);
+  }
 
   /// <summary>
   /// Возвращает reader для provider-а источника данных.
@@ -41,11 +47,25 @@ public sealed class SearchDataSourceReaderRegistry
   /// <returns>Reader источника данных или <see langword="null"/>, если provider не поддерживается.</returns>
   public ISearchDataSourceReader? GetReader(string provider)
   {
+    string? normalizedProvider = NormalizeProvider(provider);
+    if (normalizedProvider is null)
+      return null;
+
+    return _readers.TryGetValue(normalizedProvider, out ISearchDataSourceReader? reader)
+        ? reader
+        : null;
+  }
+
+  /// <summary>
+  /// Нормализует имя provider-а для поиска в registry.
+  /// </summary>
+  /// <param name="provider">Имя provider-а.</param>
+  /// <returns>Нормализованное имя provider-а или <see langword="null"/>, если имя пустое.</returns>
+  private static string? NormalizeProvider(string? provider)
+  {
     if (string.IsNullOrWhiteSpace(provider))
       return null;
 
-    return _readers.TryGetValue(provider, out ISearchDataSourceReader? reader)
-        ? reader
-        : null;
+    return provider.Trim();
   }
 }

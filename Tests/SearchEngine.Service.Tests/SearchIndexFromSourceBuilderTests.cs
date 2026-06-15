@@ -126,6 +126,42 @@ public sealed class SearchIndexFromSourceBuilderTests
   }
 
   /// <summary>
+  /// Проверяет, что ошибка валидации reader-а возвращается до чтения документов.
+  /// </summary>
+  [Fact]
+  public async Task BuildAsync_ПриОшибкеВалидацииReader_НеЧитаетДокументы()
+  {
+    // Arrange
+    SearchIndexFromSourceBuilder sut = CreateBuilder(
+        sources: new Dictionary<string, SearchDataSourceOptions>
+        {
+          ["invalid-profile"] = new()
+          {
+            IsEnabled = true,
+            Provider = "invalid-profile"
+          }
+        },
+        readers:
+        [
+            new InvalidProfileSearchDataSourceReader()
+        ]);
+
+    IndexBuildFromSourceRequest request = new()
+    {
+      SourceName = "invalid-profile",
+      IsPhoneticSearch = true
+    };
+
+    // Act
+    (IndexStatusResponse? status, ApiError? error) = await sut.BuildAsync(request);
+
+    // Assert
+    Assert.Null(status);
+    Assert.NotNull(error);
+    Assert.Equal("CustomValidationError", error.Code);
+  }
+
+  /// <summary>
   /// Проверяет, что ошибка reader-а возвращается как прикладная ошибка.
   /// </summary>
   [Fact]
@@ -311,7 +347,7 @@ public sealed class SearchIndexFromSourceBuilderTests
     return new SearchIndexFromSourceBuilder(
         Options.Create(options),
         registry,
-        new SearchDataSourceProfileValidator(),
+        new SearchDataSourceProfileValidator(registry),
         store);
   }
 
@@ -335,12 +371,50 @@ public sealed class SearchIndexFromSourceBuilderTests
     public string Provider => "broken";
 
     /// <inheritdoc />
+    public ApiError? ValidateProfile(
+        string sourceName,
+        SearchDataSourceOptions options)
+    {
+      return null;
+    }
+
+    /// <inheritdoc />
     public Task<IReadOnlyList<SearchDataSourceDocument>> ReadAsync(
         string sourceName,
         SearchDataSourceOptions options,
         CancellationToken cancellationToken = default)
     {
       throw new InvalidOperationException("Тестовая ошибка чтения источника данных.");
+    }
+  }
+
+  /// <summary>
+  /// Reader источника данных, который всегда возвращает ошибку валидации.
+  /// </summary>
+  private sealed class InvalidProfileSearchDataSourceReader : ISearchDataSourceReader
+  {
+    /// <inheritdoc />
+    public string Provider => "invalid-profile";
+
+    /// <inheritdoc />
+    public ApiError? ValidateProfile(
+        string sourceName,
+        SearchDataSourceOptions options)
+    {
+      return new ApiError
+      {
+        Code = "CustomValidationError",
+        Message = "Профиль источника данных некорректен."
+      };
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<SearchDataSourceDocument>> ReadAsync(
+        string sourceName,
+        SearchDataSourceOptions options,
+        CancellationToken cancellationToken = default)
+    {
+      throw new InvalidOperationException("Reader не должен вызываться при ошибке валидации.");
     }
   }
 }

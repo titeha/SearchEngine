@@ -14,6 +14,11 @@ public sealed class InMemorySearchDataSourceReader : ISearchDataSourceReader
   public string Provider => ProviderName;
 
   /// <inheritdoc />
+  public ApiError? ValidateProfile(
+      string sourceName,
+      SearchDataSourceOptions options) => null;
+
+  /// <inheritdoc />
   public Task<IReadOnlyList<SearchDataSourceDocument>> ReadAsync(
       string sourceName,
       SearchDataSourceOptions options,

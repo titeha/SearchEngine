@@ -11,6 +11,16 @@ public interface ISearchDataSourceReader
   string Provider { get; }
 
   /// <summary>
+  /// Проверяет профиль источника данных перед чтением документов.
+  /// </summary>
+  /// <param name="sourceName">Имя профиля источника данных.</param>
+  /// <param name="options">Настройки источника данных.</param>
+  /// <returns>Ошибка валидации или <see langword="null"/>, если профиль корректен.</returns>
+  ApiError? ValidateProfile(
+      string sourceName,
+      SearchDataSourceOptions options);
+
+  /// <summary>
   /// Читает документы из источника данных.
   /// </summary>
   /// <param name="sourceName">Имя профиля источника данных.</param>
