@@ -313,16 +313,105 @@ public sealed class SearchIndexFromSourceBuilderTests
   }
 
   /// <summary>
+  /// Проверяет, что builder передаёт reader-у глобальный лимит документов, если в профиле нет отдельного лимита чтения.
+  /// </summary>
+  [Fact]
+  public async Task BuildAsync_БезЛимитаЧтенияВПрофиле_ПередаетReaderГлобальныйЛимит()
+  {
+    // Arrange
+    CapturingSearchDataSourceReader reader = new("capture");
+
+    SearchIndexFromSourceBuilder sut = CreateBuilder(
+        sources: new Dictionary<string, SearchDataSourceOptions>
+        {
+          ["products"] = new()
+          {
+            IsEnabled = true,
+            Provider = reader.Provider
+          }
+        },
+        readers:
+        [
+            reader
+        ],
+        maxDocumentCount: 7);
+
+    IndexBuildFromSourceRequest request = new()
+    {
+      SourceName = "products",
+      IsPhoneticSearch = false
+    };
+
+    // Act
+    (IndexStatusResponse? status, ApiError? error) = await sut.BuildAsync(request);
+
+    // Assert
+    Assert.Null(error);
+
+    Assert.NotNull(status);
+    Assert.True(status.IsReady);
+
+    Assert.NotNull(reader.ReadOptions);
+    Assert.Equal(7, reader.ReadOptions.MaxReadDocumentCount);
+  }
+
+  /// <summary>
+  /// Проверяет, что builder не разрешает reader-у читать больше документов, чем допускает глобальный лимит сервиса.
+  /// </summary>
+  [Fact]
+  public async Task BuildAsync_СЛимитомЧтенияВышеГлобального_ПередаетReaderГлобальныйЛимит()
+  {
+    // Arrange
+    CapturingSearchDataSourceReader reader = new("capture");
+
+    SearchIndexFromSourceBuilder sut = CreateBuilder(
+        sources: new Dictionary<string, SearchDataSourceOptions>
+        {
+          ["products"] = new()
+          {
+            IsEnabled = true,
+            Provider = reader.Provider,
+            MaxReadDocumentCount = 50
+          }
+        },
+        readers:
+        [
+            reader
+        ],
+        maxDocumentCount: 7);
+
+    IndexBuildFromSourceRequest request = new()
+    {
+      SourceName = "products",
+      IsPhoneticSearch = false
+    };
+
+    // Act
+    (IndexStatusResponse? status, ApiError? error) = await sut.BuildAsync(request);
+
+    // Assert
+    Assert.Null(error);
+
+    Assert.NotNull(status);
+    Assert.True(status.IsReady);
+
+    Assert.NotNull(reader.ReadOptions);
+    Assert.Equal(7, reader.ReadOptions.MaxReadDocumentCount);
+  }
+
+  /// <summary>
   /// Создаёт builder с настройками по умолчанию.
   /// </summary>
   /// <param name="sources">Источники данных.</param>
   /// <param name="readers">Reader-ы источников данных.</param>
+  /// <param name="maxDocumentCount">Глобальный лимит документов.</param>
   /// <returns>Builder построения индекса из источника данных.</returns>
   private static SearchIndexFromSourceBuilder CreateBuilder(
       Dictionary<string, SearchDataSourceOptions>? sources = null,
-      IReadOnlyList<ISearchDataSourceReader>? readers = null)
+      IReadOnlyList<ISearchDataSourceReader>? readers = null,
+      int? maxDocumentCount = null)
   {
-    return CreateBuilder(new SearchIndexStore(), sources, readers);
+    return CreateBuilder(new SearchIndexStore(), sources, readers, maxDocumentCount);
   }
 
   /// <summary>
@@ -331,16 +420,21 @@ public sealed class SearchIndexFromSourceBuilderTests
   /// <param name="store">Хранилище поискового индекса.</param>
   /// <param name="sources">Источники данных.</param>
   /// <param name="readers">Reader-ы источников данных.</param>
+  /// <param name="maxDocumentCount">Глобальный лимит документов.</param>
   /// <returns>Builder построения индекса из источника данных.</returns>
   private static SearchIndexFromSourceBuilder CreateBuilder(
       SearchIndexStore store,
       Dictionary<string, SearchDataSourceOptions>? sources = null,
-      IReadOnlyList<ISearchDataSourceReader>? readers = null)
+      IReadOnlyList<ISearchDataSourceReader>? readers = null,
+      int? maxDocumentCount = null)
   {
     SearchEngineServiceOptions options = new()
     {
       Sources = sources ?? []
     };
+
+    if (maxDocumentCount.HasValue)
+      options.MaxDocumentCount = maxDocumentCount.Value;
 
     SearchDataSourceReaderRegistry registry = new(readers ?? []);
 
@@ -360,6 +454,49 @@ public sealed class SearchIndexFromSourceBuilderTests
   private static bool ContainsId(SearchQueryResponse response, int id)
   {
     return response.Items.Any(bucket => bucket.Ids.Contains(id));
+  }
+
+  /// <summary>
+  /// Reader источника данных, который сохраняет настройки, переданные при чтении.
+  /// </summary>
+  /// <param name="provider">Имя provider-а.</param>
+  private sealed class CapturingSearchDataSourceReader(string provider) : ISearchDataSourceReader
+  {
+    /// <inheritdoc />
+    public string Provider { get; } = provider;
+
+    /// <summary>
+    /// Получает настройки, переданные в последний вызов чтения.
+    /// </summary>
+    public SearchDataSourceOptions? ReadOptions { get; private set; }
+
+    /// <inheritdoc />
+    public ApiError? ValidateProfile(
+        string sourceName,
+        SearchDataSourceOptions options)
+    {
+      return null;
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<SearchDataSourceDocument>> ReadAsync(
+        string sourceName,
+        SearchDataSourceOptions options,
+        CancellationToken cancellationToken = default)
+    {
+      ReadOptions = options;
+
+      IReadOnlyList<SearchDataSourceDocument> result =
+      [
+          new()
+                {
+                    Id = 1,
+                    Text = "Тестовый документ"
+                }
+      ];
+
+      return Task.FromResult(result);
+    }
   }
 
   /// <summary>

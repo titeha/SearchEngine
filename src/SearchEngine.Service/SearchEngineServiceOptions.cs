@@ -76,6 +76,23 @@ public sealed class SearchDataSourceOptions
   /// Получает или задаёт запрос для получения данных индекса.
   /// </summary>
   public string Query { get; set; } = string.Empty;
+
+  /// <summary>
+  /// Получает или задаёт таймаут выполнения SQL-команды в секундах.
+  /// </summary>
+  /// <remarks>
+  /// Если значение не задано, используется значение provider-а ADO.NET по умолчанию.
+  /// </remarks>
+  public int? CommandTimeoutSeconds { get; set; }
+
+  /// <summary>
+  /// Получает или задаёт максимальное количество документов, которое reader может прочитать из источника данных.
+  /// </summary>
+  /// <remarks>
+  /// Если значение не задано, при построении индекса из источника используется глобальный лимит
+  /// <see cref="SearchEngineServiceOptions.MaxDocumentCount"/>.
+  /// </remarks>
+  public int? MaxReadDocumentCount { get; set; }
 }
 
 /// <summary>

@@ -31,6 +31,20 @@ internal static class SearchDataSourceProfileValidation
         Message = $"Для {providerDisplayName}-источника не указан SQL-запрос: {sourceName}."
       };
 
+    if (source.CommandTimeoutSeconds is <= 0)
+      return new ApiError
+      {
+        Code = "DataSourceCommandTimeoutIsInvalid",
+        Message = $"Таймаут SQL-запроса должен быть больше нуля секунд для {providerDisplayName}-источника: {sourceName}."
+      };
+
+    if (source.MaxReadDocumentCount is <= 0)
+      return new ApiError
+      {
+        Code = "DataSourceMaxReadDocumentCountIsInvalid",
+        Message = $"Лимит чтения документов должен быть больше нуля для {providerDisplayName}-источника: {sourceName}."
+      };
+
     return null;
   }
 }

@@ -50,21 +50,23 @@ public sealed class SearchIndexFromSourceBuilder
 
     string sourceName = request.SourceName.Trim();
 
-    SearchDataSourceOptions? source = FindDataSource(sourceName);
+    SearchDataSourceOptions? configuredSource = FindDataSource(sourceName);
 
-    if (source is null)
+    if (configuredSource is null)
       return (null, new ApiError
       {
         Code = "DataSourceNotFound",
         Message = $"Источник данных не найден: {sourceName}."
       });
 
-    if (!source.IsEnabled)
+    if (!configuredSource.IsEnabled)
       return (null, new ApiError
       {
         Code = "DataSourceDisabled",
         Message = $"Источник данных отключён: {sourceName}."
       });
+
+    SearchDataSourceOptions source = CreateEffectiveReadOptions(configuredSource);
 
     ApiError? validationError = _validator.Validate(sourceName, source);
 
@@ -118,6 +120,30 @@ public sealed class SearchIndexFromSourceBuilder
       return (null, error);
 
     return (_store.GetStatus(), null);
+  }
+
+  /// <summary>
+  /// Создаёт рабочие настройки источника данных с эффективными лимитами чтения.
+  /// </summary>
+  /// <param name="source">Настройки источника данных из конфигурации.</param>
+  /// <returns>Настройки источника данных для передачи reader-у.</returns>
+  private SearchDataSourceOptions CreateEffectiveReadOptions(SearchDataSourceOptions source)
+  {
+    int maxReadDocumentCount = source.MaxReadDocumentCount ?? _options.MaxDocumentCount;
+
+    if (source.MaxReadDocumentCount.HasValue)
+      maxReadDocumentCount = Math.Min(source.MaxReadDocumentCount.Value, _options.MaxDocumentCount);
+
+    return new SearchDataSourceOptions
+    {
+      IsEnabled = source.IsEnabled,
+      Provider = source.Provider,
+      Documents = source.Documents,
+      ConnectionStringName = source.ConnectionStringName,
+      Query = source.Query,
+      CommandTimeoutSeconds = source.CommandTimeoutSeconds,
+      MaxReadDocumentCount = maxReadDocumentCount
+    };
   }
 
   /// <summary>

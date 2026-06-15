@@ -66,11 +66,16 @@ public abstract class SqlQuerySearchDataSourceReader : ISearchDataSourceReader
 
     command.CommandText = query;
 
+    ApplyCommandTimeout(sourceName, command, options);
+
+    int? maxReadDocumentCount = ResolveMaxReadDocumentCount(sourceName, options);
+
     await using DbDataReader reader = await command
         .ExecuteReaderAsync(cancellationToken)
         .ConfigureAwait(false);
 
-    return await ReadDocumentsAsync(sourceName, reader, cancellationToken).ConfigureAwait(false);
+    return await ReadDocumentsAsync(sourceName, reader, maxReadDocumentCount, cancellationToken)
+        .ConfigureAwait(false);
   }
 
   /// <summary>
@@ -85,11 +90,13 @@ public abstract class SqlQuerySearchDataSourceReader : ISearchDataSourceReader
   /// </summary>
   /// <param name="sourceName">Имя источника данных.</param>
   /// <param name="reader">Reader результата SQL-запроса.</param>
+  /// <param name="maxReadDocumentCount">Максимальное количество документов для чтения.</param>
   /// <param name="cancellationToken">Токен отмены операции.</param>
   /// <returns>Документы для построения поискового индекса.</returns>
   private static async Task<IReadOnlyList<SearchDataSourceDocument>> ReadDocumentsAsync(
       string sourceName,
       DbDataReader reader,
+      int? maxReadDocumentCount,
       CancellationToken cancellationToken)
   {
     int idIndex = GetRequiredColumnOrdinal(reader, sourceName, "id");
@@ -98,9 +105,76 @@ public abstract class SqlQuerySearchDataSourceReader : ISearchDataSourceReader
     List<SearchDataSourceDocument> documents = [];
 
     while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+    {
+      EnsureReadLimitNotExceeded(sourceName, documents.Count, maxReadDocumentCount);
+
       documents.Add(ReadDocument(reader, idIndex, textIndex));
+    }
 
     return documents;
+  }
+
+  /// <summary>
+  /// Применяет таймаут выполнения SQL-команды, если он задан в профиле источника данных.
+  /// </summary>
+  /// <param name="sourceName">Имя источника данных.</param>
+  /// <param name="command">SQL-команда.</param>
+  /// <param name="options">Настройки источника данных.</param>
+  private static void ApplyCommandTimeout(
+      string sourceName,
+      DbCommand command,
+      SearchDataSourceOptions options)
+  {
+    if (options.CommandTimeoutSeconds is null)
+      return;
+
+    if (options.CommandTimeoutSeconds <= 0)
+      throw new InvalidOperationException(
+          $"Таймаут SQL-запроса должен быть больше нуля секунд: {sourceName}.");
+
+    command.CommandTimeout = options.CommandTimeoutSeconds.Value;
+  }
+
+  /// <summary>
+  /// Возвращает лимит чтения документов из настроек источника данных.
+  /// </summary>
+  /// <param name="sourceName">Имя источника данных.</param>
+  /// <param name="options">Настройки источника данных.</param>
+  /// <returns>Лимит чтения документов или <see langword="null"/>, если лимит не задан.</returns>
+  private static int? ResolveMaxReadDocumentCount(
+      string sourceName,
+      SearchDataSourceOptions options)
+  {
+    if (options.MaxReadDocumentCount is null)
+      return null;
+
+    if (options.MaxReadDocumentCount <= 0)
+      throw new InvalidOperationException(
+          $"Лимит чтения документов должен быть больше нуля: {sourceName}.");
+
+    return options.MaxReadDocumentCount.Value;
+  }
+
+  /// <summary>
+  /// Проверяет, что чтение не превысило допустимое количество документов.
+  /// </summary>
+  /// <param name="sourceName">Имя источника данных.</param>
+  /// <param name="currentDocumentCount">Текущее количество уже прочитанных документов.</param>
+  /// <param name="maxReadDocumentCount">Максимальное количество документов для чтения.</param>
+  private static void EnsureReadLimitNotExceeded(
+      string sourceName,
+      int currentDocumentCount,
+      int? maxReadDocumentCount)
+  {
+    if (maxReadDocumentCount is null)
+      return;
+
+    if (currentDocumentCount < maxReadDocumentCount.Value)
+      return;
+
+    throw new InvalidOperationException(
+        $"Количество документов, прочитанных из источника данных, превышает допустимое значение " +
+        $"{maxReadDocumentCount.Value}: {sourceName}.");
   }
 
   /// <summary>
@@ -138,9 +212,9 @@ public abstract class SqlQuerySearchDataSourceReader : ISearchDataSourceReader
   /// <param name="columnName">Имя обязательной колонки.</param>
   /// <returns>Индекс колонки в результате запроса.</returns>
   private static int GetRequiredColumnOrdinal(
-    DbDataReader reader,
-    string sourceName,
-    string columnName)
+      DbDataReader reader,
+      string sourceName,
+      string columnName)
   {
     for (int columnIndex = 0; columnIndex < reader.FieldCount; columnIndex++)
     {
@@ -162,11 +236,13 @@ public abstract class SqlQuerySearchDataSourceReader : ISearchDataSourceReader
   private string ResolveConnectionString(SearchDataSourceOptions options)
   {
     if (string.IsNullOrWhiteSpace(options.ConnectionStringName))
-      throw new InvalidOperationException($"Для {_providerDisplayName}-источника не задано имя строки подключения.");
+      throw new InvalidOperationException(
+          $"Для {_providerDisplayName}-источника не задано имя строки подключения.");
 
     string connectionStringName = options.ConnectionStringName.Trim();
 
-    string? connectionString = _configuration.GetConnectionString(connectionStringName);
+    string? connectionString =
+        _configuration.GetConnectionString(connectionStringName);
 
     if (string.IsNullOrWhiteSpace(connectionString))
       connectionString = _configuration[connectionStringName];

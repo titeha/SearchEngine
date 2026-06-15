@@ -123,6 +123,56 @@ public sealed class SearchDataSourceProfileValidatorTests
   }
 
   /// <summary>
+  /// Проверяет, что SQLite-профиль с некорректным таймаутом SQL-команды возвращает прикладную ошибку.
+  /// </summary>
+  [Fact]
+  public void Validate_SqliteСНекорректнымCommandTimeoutSeconds_ВозвращаетОшибку()
+  {
+    // Arrange
+    SearchDataSourceProfileValidator sut = CreateValidator(new SqliteSearchDataSourceReader(CreateConfiguration()));
+
+    SearchDataSourceOptions source = new()
+    {
+      Provider = "sqlite",
+      ConnectionStringName = "SQLITE_DEMO",
+      Query = "select id, text from search_documents",
+      CommandTimeoutSeconds = 0
+    };
+
+    // Act
+    ApiError? result = sut.Validate("sqlite-demo", source);
+
+    // Assert
+    Assert.NotNull(result);
+    Assert.Equal("DataSourceCommandTimeoutIsInvalid", result.Code);
+  }
+
+  /// <summary>
+  /// Проверяет, что SQLite-профиль с некорректным лимитом чтения документов возвращает прикладную ошибку.
+  /// </summary>
+  [Fact]
+  public void Validate_SqliteСНекорректнымMaxReadDocumentCount_ВозвращаетОшибку()
+  {
+    // Arrange
+    SearchDataSourceProfileValidator sut = CreateValidator(new SqliteSearchDataSourceReader(CreateConfiguration()));
+
+    SearchDataSourceOptions source = new()
+    {
+      Provider = "sqlite",
+      ConnectionStringName = "SQLITE_DEMO",
+      Query = "select id, text from search_documents",
+      MaxReadDocumentCount = 0
+    };
+
+    // Act
+    ApiError? result = sut.Validate("sqlite-demo", source);
+
+    // Assert
+    Assert.NotNull(result);
+    Assert.Equal("DataSourceMaxReadDocumentCountIsInvalid", result.Code);
+  }
+
+  /// <summary>
   /// Проверяет, что корректный SQLite-профиль проходит проверку.
   /// </summary>
   [Fact]

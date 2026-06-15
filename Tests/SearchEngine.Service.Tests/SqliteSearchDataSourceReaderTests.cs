@@ -98,6 +98,89 @@ public sealed class SqliteSearchDataSourceReaderTests
   }
 
   /// <summary>
+  /// Проверяет, что reader выполняет запрос с заданным таймаутом SQL-команды.
+  /// </summary>
+  [Fact]
+  public async Task ReadAsync_СCommandTimeoutSeconds_ЧитаетДокументы()
+  {
+    // Arrange
+    string databasePath = CreateDatabasePath();
+
+    try
+    {
+      string connectionString = CreateConnectionString(databasePath);
+
+      await CreateDemoDatabaseAsync(connectionString);
+
+      IConfiguration configuration = CreateConfiguration(
+          "ConnectionStrings:SQLITE_DEMO",
+          connectionString);
+
+      SqliteSearchDataSourceReader sut = new(configuration);
+
+      SearchDataSourceOptions options = new()
+      {
+        ConnectionStringName = "SQLITE_DEMO",
+        Query = "select id, text from search_documents order by id",
+        CommandTimeoutSeconds = 5
+      };
+
+      // Act
+      IReadOnlyList<SearchDataSourceDocument> result = await sut.ReadAsync("sqlite-demo", options);
+
+      // Assert
+      Assert.Equal(2, result.Count);
+    }
+    finally
+    {
+      DeleteDatabase(databasePath);
+    }
+  }
+
+  /// <summary>
+  /// Проверяет, что reader прерывает чтение, если SQL-запрос вернул больше документов, чем разрешено профилем.
+  /// </summary>
+  [Fact]
+  public async Task ReadAsync_ПриПревышенииЛимитаЧтенияДокументов_ВыбрасываетПонятноеИсключение()
+  {
+    // Arrange
+    string databasePath = CreateDatabasePath();
+
+    try
+    {
+      string connectionString = CreateConnectionString(databasePath);
+
+      await CreateDemoDatabaseAsync(connectionString);
+
+      IConfiguration configuration = CreateConfiguration(
+          "ConnectionStrings:SQLITE_DEMO",
+          connectionString);
+
+      SqliteSearchDataSourceReader sut = new(configuration);
+
+      SearchDataSourceOptions options = new()
+      {
+        ConnectionStringName = "SQLITE_DEMO",
+        Query = "select id, text from search_documents order by id",
+        MaxReadDocumentCount = 1
+      };
+
+      // Act
+      InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+          () => sut.ReadAsync("sqlite-demo", options));
+
+      // Assert
+      Assert.Contains("превышает", exception.Message, StringComparison.OrdinalIgnoreCase);
+      Assert.Contains("1", exception.Message, StringComparison.OrdinalIgnoreCase);
+      Assert.Contains("sqlite-demo", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+    finally
+    {
+      DeleteDatabase(databasePath);
+    }
+  }
+
+  /// <summary>
   /// Проверяет, что отсутствующая строка подключения возвращается как ошибка чтения профиля.
   /// </summary>
   [Fact]
