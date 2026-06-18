@@ -46,6 +46,8 @@ builder.Services.AddRateLimiter(rateLimiter =>
   });
 });
 
+builder.Services.AddOpenApi();
+
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 builder.Services.Configure<SearchEngineServiceOptions>(builder.Configuration.GetSection("SearchEngineService"));
@@ -71,6 +73,8 @@ app.UseMiddleware<RequestBodySizeLimitMiddleware>();
 app.UseRateLimiter();
 
 app.UseMiddleware<ApiKeyAuthenticationMiddleware>();
+
+app.MapOpenApi();
 
 if (serviceOptions.Authentication.IsEnabled && string.IsNullOrWhiteSpace(serviceOptions.Authentication.ApiKey))
   app.Logger.LogWarning(
