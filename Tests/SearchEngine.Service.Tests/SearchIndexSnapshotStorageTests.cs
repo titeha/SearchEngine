@@ -68,6 +68,39 @@ public sealed class SearchIndexSnapshotStorageTests
   }
 
   /// <summary>
+  /// Проверяет, что после сохранения не остаётся временного файла и snapshot читается.
+  /// </summary>
+  [Fact]
+  public async Task SaveAsync_ПриВключенномSnapshot_НеОставляетВременныйФайл()
+  {
+    // Arrange
+    string filePath = CreateTempSnapshotPath();
+
+    try
+    {
+      SearchIndexSnapshotStorage sut = CreateStorage(
+          isEnabled: true,
+          filePath: filePath);
+
+      // Act: два сохранения подряд — второе перезаписывает первое через временный файл.
+      await sut.SaveAsync(CreateSnapshot());
+      await sut.SaveAsync(CreateSnapshot());
+
+      SearchIndexSnapshotFile? result = await sut.LoadAsync();
+
+      // Assert
+      Assert.True(File.Exists(filePath));
+      Assert.False(File.Exists(filePath + ".tmp"));
+      Assert.NotNull(result);
+      Assert.Equal(2, result.Documents.Count);
+    }
+    finally
+    {
+      DeleteTempSnapshotDirectory(filePath);
+    }
+  }
+
+  /// <summary>
   /// Проверяет, что сохранённый snapshot можно загрузить обратно.
   /// </summary>
   [Fact]
