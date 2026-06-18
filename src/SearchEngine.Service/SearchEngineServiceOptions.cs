@@ -29,6 +29,38 @@ public sealed class SearchEngineServiceOptions
   /// Получает или задаёт ограничения, защищающие сервис от перегрузки.
   /// </summary>
   public SearchEngineServiceLimitsOptions Limits { get; set; } = new();
+
+  /// <summary>
+  /// Получает или задаёт настройки аутентификации по API-ключу.
+  /// </summary>
+  public ApiKeyOptions Authentication { get; set; } = new();
+}
+
+/// <summary>
+/// Настройки аутентификации по API-ключу.
+/// </summary>
+/// <remarks>
+/// Защита включена по умолчанию, но применяется только когда задан ключ
+/// (<see cref="ApiKey"/>). Если ключ не задан, мутирующие endpoint-ы остаются открытыми —
+/// это рабочий сценарий для доверенного внутреннего контура. В общем сегменте сети
+/// достаточно задать ключ, чтобы посторонние не могли перестроить или удалить индекс.
+/// </remarks>
+public sealed class ApiKeyOptions
+{
+  /// <summary>
+  /// Получает или задаёт признак включения проверки API-ключа.
+  /// </summary>
+  public bool IsEnabled { get; set; } = true;
+
+  /// <summary>
+  /// Получает или задаёт ожидаемый API-ключ. Если пуст, проверка не применяется.
+  /// </summary>
+  public string ApiKey { get; set; } = string.Empty;
+
+  /// <summary>
+  /// Получает или задаёт имя HTTP-заголовка с API-ключом.
+  /// </summary>
+  public string HeaderName { get; set; } = "X-Api-Key";
 }
 
 /// <summary>

@@ -70,6 +70,13 @@ app.UseMiddleware<RequestBodySizeLimitMiddleware>();
 
 app.UseRateLimiter();
 
+app.UseMiddleware<ApiKeyAuthenticationMiddleware>();
+
+if (serviceOptions.Authentication.IsEnabled && string.IsNullOrWhiteSpace(serviceOptions.Authentication.ApiKey))
+  app.Logger.LogWarning(
+      "Аутентификация по API-ключу включена, но ключ не задан: мутирующие endpoint-ы не защищены. "
+      + "Задайте SearchEngineService:Authentication:ApiKey для защиты в общем сегменте сети.");
+
 app.MapGet("/health", () => Results.Ok(new
 {
   Status = "ok"
