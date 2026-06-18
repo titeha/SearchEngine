@@ -71,6 +71,18 @@ GET {{host}}/v1/index
 
 ###
 
+# Список всех известных индексов
+
+GET {{host}}/v1/indexes
+
+###
+
+# Машиночитаемое описание API (OpenAPI)
+
+GET {{host}}/openapi/v1.json
+
+###
+
 POST {{host}}/v1/index/validate
 Content-Type: application/json
 
@@ -237,4 +249,53 @@ Content-Type: application/json
   "matchMode": "AllTerms",
   "searchType": "ExactSearch",
   "searchLocation": "BeginWord"
+}
+
+###
+
+# Несколько индексов: построение именованного индекса "products"
+
+POST {{host}}/v1/index
+Content-Type: application/json
+
+{
+  "index": "products",
+  "isPhoneticSearch": false,
+  "documents": [
+    { "id": 1, "text": "Красный велосипед" },
+    { "id": 2, "text": "Синий самокат" }
+  ]
+}
+
+###
+
+# Состояние именованного индекса
+
+GET {{host}}/v1/index?index=products
+
+###
+
+# Поиск по именованному индексу
+
+POST {{host}}/v1/search
+Content-Type: application/json
+
+{
+  "index": "products",
+  "query": "велосипед"
+}
+
+###
+
+# Пример мутирующего запроса с API-ключом.
+# Заголовок нужен, только если задан SearchEngineService:Authentication:ApiKey.
+
+POST {{host}}/v1/index
+Content-Type: application/json
+X-Api-Key: ваш-секретный-ключ
+
+{
+  "documents": [
+    { "id": 1, "text": "Иванов Сергей Петрович" }
+  ]
 }
