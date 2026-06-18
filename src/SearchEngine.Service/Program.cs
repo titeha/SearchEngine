@@ -20,9 +20,9 @@ builder.Services.Configure<SearchEngineServiceOptions>(builder.Configuration.Get
 builder.Services.AddSingleton<SearchIndexSnapshotStorage>();
 builder.Services.AddSingleton<SearchIndexStore>();
 builder.Services.AddHostedService<SearchIndexRestoreHostedService>();
-builder.Services.AddSingleton<ISearchDataSourceReader, InMemorySearchDataSourceReader>();
-builder.Services.AddSingleton<ISearchDataSourceReader, SqliteSearchDataSourceReader>();
-builder.Services.AddSingleton<ISearchDataSourceReader, PostgresSearchDataSourceReader>();
+builder.Services.AddSearchDataSourceReader<InMemorySearchDataSourceReader>();
+builder.Services.AddSearchDataSourceReader<SqliteSearchDataSourceReader>();
+builder.Services.AddSearchDataSourceReader<PostgresSearchDataSourceReader>();
 builder.Services.AddSingleton<SearchDataSourceReaderRegistry>();
 builder.Services.AddSingleton<SearchDataSourceProfileValidator>();
 builder.Services.AddSingleton<SearchIndexFromSourceBuilder>();

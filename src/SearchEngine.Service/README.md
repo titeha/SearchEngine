@@ -1809,9 +1809,56 @@ p99:     2 ms
 
 Новые provider-ы будут добавляться маленькими контролируемыми шагами. Ближайший DB-provider — `firebird`, потому что часть существующих проектов использует Firebird. Затем можно добавить SQL Server и MySQL.
 
-Для БД, файлов и других источников, которых нет в стандартной поставке сервиса, планируется отдельная документация по созданию собственного reader-а. Такой reader должен брать данные из заранее настроенного профиля, возвращать пары `id` / `text` и не выводить наружу connection string, SQL-запрос или другие секреты.
+Для БД, файлов и других источников, которых нет в стандартной поставке сервиса, есть публичный API регистрации reader-ов. Любой reader берёт данные из заранее настроенного профиля, возвращает пары `id` / `text` и не выводит наружу connection string, SQL-запрос или другие секреты.
 
-Пока загрузка внешних reader-ов как плагинов не реализована. Пользовательский reader потребуется добавить в собственную сборку сервиса или форк проекта.
+### Кастомная СУБД через фабрику подключения
+
+Если СУБД работает через ADO.NET (`DbConnection`), отдельный класс писать не нужно. Достаточно зарегистрировать источник по имени provider-а и фабрике подключения. Так подключаются СУБД без встроенного reader-а, например IBM DB2:
+
+```csharp
+using IBM.Data.Db2; // ADO.NET-провайдер конкретной СУБД
+
+builder.Services.AddSqlSearchDataSource(
+    provider: "db2",
+    providerDisplayName: "IBM DB2",
+    connectionFactory: connectionString => new DB2Connection(connectionString));
+```
+
+После этого в профиле источника достаточно указать `"Provider": "db2"`. Вся механика SQL-чтения (строка подключения, таймаут, лимит чтения, проверка колонок `id`/`text`) берётся из общего базового reader-а, так же как для `sqlite` и `postgres`.
+
+### Полностью собственный reader
+
+Если источник данных не SQL (файл, внешний API, очередь), нужно реализовать интерфейс `ISearchDataSourceReader` и зарегистрировать его:
+
+```csharp
+public sealed class FileSearchDataSourceReader : ISearchDataSourceReader
+{
+    public string Provider => "file";
+
+    public ApiError? ValidateProfile(string sourceName, SearchDataSourceOptions options) => null;
+
+    public Task<IReadOnlyList<SearchDataSourceDocument>> ReadAsync(
+        string sourceName,
+        SearchDataSourceOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        // прочитать данные источника и вернуть пары id/text
+    }
+}
+
+builder.Services.AddSearchDataSourceReader<FileSearchDataSourceReader>();
+```
+
+Требования к собственному reader-у:
+
+- `Provider` — уникальное имя, по которому источник выбирается в профиле;
+- `ReadAsync` возвращает пары `id` / `text` из заранее настроенного профиля;
+- reader не принимает connection string или SQL-запрос от внешнего клиента;
+- секреты (строка подключения, пароль) не возвращаются наружу.
+
+Оба метода регистрации (`AddSqlSearchDataSource` и `AddSearchDataSourceReader<T>`) добавляют reader в общий registry, поэтому он сразу виден в `GET /v1/data-sources` и доступен в `POST /v1/index/from-source`.
+
+Динамическая загрузка внешних reader-ов как плагинов пока не реализована: пользовательский reader подключается в собственной сборке сервиса при его композиции.
 
 ## Планируемая актуализация индекса
 
