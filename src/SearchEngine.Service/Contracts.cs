@@ -75,8 +75,17 @@ public sealed record IndexValidateResponse
 public sealed record IndexStatusResponse
 {
   /// <summary>
+  /// Получает состояние индекса.
+  /// </summary>
+  public IndexState State { get; init; } = IndexState.NotBuilt;
+
+  /// <summary>
   /// Получает признак готовности индекса к поиску.
   /// </summary>
+  /// <remarks>
+  /// Остаётся <see langword="true"/> во время перестроения уже готового индекса:
+  /// поиск продолжает работать по предыдущему снимку, пока строится новый.
+  /// </remarks>
   public bool IsReady { get; init; }
 
   /// <summary>

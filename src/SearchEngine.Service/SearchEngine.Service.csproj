@@ -26,4 +26,8 @@
     <ProjectReference Include="..\SearchEngine\SearchEngine.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="SearchEngine.Service.Tests" />
+  </ItemGroup>
+
 </Project>

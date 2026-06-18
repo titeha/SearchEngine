@@ -23,11 +23,33 @@ public sealed class SearchIndexStoreTests
     IndexStatusResponse result = sut.GetStatus();
 
     // Assert
+    Assert.Equal(IndexState.NotBuilt, result.State);
     Assert.False(result.IsReady);
     Assert.Equal(0, result.DocumentCount);
     Assert.Equal(0, result.SearchableDocumentCount);
     Assert.False(result.IsPhoneticSearch);
     Assert.Null(result.CreatedAtUtc);
+  }
+
+  /// <summary>
+  /// Проверяет, что после построения индекса состояние становится Ready.
+  /// </summary>
+  [Fact]
+  public async Task GetStatus_ПослеПостроенияИндекса_ВозвращаетСостояниеReady()
+  {
+    // Arrange
+    SearchIndexStore sut = new();
+
+    IndexBuildRequest buildRequest = CreateBuildRequest(
+        [(1, "Иванов Сергей Петрович")]);
+
+    // Act
+    await sut.BuildAsync(buildRequest);
+    IndexStatusResponse status = sut.GetStatus();
+
+    // Assert
+    Assert.Equal(IndexState.Ready, status.State);
+    Assert.True(status.IsReady);
   }
 
   /// <summary>

@@ -11,7 +11,7 @@ namespace SearchEngine.Service;
 /// <param name="options">Настройки поискового сервиса.</param>
 public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> options, SearchIndexSnapshotStorage snapshotStorage)
 {
-  private readonly SemaphoreSlim _buildLock = new(1, 1);
+  private readonly SingleFlightGate _buildGate = new();
   private readonly SearchEngineServiceOptions _options = options.Value;
   private readonly SearchIndexSnapshotStorage _snapshotStorage = snapshotStorage;
 
@@ -37,11 +37,17 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
   public IndexStatusResponse GetStatus()
   {
     SearchIndexSnapshot? snapshot = Volatile.Read(ref _snapshot);
+    bool isBuilding = _buildGate.IsInProgress;
 
     if (snapshot is null)
-      return new IndexStatusResponse();
+      return new IndexStatusResponse
+      {
+        State = isBuilding ? IndexState.Building : IndexState.NotBuilt
+      };
 
-    return snapshot.Status;
+    return isBuilding
+        ? snapshot.Status with { State = IndexState.Building }
+        : snapshot.Status;
   }
 
   /// <summary>
@@ -89,7 +95,8 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
         Message = "Документы не содержат пригодного для индексации текста."
       };
 
-    await _buildLock.WaitAsync().ConfigureAwait(false);
+    if (!_buildGate.TryEnter())
+      return null;
 
     try
     {
@@ -137,6 +144,7 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
 
       IndexStatusResponse status = new()
       {
+        State = IndexState.Ready,
         IsReady = true,
         DocumentCount = request.Documents.Count,
         SearchableDocumentCount = documents.Length,
@@ -152,7 +160,7 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
     }
     finally
     {
-      _buildLock.Release();
+      _buildGate.Exit();
     }
   }
 
@@ -170,7 +178,8 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
         Message = "Восстановление snapshot поискового индекса отключено."
       };
 
-    await _buildLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+    if (!_buildGate.TryEnter())
+      return null;
 
     try
     {
@@ -260,6 +269,7 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
 
       IndexStatusResponse status = new()
       {
+        State = IndexState.Ready,
         IsReady = true,
         DocumentCount = snapshotFile.Documents.Count,
         SearchableDocumentCount = documents.Length,
@@ -275,7 +285,7 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
     }
     finally
     {
-      _buildLock.Release();
+      _buildGate.Exit();
     }
   }
 
