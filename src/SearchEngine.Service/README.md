@@ -461,8 +461,9 @@ GET {{host}}/v1/data-sources
 | `postgres` | provider для чтения документов из PostgreSQL-БД |
 | `firebird` | provider для чтения документов из Firebird-БД |
 | `sqlserver` | provider для чтения документов из Microsoft SQL Server |
+| `mysql` | provider для чтения документов из MySQL или MariaDB |
 
-Следующими отдельными шагами планируются MySQL/MariaDB и Oracle. Документация по созданию пользовательских reader-ов источников данных приведена в разделе «Расширение источников данных».
+Следующим отдельным шагом планируется Oracle. Документация по созданию пользовательских reader-ов источников данных приведена в разделе «Расширение источников данных».
 
 Пример настройки профиля источника данных:
 
@@ -510,9 +511,9 @@ Endpoint не возвращает:
 - SQL-запрос;
 - параметры доступа к БД.
 
-На текущем этапе подключены provider-ы `in-memory`, `sqlite`, `postgres`, `firebird` и `sqlserver`.
+На текущем этапе подключены provider-ы `in-memory`, `sqlite`, `postgres`, `firebird`, `sqlserver` и `mysql`.
 
-Provider-ы MySQL/MariaDB и Oracle будут добавляться отдельными шагами. Для нестандартных источников см. раздел «Расширение источников данных».
+Provider Oracle будет добавлен отдельным шагом. Для нестандартных источников см. раздел «Расширение источников данных».
 
 ### Требования к профилю источника данных
 
@@ -957,6 +958,41 @@ Provider использует заранее настроенный профил
 SQL-запрос должен вернуть две колонки `id` (целочисленный идентификатор) и `text` (текст для индексации).
 
 SQL Server-источник использует общий механизм SQL-чтения (таймаут команды, лимит чтения, проверка колонок `id`/`text`). Reader покрыт unit-тестами (имя provider-а и валидация профиля); сквозное SQL-чтение проверяется интеграционными тестами SQLite, так как все SQL-reader-ы используют общий базовый класс.
+
+## MySQL / MariaDB provider
+
+MySQL provider позволяет построить индекс из MySQL или совместимой MariaDB. Используется ADO.NET-провайдер MySqlConnector.
+
+Provider использует заранее настроенный профиль источника данных.
+
+Пример конфигурации:
+
+```json
+{
+  "SearchEngineService": {
+    "Sources": {
+      "mysql-demo": {
+        "IsEnabled": true,
+        "Provider": "mysql",
+        "ConnectionStringName": "MYSQL_DEMO",
+        "Query": "select id, text from search_documents order by id"
+      }
+    }
+  },
+  "ConnectionStrings": {
+    "MYSQL_DEMO": "Server=localhost;Port=3306;Database=search_demo;User Id=search;Password=search;"
+  }
+}
+```
+
+Для MySQL provider-а обязательны:
+
+- `ConnectionStringName`;
+- `Query`.
+
+SQL-запрос должен вернуть две колонки `id` (целочисленный идентификатор) и `text` (текст для индексации).
+
+MySQL-источник использует общий механизм SQL-чтения (таймаут команды, лимит чтения, проверка колонок `id`/`text`). Reader покрыт unit-тестами (имя provider-а и валидация профиля); сквозное SQL-чтение проверяется интеграционными тестами SQLite, так как все SQL-reader-ы используют общий базовый класс.
 
 ## Безопасность DB-источников
 
@@ -1797,9 +1833,9 @@ Content-Type: application/json
 - может вручную восстанавливать индекс из snapshot-файла;
 - автоматическое восстановление индекса при старте доступно только при включённом snapshot и `AutoRestoreOnStart`;
 - умеет читать конфигурационные профили источников данных;
-- есть встроенные provider-ы `in-memory`, `sqlite`, `postgres`, `firebird` и `sqlserver`;
+- есть встроенные provider-ы `in-memory`, `sqlite`, `postgres`, `firebird`, `sqlserver` и `mysql`;
 - SQLite provider проверяется локально и через Docker demo-сценарий;
-- provider-ы MySQL/MariaDB и Oracle пока не подключены;
+- provider Oracle пока не подключён;
 - сервис не подключается к БД без заранее зарегистрированного reader-а;
 - внешний API не принимает connection string и SQL-запрос;
 - безопасность DB-доступа зависит от корректной настройки read-only пользователя БД;
@@ -1886,9 +1922,10 @@ p99:     2 ms
 - `sqlite`;
 - `postgres`;
 - `firebird`;
-- `sqlserver`.
+- `sqlserver`;
+- `mysql`.
 
-Новые provider-ы будут добавляться маленькими контролируемыми шагами. Ближайшие — MySQL/MariaDB и Oracle.
+Новые provider-ы будут добавляться маленькими контролируемыми шагами. Ближайший — Oracle.
 
 Для БД, файлов и других источников, которых нет в стандартной поставке сервиса, есть публичный API регистрации reader-ов. Любой reader берёт данные из заранее настроенного профиля, возвращает пары `id` / `text` и не выводит наружу connection string, SQL-запрос или другие секреты.
 
