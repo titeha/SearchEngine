@@ -462,8 +462,9 @@ GET {{host}}/v1/data-sources
 | `firebird` | provider для чтения документов из Firebird-БД |
 | `sqlserver` | provider для чтения документов из Microsoft SQL Server |
 | `mysql` | provider для чтения документов из MySQL или MariaDB |
+| `oracle` | provider для чтения документов из Oracle Database |
 
-Следующим отдельным шагом планируется Oracle. Документация по созданию пользовательских reader-ов источников данных приведена в разделе «Расширение источников данных».
+Для СУБД без встроенного provider-а (например IBM DB2) и других источников см. раздел «Расширение источников данных».
 
 Пример настройки профиля источника данных:
 
@@ -511,9 +512,9 @@ Endpoint не возвращает:
 - SQL-запрос;
 - параметры доступа к БД.
 
-На текущем этапе подключены provider-ы `in-memory`, `sqlite`, `postgres`, `firebird`, `sqlserver` и `mysql`.
+На текущем этапе подключены provider-ы `in-memory`, `sqlite`, `postgres`, `firebird`, `sqlserver`, `mysql` и `oracle`.
 
-Provider Oracle будет добавлен отдельным шагом. Для нестандартных источников см. раздел «Расширение источников данных».
+Для нестандартных источников (например IBM DB2) см. раздел «Расширение источников данных».
 
 ### Требования к профилю источника данных
 
@@ -993,6 +994,41 @@ Provider использует заранее настроенный профил
 SQL-запрос должен вернуть две колонки `id` (целочисленный идентификатор) и `text` (текст для индексации).
 
 MySQL-источник использует общий механизм SQL-чтения (таймаут команды, лимит чтения, проверка колонок `id`/`text`). Reader покрыт unit-тестами (имя provider-а и валидация профиля); сквозное SQL-чтение проверяется интеграционными тестами SQLite, так как все SQL-reader-ы используют общий базовый класс.
+
+## Oracle provider
+
+Oracle provider позволяет построить индекс из Oracle Database. Используется управляемый ADO.NET-провайдер Oracle.ManagedDataAccess.Core.
+
+Provider использует заранее настроенный профиль источника данных.
+
+Пример конфигурации:
+
+```json
+{
+  "SearchEngineService": {
+    "Sources": {
+      "oracle-demo": {
+        "IsEnabled": true,
+        "Provider": "oracle",
+        "ConnectionStringName": "ORACLE_DEMO",
+        "Query": "select id, text from search_documents order by id"
+      }
+    }
+  },
+  "ConnectionStrings": {
+    "ORACLE_DEMO": "User Id=search;Password=search;Data Source=localhost:1521/XEPDB1"
+  }
+}
+```
+
+Для Oracle provider-а обязательны:
+
+- `ConnectionStringName`;
+- `Query`.
+
+SQL-запрос должен вернуть две колонки `id` (целочисленный идентификатор) и `text` (текст для индексации). Имена колонок сопоставляются без учёта регистра, поэтому стандартные для Oracle имена в верхнем регистре (`ID`, `TEXT`) тоже подходят.
+
+Oracle-источник использует общий механизм SQL-чтения (таймаут команды, лимит чтения, проверка колонок `id`/`text`). Reader покрыт unit-тестами (имя provider-а и валидация профиля); сквозное SQL-чтение проверяется интеграционными тестами SQLite, так как все SQL-reader-ы используют общий базовый класс.
 
 ## Безопасность DB-источников
 
@@ -1833,9 +1869,9 @@ Content-Type: application/json
 - может вручную восстанавливать индекс из snapshot-файла;
 - автоматическое восстановление индекса при старте доступно только при включённом snapshot и `AutoRestoreOnStart`;
 - умеет читать конфигурационные профили источников данных;
-- есть встроенные provider-ы `in-memory`, `sqlite`, `postgres`, `firebird`, `sqlserver` и `mysql`;
+- есть встроенные provider-ы `in-memory`, `sqlite`, `postgres`, `firebird`, `sqlserver`, `mysql` и `oracle`;
 - SQLite provider проверяется локально и через Docker demo-сценарий;
-- provider Oracle пока не подключён;
+- SQL-provider-ы Firebird, SQL Server, MySQL/MariaDB и Oracle покрыты unit-тестами; сквозное SQL-чтение проверяется интеграционными тестами SQLite на общем базовом reader-е;
 - сервис не подключается к БД без заранее зарегистрированного reader-а;
 - внешний API не принимает connection string и SQL-запрос;
 - безопасность DB-доступа зависит от корректной настройки read-only пользователя БД;
@@ -1923,9 +1959,10 @@ p99:     2 ms
 - `postgres`;
 - `firebird`;
 - `sqlserver`;
-- `mysql`.
+- `mysql`;
+- `oracle`.
 
-Новые provider-ы будут добавляться маленькими контролируемыми шагами. Ближайший — Oracle.
+Для СУБД без встроенного reader-а (например IBM DB2) используйте публичный API расширения (см. ниже).
 
 Для БД, файлов и других источников, которых нет в стандартной поставке сервиса, есть публичный API регистрации reader-ов. Любой reader берёт данные из заранее настроенного профиля, возвращает пары `id` / `text` и не выводит наружу connection string, SQL-запрос или другие секреты.
 

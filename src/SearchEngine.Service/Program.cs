@@ -26,6 +26,7 @@ builder.Services.AddSearchDataSourceReader<PostgresSearchDataSourceReader>();
 builder.Services.AddSearchDataSourceReader<FirebirdSearchDataSourceReader>();
 builder.Services.AddSearchDataSourceReader<SqlServerSearchDataSourceReader>();
 builder.Services.AddSearchDataSourceReader<MySqlSearchDataSourceReader>();
+builder.Services.AddSearchDataSourceReader<OracleSearchDataSourceReader>();
 builder.Services.AddSingleton<SearchDataSourceReaderRegistry>();
 builder.Services.AddSingleton<SearchDataSourceProfileValidator>();
 builder.Services.AddSingleton<SearchIndexFromSourceBuilder>();
