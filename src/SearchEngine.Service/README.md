@@ -460,8 +460,9 @@ GET {{host}}/v1/data-sources
 | `sqlite` | provider для чтения документов из SQLite-БД |
 | `postgres` | provider для чтения документов из PostgreSQL-БД |
 | `firebird` | provider для чтения документов из Firebird-БД |
+| `sqlserver` | provider для чтения документов из Microsoft SQL Server |
 
-Следующими отдельными шагами планируются SQL Server, MySQL/MariaDB и Oracle. Документация по созданию пользовательских reader-ов источников данных приведена в разделе «Расширение источников данных».
+Следующими отдельными шагами планируются MySQL/MariaDB и Oracle. Документация по созданию пользовательских reader-ов источников данных приведена в разделе «Расширение источников данных».
 
 Пример настройки профиля источника данных:
 
@@ -509,9 +510,9 @@ Endpoint не возвращает:
 - SQL-запрос;
 - параметры доступа к БД.
 
-На текущем этапе подключены provider-ы `in-memory`, `sqlite`, `postgres` и `firebird`.
+На текущем этапе подключены provider-ы `in-memory`, `sqlite`, `postgres`, `firebird` и `sqlserver`.
 
-Provider-ы SQL Server, MySQL/MariaDB и Oracle будут добавляться отдельными шагами. Для нестандартных источников см. раздел «Расширение источников данных».
+Provider-ы MySQL/MariaDB и Oracle будут добавляться отдельными шагами. Для нестандартных источников см. раздел «Расширение источников данных».
 
 ### Требования к профилю источника данных
 
@@ -921,6 +922,41 @@ SQL-запрос должен вернуть две колонки:
 | `text` | текст документа для индексации |
 
 Firebird-источник использует тот же общий механизм SQL-чтения, что SQLite и PostgreSQL (таймаут команды, лимит чтения, проверка колонок `id`/`text`). Reader Firebird-провайдера покрыт unit-тестами (имя provider-а и валидация профиля); сквозное SQL-чтение проверяется интеграционными тестами SQLite, так как все SQL-reader-ы используют общий базовый класс. Отдельный Firebird demo-сценарий требует внешнего Firebird-сервера и будет добавлен отдельным шагом.
+
+## SQL Server provider
+
+SQL Server provider позволяет построить индекс из Microsoft SQL Server.
+
+Provider использует заранее настроенный профиль источника данных.
+
+Пример конфигурации:
+
+```json
+{
+  "SearchEngineService": {
+    "Sources": {
+      "sqlserver-demo": {
+        "IsEnabled": true,
+        "Provider": "sqlserver",
+        "ConnectionStringName": "SQLSERVER_DEMO",
+        "Query": "select id, text from search_documents order by id"
+      }
+    }
+  },
+  "ConnectionStrings": {
+    "SQLSERVER_DEMO": "Server=localhost,1433;Database=search_demo;User Id=search;Password=Str0ng!Passw0rd;Encrypt=True;TrustServerCertificate=True"
+  }
+}
+```
+
+Для SQL Server provider-а обязательны:
+
+- `ConnectionStringName`;
+- `Query`.
+
+SQL-запрос должен вернуть две колонки `id` (целочисленный идентификатор) и `text` (текст для индексации).
+
+SQL Server-источник использует общий механизм SQL-чтения (таймаут команды, лимит чтения, проверка колонок `id`/`text`). Reader покрыт unit-тестами (имя provider-а и валидация профиля); сквозное SQL-чтение проверяется интеграционными тестами SQLite, так как все SQL-reader-ы используют общий базовый класс.
 
 ## Безопасность DB-источников
 
@@ -1761,9 +1797,9 @@ Content-Type: application/json
 - может вручную восстанавливать индекс из snapshot-файла;
 - автоматическое восстановление индекса при старте доступно только при включённом snapshot и `AutoRestoreOnStart`;
 - умеет читать конфигурационные профили источников данных;
-- есть встроенные provider-ы `in-memory`, `sqlite`, `postgres` и `firebird`;
+- есть встроенные provider-ы `in-memory`, `sqlite`, `postgres`, `firebird` и `sqlserver`;
 - SQLite provider проверяется локально и через Docker demo-сценарий;
-- provider-ы SQL Server, MySQL/MariaDB и Oracle пока не подключены;
+- provider-ы MySQL/MariaDB и Oracle пока не подключены;
 - сервис не подключается к БД без заранее зарегистрированного reader-а;
 - внешний API не принимает connection string и SQL-запрос;
 - безопасность DB-доступа зависит от корректной настройки read-only пользователя БД;
@@ -1849,9 +1885,10 @@ p99:     2 ms
 - `in-memory`;
 - `sqlite`;
 - `postgres`;
-- `firebird`.
+- `firebird`;
+- `sqlserver`.
 
-Новые provider-ы будут добавляться маленькими контролируемыми шагами. Ближайшие — SQL Server, MySQL/MariaDB и Oracle.
+Новые provider-ы будут добавляться маленькими контролируемыми шагами. Ближайшие — MySQL/MariaDB и Oracle.
 
 Для БД, файлов и других источников, которых нет в стандартной поставке сервиса, есть публичный API регистрации reader-ов. Любой reader берёт данные из заранее настроенного профиля, возвращает пары `id` / `text` и не выводит наружу connection string, SQL-запрос или другие секреты.
 
