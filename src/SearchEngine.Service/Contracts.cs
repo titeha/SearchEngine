@@ -6,6 +6,11 @@
 public sealed record IndexBuildRequest
 {
   /// <summary>
+  /// Получает имя индекса. Если не задано, используется индекс по умолчанию.
+  /// </summary>
+  public string? Index { get; init; }
+
+  /// <summary>
   /// Получает признак включения фонетического поиска.
   /// </summary>
   public bool IsPhoneticSearch { get; init; }
@@ -21,6 +26,11 @@ public sealed record IndexBuildRequest
 /// </summary>
 public sealed record IndexBuildFromSourceRequest
 {
+  /// <summary>
+  /// Получает имя индекса. Если не задано, используется индекс по умолчанию.
+  /// </summary>
+  public string? Index { get; init; }
+
   /// <summary>
   /// Получает имя заранее настроенного источника данных.
   /// </summary>
@@ -75,6 +85,11 @@ public sealed record IndexValidateResponse
 public sealed record IndexStatusResponse
 {
   /// <summary>
+  /// Получает имя индекса.
+  /// </summary>
+  public string IndexName { get; init; } = string.Empty;
+
+  /// <summary>
   /// Получает состояние индекса.
   /// </summary>
   public IndexState State { get; init; } = IndexState.NotBuilt;
@@ -110,10 +125,26 @@ public sealed record IndexStatusResponse
 }
 
 /// <summary>
+/// Ответ со списком известных поисковых индексов.
+/// </summary>
+public sealed record SearchIndexListResponse
+{
+  /// <summary>
+  /// Получает состояния известных индексов.
+  /// </summary>
+  public IReadOnlyList<IndexStatusResponse> Items { get; init; } = [];
+}
+
+/// <summary>
 /// Запрос на выполнение поиска по текущему индексу.
 /// </summary>
 public sealed record SearchQueryRequest
 {
+  /// <summary>
+  /// Получает имя индекса. Если не задано, используется индекс по умолчанию.
+  /// </summary>
+  public string? Index { get; init; }
+
   /// <summary>
   /// Получает поисковую строку.
   /// </summary>

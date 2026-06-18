@@ -54,7 +54,12 @@ app.MapGet("/v1/data-sources", GetDataSources);
 
 app.MapPost("/v1/index/from-source", BuildIndexFromSourceAsync);
 
-app.MapGet("/v1/index", (SearchIndexStore store) => Results.Ok(store.GetStatus()));
+app.MapGet("/v1/index", (SearchIndexStore store, string? index) => Results.Ok(store.GetStatus(index)));
+
+app.MapGet("/v1/indexes", (SearchIndexStore store) => Results.Ok(new SearchIndexListResponse
+{
+  Items = store.GetAllStatuses()
+}));
 
 app.MapPost("/v1/index", BuildIndexAsync);
 
@@ -99,9 +104,9 @@ static IResult ValidateIndexRequest(IndexBuildRequest request)
   });
 }
 
-static IResult GetReadiness(SearchIndexStore store)
+static IResult GetReadiness(SearchIndexStore store, string? index)
 {
-  IndexStatusResponse status = store.GetStatus();
+  IndexStatusResponse status = store.GetStatus(index);
 
   ReadinessResponse response = new()
   {
@@ -181,7 +186,7 @@ static async Task<IResult> BuildIndexAsync(IndexBuildRequest request, SearchInde
   if (error is not null)
     return Results.BadRequest(error);
 
-  return Results.Ok(store.GetStatus());
+  return Results.Ok(store.GetStatus(request.Index));
 }
 
 static async Task<IResult> BuildIndexFromSourceAsync(
@@ -201,14 +206,15 @@ static async Task<IResult> BuildIndexFromSourceAsync(
 
 static async Task<IResult> RestoreIndexAsync(
     SearchIndexStore store,
+    string? index,
     CancellationToken cancellationToken)
 {
-  ApiError? error = await store.RestoreAsync(cancellationToken);
+  ApiError? error = await store.RestoreAsync(index, cancellationToken);
 
   if (error is not null)
     return Results.BadRequest(error);
 
-  return Results.Ok(store.GetStatus());
+  return Results.Ok(store.GetStatus(index));
 }
 
 static IResult Search(SearchQueryRequest request, SearchIndexStore store)

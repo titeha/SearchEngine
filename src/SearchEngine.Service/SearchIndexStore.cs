@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 using Microsoft.Extensions.Options;
 
 using SearchEngine;
@@ -5,37 +7,72 @@ using SearchEngine;
 namespace SearchEngine.Service;
 
 /// <summary>
-/// Хранит текущий поисковый индекс сервиса.
+/// Хранит поисковые индексы сервиса.
 /// </summary>
 /// <remarks>
-/// Создаёт хранилище поискового индекса.
+/// Сервис поддерживает несколько именованных индексов. Каждый индекс изолирован в собственном
+/// слоте <see cref="SearchIndexSlot"/>, поэтому индексы строятся параллельно и не мешают друг
+/// другу. Имя индекса необязательно: если оно не задано, используется индекс по умолчанию.
 /// </remarks>
 /// <param name="options">Настройки поискового сервиса.</param>
+/// <param name="snapshotStorage">Файловое хранилище snapshot индексов.</param>
 public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> options, SearchIndexSnapshotStorage snapshotStorage)
 {
+  /// <summary>
+  /// Имя индекса по умолчанию.
+  /// </summary>
+  public const string DefaultIndexName = "default";
+
+  private const int _maxIndexNameLength = 64;
+
   private readonly SearchEngineServiceOptions _options = options.Value;
   private readonly SearchIndexSnapshotStorage _snapshotStorage = snapshotStorage;
 
-  private readonly SearchIndexSlot _defaultSlot = new();
+  private readonly ConcurrentDictionary<string, SearchIndexSlot> _slots =
+      new(StringComparer.OrdinalIgnoreCase);
 
   /// <summary>
-  /// Создаёт хранилище поискового индекса с настройками по умолчанию.
+  /// Создаёт хранилище поисковых индексов с настройками по умолчанию.
   /// </summary>
   public SearchIndexStore()
       : this(Options.Create(new SearchEngineServiceOptions())) { }
 
   /// <summary>
-  /// Создаёт хранилище поискового индекса.
+  /// Создаёт хранилище поисковых индексов.
   /// </summary>
   /// <param name="options">Настройки поискового сервиса.</param>
   public SearchIndexStore(IOptions<SearchEngineServiceOptions> options)
       : this(options, new SearchIndexSnapshotStorage(options)) { }
 
   /// <summary>
-  /// Возвращает текущее состояние поискового индекса.
+  /// Возвращает текущее состояние индекса.
   /// </summary>
-  /// <returns>Состояние поискового индекса.</returns>
-  public IndexStatusResponse GetStatus() => _defaultSlot.GetStatus();
+  /// <param name="indexName">Имя индекса. Если не задано, используется индекс по умолчанию.</param>
+  /// <returns>Состояние индекса.</returns>
+  public IndexStatusResponse GetStatus(string? indexName = null)
+  {
+    if (!TryResolveIndexName(indexName, out string name, out _))
+      return new IndexStatusResponse { IndexName = indexName?.Trim() ?? string.Empty };
+
+    if (!_slots.TryGetValue(name, out SearchIndexSlot? slot))
+      return new IndexStatusResponse { IndexName = name };
+
+    return slot.GetStatus() with { IndexName = name };
+  }
+
+  /// <summary>
+  /// Возвращает состояние всех известных индексов.
+  /// </summary>
+  /// <returns>Состояния индексов, отсортированные по имени.</returns>
+  public IReadOnlyList<IndexStatusResponse> GetAllStatuses()
+  {
+    return
+    [
+        .. _slots
+            .OrderBy(slot => slot.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(slot => slot.Value.GetStatus() with { IndexName = slot.Key })
+    ];
+  }
 
   /// <summary>
   /// Полностью перестраивает поисковый индекс.
@@ -44,6 +81,9 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
   /// <returns>Ошибка построения индекса или <see langword="null"/>, если индекс построен успешно.</returns>
   public async Task<ApiError?> BuildAsync(IndexBuildRequest request)
   {
+    if (!TryResolveIndexName(request.Index, out string indexName, out ApiError? indexNameError))
+      return indexNameError;
+
     if (request.Documents is null || request.Documents.Count == 0)
       return new ApiError
       {
@@ -82,7 +122,9 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
         Message = "Документы не содержат пригодного для индексации текста."
       };
 
-    if (!_defaultSlot.TryBeginBuild())
+    SearchIndexSlot slot = GetOrAddSlot(indexName);
+
+    if (!slot.TryBeginBuild())
       return null;
 
     try
@@ -117,7 +159,7 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
       try
       {
         await _snapshotStorage
-            .SaveAsync(snapshotFile)
+            .SaveAsync(snapshotFile, indexName)
             .ConfigureAwait(false);
       }
       catch (Exception exception)
@@ -131,6 +173,7 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
 
       IndexStatusResponse status = new()
       {
+        IndexName = indexName,
         State = IndexState.Ready,
         IsReady = true,
         DocumentCount = request.Documents.Count,
@@ -139,23 +182,27 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
         CreatedAtUtc = createdAtUtc
       };
 
-      _defaultSlot.Publish(search, status);
+      slot.Publish(search, status);
 
       return null;
     }
     finally
     {
-      _defaultSlot.EndBuild();
+      slot.EndBuild();
     }
   }
 
   /// <summary>
   /// Восстанавливает поисковый индекс из snapshot-файла.
   /// </summary>
+  /// <param name="indexName">Имя индекса. Если не задано, используется индекс по умолчанию.</param>
   /// <param name="cancellationToken">Токен отмены операции.</param>
   /// <returns>Ошибка восстановления или <see langword="null"/>, если индекс восстановлен успешно.</returns>
-  public async Task<ApiError?> RestoreAsync(CancellationToken cancellationToken = default)
+  public async Task<ApiError?> RestoreAsync(string? indexName = null, CancellationToken cancellationToken = default)
   {
+    if (!TryResolveIndexName(indexName, out string name, out ApiError? indexNameError))
+      return indexNameError;
+
     if (!_options.Snapshot.IsEnabled)
       return new ApiError
       {
@@ -163,7 +210,9 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
         Message = "Восстановление snapshot поискового индекса отключено."
       };
 
-    if (!_defaultSlot.TryBeginBuild())
+    SearchIndexSlot slot = GetOrAddSlot(name);
+
+    if (!slot.TryBeginBuild())
       return null;
 
     try
@@ -173,7 +222,7 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
       try
       {
         snapshotFile = await _snapshotStorage
-            .LoadAsync(cancellationToken)
+            .LoadAsync(name, cancellationToken)
             .ConfigureAwait(false);
       }
       catch (Exception exception)
@@ -254,6 +303,7 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
 
       IndexStatusResponse status = new()
       {
+        IndexName = name,
         State = IndexState.Ready,
         IsReady = true,
         DocumentCount = snapshotFile.Documents.Count,
@@ -262,24 +312,118 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
         CreatedAtUtc = snapshotFile.CreatedAtUtc
       };
 
-      _defaultSlot.Publish(search, status);
+      slot.Publish(search, status);
 
       return null;
     }
     finally
     {
-      _defaultSlot.EndBuild();
+      slot.EndBuild();
     }
   }
 
   /// <summary>
-  /// Выполняет простой поиск по текущему индексу.
+  /// Выполняет простой поиск по индексу.
   /// </summary>
   /// <param name="request">Запрос на выполнение поиска.</param>
   /// <param name="error">Ошибка поиска, если операция завершилась неуспешно.</param>
   /// <returns>Ответ поиска или <see langword="null"/>, если поиск выполнить не удалось.</returns>
   public SearchQueryResponse? Search(SearchQueryRequest request, out ApiError? error)
-      => _defaultSlot.Search(request, out error);
+  {
+    if (string.IsNullOrWhiteSpace(request.Query))
+    {
+      error = new ApiError
+      {
+        Code = "EmptyQuery",
+        Message = "Поисковая строка пуста."
+      };
+
+      return null;
+    }
+
+    if (!TryResolveIndexName(request.Index, out string name, out ApiError? indexNameError))
+    {
+      error = indexNameError;
+      return null;
+    }
+
+    if (!_slots.TryGetValue(name, out SearchIndexSlot? slot))
+    {
+      error = new ApiError
+      {
+        Code = "IndexNotBuilt",
+        Message = "Поисковый индекс ещё не построен."
+      };
+
+      return null;
+    }
+
+    return slot.Search(request, out error);
+  }
+
+  /// <summary>
+  /// Возвращает слот индекса по имени, создавая его при необходимости.
+  /// </summary>
+  /// <param name="indexName">Нормализованное имя индекса.</param>
+  /// <returns>Слот индекса.</returns>
+  private SearchIndexSlot GetOrAddSlot(string indexName)
+      => _slots.GetOrAdd(indexName, _ => new SearchIndexSlot());
+
+  /// <summary>
+  /// Нормализует и проверяет имя индекса.
+  /// </summary>
+  /// <param name="indexName">Имя индекса из запроса или <see langword="null"/>.</param>
+  /// <param name="normalizedName">Нормализованное имя индекса.</param>
+  /// <param name="error">Ошибка валидации имени индекса.</param>
+  /// <returns><see langword="true"/>, если имя индекса корректно.</returns>
+  private static bool TryResolveIndexName(string? indexName, out string normalizedName, out ApiError? error)
+  {
+    if (string.IsNullOrWhiteSpace(indexName))
+    {
+      normalizedName = DefaultIndexName;
+      error = null;
+      return true;
+    }
+
+    string trimmed = indexName.Trim();
+
+    if (!IsValidIndexName(trimmed))
+    {
+      normalizedName = string.Empty;
+      error = new ApiError
+      {
+        Code = "InvalidIndexName",
+        Message = $"Недопустимое имя индекса: {indexName}. Разрешены латинские буквы, цифры, '-' и '_' (до {_maxIndexNameLength} символов)."
+      };
+
+      return false;
+    }
+
+    normalizedName = trimmed;
+    error = null;
+    return true;
+  }
+
+  /// <summary>
+  /// Проверяет, что имя индекса состоит только из безопасных символов.
+  /// </summary>
+  /// <remarks>
+  /// Имя индекса используется для формирования имени snapshot-файла, поэтому набор символов
+  /// ограничен, чтобы исключить выход за пределы каталога snapshot.
+  /// </remarks>
+  /// <param name="indexName">Имя индекса.</param>
+  /// <returns><see langword="true"/>, если имя индекса безопасно.</returns>
+  private static bool IsValidIndexName(string indexName)
+  {
+    if (indexName.Length > _maxIndexNameLength)
+      return false;
+
+    foreach (char character in indexName)
+      if (!char.IsAsciiLetterOrDigit(character) && character != '-' && character != '_')
+        return false;
+
+    return true;
+  }
 
   /// <summary>
   /// Документ, передаваемый в библиотеку SearchEngine для индексации.
