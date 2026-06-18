@@ -30,6 +30,11 @@ public sealed class SearchIndexSnapshotStorage
   /// <summary>
   /// Сохраняет snapshot-файл поискового индекса.
   /// </summary>
+  /// <remarks>
+  /// Запись выполняется во временный файл, который затем атомарно переименовывается в целевой.
+  /// Это защищает от повреждения snapshot при сбое процесса посреди записи: целевой файл всегда
+  /// либо прежний целостный, либо новый целостный.
+  /// </remarks>
   /// <param name="snapshot">Снимок данных поискового индекса.</param>
   /// <param name="indexName">Имя индекса. Если не задано, используется индекс по умолчанию.</param>
   /// <param name="cancellationToken">Токен отмены операции.</param>
@@ -49,11 +54,16 @@ public sealed class SearchIndexSnapshotStorage
     if (!string.IsNullOrWhiteSpace(directoryPath))
       Directory.CreateDirectory(directoryPath);
 
-    await using FileStream stream = File.Create(filePath);
+    string temporaryFilePath = filePath + ".tmp";
 
-    await JsonSerializer
-        .SerializeAsync(stream, snapshot, _jsonOptions, cancellationToken)
-        .ConfigureAwait(false);
+    await using (FileStream stream = File.Create(temporaryFilePath))
+    {
+      await JsonSerializer
+          .SerializeAsync(stream, snapshot, _jsonOptions, cancellationToken)
+          .ConfigureAwait(false);
+    }
+
+    File.Move(temporaryFilePath, filePath, overwrite: true);
   }
 
   /// <summary>
