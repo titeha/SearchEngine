@@ -68,6 +68,8 @@ builder.Services.AddSingleton<SearchIndexFromSourceBuilder>();
 
 WebApplication app = builder.Build();
 
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
 app.UseMiddleware<RequestBodySizeLimitMiddleware>();
 
 app.UseRateLimiter();
