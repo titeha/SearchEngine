@@ -452,15 +452,16 @@ GET {{host}}/v1/data-sources
 }
 ```
 
-Сейчас сервис содержит три встроенных provider-а:
+Сейчас сервис содержит встроенные provider-ы:
 
 | Provider | Назначение |
 |---|---|
 | `in-memory` | локальный demo-provider с документами из конфигурации |
 | `sqlite` | provider для чтения документов из SQLite-БД |
 | `postgres` | provider для чтения документов из PostgreSQL-БД |
+| `firebird` | provider для чтения документов из Firebird-БД |
 
-Следующими отдельными шагами планируются Firebird, SQL Server, MySQL и документация по созданию пользовательских reader-ов источников данных.
+Следующими отдельными шагами планируются SQL Server, MySQL/MariaDB и Oracle. Документация по созданию пользовательских reader-ов источников данных приведена в разделе «Расширение источников данных».
 
 Пример настройки профиля источника данных:
 
@@ -508,9 +509,9 @@ Endpoint не возвращает:
 - SQL-запрос;
 - параметры доступа к БД.
 
-На текущем этапе подключены provider-ы `in-memory`, `sqlite` и `postgres`.
+На текущем этапе подключены provider-ы `in-memory`, `sqlite`, `postgres` и `firebird`.
 
-Provider-ы Firebird, SQL Server, MySQL и других источников данных будут добавляться отдельными шагами. Для нестандартных источников планируется отдельная документация по созданию пользовательского reader-а.
+Provider-ы SQL Server, MySQL/MariaDB и Oracle будут добавляться отдельными шагами. Для нестандартных источников см. раздел «Расширение источников данных».
 
 ### Требования к профилю источника данных
 
@@ -878,6 +879,48 @@ src/SearchEngine.Service/SearchEngine.Service.PostgresDemo.http
 Для проверки поиска внутри слова индекс перестраивается с `isPhoneticSearch = false`, потому что фонетический индекс использует phonetic keys, а не обычные строковые ключи слов.
 
 После остановки скрипта PostgreSQL demo-контейнер удаляется.
+
+## Firebird provider
+
+Firebird provider позволяет построить индекс из Firebird-БД. Он добавлен в первую очередь, потому что часть существующих проектов использует Firebird.
+
+Provider использует заранее настроенный профиль источника данных.
+
+Пример конфигурации:
+
+```json
+{
+  "SearchEngineService": {
+    "Sources": {
+      "firebird-demo": {
+        "IsEnabled": true,
+        "Provider": "firebird",
+        "ConnectionStringName": "FIREBIRD_DEMO",
+        "Query": "select id, text from search_documents order by id"
+      }
+    }
+  },
+  "ConnectionStrings": {
+    "FIREBIRD_DEMO": "DataSource=localhost;Port=3050;Database=/firebird/data/search_demo.fdb;User=SYSDBA;Password=masterkey;Charset=UTF8"
+  }
+}
+```
+
+Для Firebird provider-а обязательны:
+
+- `ConnectionStringName`;
+- `Query`.
+
+`ConnectionStringName` — это имя строки подключения. Сервис сначала ищет его в секции `ConnectionStrings`, а если не находит, пробует прочитать как обычный конфигурационный ключ или environment variable.
+
+SQL-запрос должен вернуть две колонки:
+
+| Колонка | Описание |
+|---|---|
+| `id` | целочисленный идентификатор документа |
+| `text` | текст документа для индексации |
+
+Firebird-источник использует тот же общий механизм SQL-чтения, что SQLite и PostgreSQL (таймаут команды, лимит чтения, проверка колонок `id`/`text`). Reader Firebird-провайдера покрыт unit-тестами (имя provider-а и валидация профиля); сквозное SQL-чтение проверяется интеграционными тестами SQLite, так как все SQL-reader-ы используют общий базовый класс. Отдельный Firebird demo-сценарий требует внешнего Firebird-сервера и будет добавлен отдельным шагом.
 
 ## Безопасность DB-источников
 
@@ -1718,9 +1761,9 @@ Content-Type: application/json
 - может вручную восстанавливать индекс из snapshot-файла;
 - автоматическое восстановление индекса при старте доступно только при включённом snapshot и `AutoRestoreOnStart`;
 - умеет читать конфигурационные профили источников данных;
-- есть встроенные provider-ы `in-memory`, `sqlite` и `postgres`;
+- есть встроенные provider-ы `in-memory`, `sqlite`, `postgres` и `firebird`;
 - SQLite provider проверяется локально и через Docker demo-сценарий;
-- provider-ы Firebird, SQL Server, MySQL и других источников данных пока не подключены;
+- provider-ы SQL Server, MySQL/MariaDB и Oracle пока не подключены;
 - сервис не подключается к БД без заранее зарегистрированного reader-а;
 - внешний API не принимает connection string и SQL-запрос;
 - безопасность DB-доступа зависит от корректной настройки read-only пользователя БД;
@@ -1805,9 +1848,10 @@ p99:     2 ms
 
 - `in-memory`;
 - `sqlite`;
-- `postgres`.
+- `postgres`;
+- `firebird`.
 
-Новые provider-ы будут добавляться маленькими контролируемыми шагами. Ближайший DB-provider — `firebird`, потому что часть существующих проектов использует Firebird. Затем можно добавить SQL Server и MySQL.
+Новые provider-ы будут добавляться маленькими контролируемыми шагами. Ближайшие — SQL Server, MySQL/MariaDB и Oracle.
 
 Для БД, файлов и других источников, которых нет в стандартной поставке сервиса, есть публичный API регистрации reader-ов. Любой reader берёт данные из заранее настроенного профиля, возвращает пары `id` / `text` и не выводит наружу connection string, SQL-запрос или другие секреты.
 
