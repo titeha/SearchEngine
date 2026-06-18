@@ -101,6 +101,7 @@ public sealed class SearchIndexFromSourceBuilder
 
     IndexBuildRequest buildRequest = new()
     {
+      Index = request.Index,
       IsPhoneticSearch = request.IsPhoneticSearch,
       Documents =
         [
@@ -119,7 +120,7 @@ public sealed class SearchIndexFromSourceBuilder
     if (error is not null)
       return (null, error);
 
-    return (_store.GetStatus(), null);
+    return (_store.GetStatus(request.Index), null);
   }
 
   /// <summary>

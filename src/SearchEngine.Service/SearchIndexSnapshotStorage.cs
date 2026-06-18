@@ -31,16 +31,18 @@ public sealed class SearchIndexSnapshotStorage
   /// Сохраняет snapshot-файл поискового индекса.
   /// </summary>
   /// <param name="snapshot">Снимок данных поискового индекса.</param>
+  /// <param name="indexName">Имя индекса. Если не задано, используется индекс по умолчанию.</param>
   /// <param name="cancellationToken">Токен отмены операции.</param>
   /// <returns>Задача сохранения snapshot-файла.</returns>
   public async Task SaveAsync(
       SearchIndexSnapshotFile snapshot,
+      string indexName = SearchIndexStore.DefaultIndexName,
       CancellationToken cancellationToken = default)
   {
     if (!_options.Snapshot.IsEnabled)
       return;
 
-    string filePath = _options.Snapshot.FilePath;
+    string filePath = ResolveFilePath(indexName);
 
     string? directoryPath = Path.GetDirectoryName(filePath);
 
@@ -57,15 +59,17 @@ public sealed class SearchIndexSnapshotStorage
   /// <summary>
   /// Загружает snapshot-файл поискового индекса.
   /// </summary>
+  /// <param name="indexName">Имя индекса. Если не задано, используется индекс по умолчанию.</param>
   /// <param name="cancellationToken">Токен отмены операции.</param>
   /// <returns>Снимок данных поискового индекса или <see langword="null"/>, если файл отсутствует или snapshot отключён.</returns>
   public async Task<SearchIndexSnapshotFile?> LoadAsync(
+      string indexName = SearchIndexStore.DefaultIndexName,
       CancellationToken cancellationToken = default)
   {
     if (!_options.Snapshot.IsEnabled)
       return null;
 
-    string filePath = _options.Snapshot.FilePath;
+    string filePath = ResolveFilePath(indexName);
 
     if (!File.Exists(filePath))
       return null;
@@ -75,5 +79,34 @@ public sealed class SearchIndexSnapshotStorage
     return await JsonSerializer
         .DeserializeAsync<SearchIndexSnapshotFile>(stream, _jsonOptions, cancellationToken)
         .ConfigureAwait(false);
+  }
+
+  /// <summary>
+  /// Возвращает путь к snapshot-файлу для указанного индекса.
+  /// </summary>
+  /// <remarks>
+  /// Индекс по умолчанию хранится в базовом файле из настроек (ради совместимости со старыми
+  /// развёртываниями), а именованные индексы — в файлах с именем индекса перед расширением,
+  /// например <c>search-index-snapshot.products.json</c>.
+  /// </remarks>
+  /// <param name="indexName">Имя индекса.</param>
+  /// <returns>Путь к snapshot-файлу индекса.</returns>
+  private string ResolveFilePath(string indexName)
+  {
+    string basePath = _options.Snapshot.FilePath;
+
+    if (string.IsNullOrWhiteSpace(indexName)
+        || string.Equals(indexName, SearchIndexStore.DefaultIndexName, StringComparison.OrdinalIgnoreCase))
+      return basePath;
+
+    string? directoryPath = Path.GetDirectoryName(basePath);
+    string fileName = Path.GetFileNameWithoutExtension(basePath);
+    string extension = Path.GetExtension(basePath);
+
+    string indexFileName = $"{fileName}.{indexName}{extension}";
+
+    return string.IsNullOrEmpty(directoryPath)
+        ? indexFileName
+        : Path.Combine(directoryPath, indexFileName);
   }
 }

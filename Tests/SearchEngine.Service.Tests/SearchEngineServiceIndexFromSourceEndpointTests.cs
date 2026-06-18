@@ -111,7 +111,7 @@ public sealed class SearchEngineServiceIndexFromSourceEndpointTests
     // Arrange
     await using WebApplicationFactory<Program> factory = CreateFactoryWithDataSource(
         isEnabled: true,
-        provider: "oracle",
+        provider: "db2",
         registerReader: false);
 
     using HttpClient client = factory.CreateClient();

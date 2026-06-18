@@ -1,5 +1,7 @@
 ﻿using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
 using SearchEngine;
@@ -13,6 +15,39 @@ if (HealthCheckCommand.IsRequested(args))
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+SearchEngineServiceOptions serviceOptions =
+    builder.Configuration.GetSection("SearchEngineService").Get<SearchEngineServiceOptions>()
+    ?? new SearchEngineServiceOptions();
+
+builder.WebHost.ConfigureKestrel(kestrel =>
+    kestrel.Limits.MaxRequestBodySize = serviceOptions.Limits.MaxRequestBodyBytes);
+
+builder.Services.AddRateLimiter(rateLimiter =>
+{
+  rateLimiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+  rateLimiter.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+  {
+    RateLimitOptions rateLimit = httpContext.RequestServices
+        .GetRequiredService<IOptions<SearchEngineServiceOptions>>()
+        .Value.Limits.RateLimit;
+
+    if (!rateLimit.IsEnabled)
+      return RateLimitPartition.GetNoLimiter("disabled");
+
+    string partitionKey = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+    return RateLimitPartition.GetFixedWindowLimiter(partitionKey, _ => new FixedWindowRateLimiterOptions
+    {
+      PermitLimit = rateLimit.PermitLimit,
+      Window = TimeSpan.FromSeconds(rateLimit.WindowSeconds),
+      QueueLimit = rateLimit.QueueLimit
+    });
+  });
+});
+
+builder.Services.AddOpenApi();
+
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 builder.Services.Configure<SearchEngineServiceOptions>(builder.Configuration.GetSection("SearchEngineService"));
@@ -20,14 +55,31 @@ builder.Services.Configure<SearchEngineServiceOptions>(builder.Configuration.Get
 builder.Services.AddSingleton<SearchIndexSnapshotStorage>();
 builder.Services.AddSingleton<SearchIndexStore>();
 builder.Services.AddHostedService<SearchIndexRestoreHostedService>();
-builder.Services.AddSingleton<ISearchDataSourceReader, InMemorySearchDataSourceReader>();
-builder.Services.AddSingleton<ISearchDataSourceReader, SqliteSearchDataSourceReader>();
-builder.Services.AddSingleton<ISearchDataSourceReader, PostgresSearchDataSourceReader>();
+builder.Services.AddSearchDataSourceReader<InMemorySearchDataSourceReader>();
+builder.Services.AddSearchDataSourceReader<SqliteSearchDataSourceReader>();
+builder.Services.AddSearchDataSourceReader<PostgresSearchDataSourceReader>();
+builder.Services.AddSearchDataSourceReader<FirebirdSearchDataSourceReader>();
+builder.Services.AddSearchDataSourceReader<SqlServerSearchDataSourceReader>();
+builder.Services.AddSearchDataSourceReader<MySqlSearchDataSourceReader>();
+builder.Services.AddSearchDataSourceReader<OracleSearchDataSourceReader>();
 builder.Services.AddSingleton<SearchDataSourceReaderRegistry>();
 builder.Services.AddSingleton<SearchDataSourceProfileValidator>();
 builder.Services.AddSingleton<SearchIndexFromSourceBuilder>();
 
 WebApplication app = builder.Build();
+
+app.UseMiddleware<RequestBodySizeLimitMiddleware>();
+
+app.UseRateLimiter();
+
+app.UseMiddleware<ApiKeyAuthenticationMiddleware>();
+
+app.MapOpenApi();
+
+if (serviceOptions.Authentication.IsEnabled && string.IsNullOrWhiteSpace(serviceOptions.Authentication.ApiKey))
+  app.Logger.LogWarning(
+      "Аутентификация по API-ключу включена, но ключ не задан: мутирующие endpoint-ы не защищены. "
+      + "Задайте SearchEngineService:Authentication:ApiKey для защиты в общем сегменте сети.");
 
 app.MapGet("/health", () => Results.Ok(new
 {
@@ -50,7 +102,12 @@ app.MapGet("/v1/data-sources", GetDataSources);
 
 app.MapPost("/v1/index/from-source", BuildIndexFromSourceAsync);
 
-app.MapGet("/v1/index", (SearchIndexStore store) => Results.Ok(store.GetStatus()));
+app.MapGet("/v1/index", (SearchIndexStore store, string? index) => Results.Ok(store.GetStatus(index)));
+
+app.MapGet("/v1/indexes", (SearchIndexStore store) => Results.Ok(new SearchIndexListResponse
+{
+  Items = store.GetAllStatuses()
+}));
 
 app.MapPost("/v1/index", BuildIndexAsync);
 
@@ -95,9 +152,9 @@ static IResult ValidateIndexRequest(IndexBuildRequest request)
   });
 }
 
-static IResult GetReadiness(SearchIndexStore store)
+static IResult GetReadiness(SearchIndexStore store, string? index)
 {
-  IndexStatusResponse status = store.GetStatus();
+  IndexStatusResponse status = store.GetStatus(index);
 
   ReadinessResponse response = new()
   {
@@ -177,7 +234,7 @@ static async Task<IResult> BuildIndexAsync(IndexBuildRequest request, SearchInde
   if (error is not null)
     return Results.BadRequest(error);
 
-  return Results.Ok(store.GetStatus());
+  return Results.Ok(store.GetStatus(request.Index));
 }
 
 static async Task<IResult> BuildIndexFromSourceAsync(
@@ -197,14 +254,15 @@ static async Task<IResult> BuildIndexFromSourceAsync(
 
 static async Task<IResult> RestoreIndexAsync(
     SearchIndexStore store,
+    string? index,
     CancellationToken cancellationToken)
 {
-  ApiError? error = await store.RestoreAsync(cancellationToken);
+  ApiError? error = await store.RestoreAsync(index, cancellationToken);
 
   if (error is not null)
     return Results.BadRequest(error);
 
-  return Results.Ok(store.GetStatus());
+  return Results.Ok(store.GetStatus(index));
 }
 
 static IResult Search(SearchQueryRequest request, SearchIndexStore store)

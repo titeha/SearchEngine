@@ -24,6 +24,95 @@ public sealed class SearchEngineServiceOptions
   /// Получает или задаёт заранее настроенные источники данных для построения индекса.
   /// </summary>
   public Dictionary<string, SearchDataSourceOptions> Sources { get; set; } = [];
+
+  /// <summary>
+  /// Получает или задаёт ограничения, защищающие сервис от перегрузки.
+  /// </summary>
+  public SearchEngineServiceLimitsOptions Limits { get; set; } = new();
+
+  /// <summary>
+  /// Получает или задаёт настройки аутентификации по API-ключу.
+  /// </summary>
+  public ApiKeyOptions Authentication { get; set; } = new();
+}
+
+/// <summary>
+/// Настройки аутентификации по API-ключу.
+/// </summary>
+/// <remarks>
+/// Защита включена по умолчанию, но применяется только когда задан ключ
+/// (<see cref="ApiKey"/>). Если ключ не задан, мутирующие endpoint-ы остаются открытыми —
+/// это рабочий сценарий для доверенного внутреннего контура. В общем сегменте сети
+/// достаточно задать ключ, чтобы посторонние не могли перестроить или удалить индекс.
+/// </remarks>
+public sealed class ApiKeyOptions
+{
+  /// <summary>
+  /// Получает или задаёт признак включения проверки API-ключа.
+  /// </summary>
+  public bool IsEnabled { get; set; } = true;
+
+  /// <summary>
+  /// Получает или задаёт ожидаемый API-ключ. Если пуст, проверка не применяется.
+  /// </summary>
+  public string ApiKey { get; set; } = string.Empty;
+
+  /// <summary>
+  /// Получает или задаёт имя HTTP-заголовка с API-ключом.
+  /// </summary>
+  public string HeaderName { get; set; } = "X-Api-Key";
+}
+
+/// <summary>
+/// Ограничения, защищающие сервис от перегрузки извне.
+/// </summary>
+public sealed class SearchEngineServiceLimitsOptions
+{
+  /// <summary>
+  /// Получает или задаёт максимальный размер тела HTTP-запроса в байтах.
+  /// </summary>
+  /// <remarks>
+  /// Значение по умолчанию — 32 МиБ. При построении очень больших индексов значение
+  /// можно увеличить через конфигурацию.
+  /// </remarks>
+  public long MaxRequestBodyBytes { get; set; } = 33_554_432;
+
+  /// <summary>
+  /// Получает или задаёт настройки ограничения частоты запросов.
+  /// </summary>
+  public RateLimitOptions RateLimit { get; set; } = new();
+}
+
+/// <summary>
+/// Настройки ограничения частоты запросов.
+/// </summary>
+public sealed class RateLimitOptions
+{
+  /// <summary>
+  /// Получает или задаёт признак включения ограничения частоты запросов.
+  /// </summary>
+  public bool IsEnabled { get; set; } = true;
+
+  /// <summary>
+  /// Получает или задаёт максимальное число запросов от одного клиента за окно.
+  /// </summary>
+  /// <remarks>
+  /// Значение по умолчанию — щедрый guardrail против флуда с одного адреса, а не ограничение
+  /// нормальной нагрузки. Сам сервис на чтении выдерживает десятки тысяч запросов в секунду,
+  /// поэтому для высоконагруженных сценариев лимит можно поднять, ограничивать на уровне шлюза
+  /// или отключить.
+  /// </remarks>
+  public int PermitLimit { get; set; } = 1000;
+
+  /// <summary>
+  /// Получает или задаёт длительность окна ограничения в секундах.
+  /// </summary>
+  public int WindowSeconds { get; set; } = 1;
+
+  /// <summary>
+  /// Получает или задаёт число запросов, ожидающих в очереди сверх лимита.
+  /// </summary>
+  public int QueueLimit { get; set; }
 }
 
 /// <summary>

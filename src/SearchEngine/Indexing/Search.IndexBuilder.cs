@@ -183,7 +183,7 @@ public partial class Search<T> where T : struct
     {
       return result
         .SelectMany(
-          p => search
+          p => _search
             .EncodePhoneticKeys(p.Text)
             .Select(key => (Text: key, p.Indexes)))
         .GroupBy(x => x.Text)

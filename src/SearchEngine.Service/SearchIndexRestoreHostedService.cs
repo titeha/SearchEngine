@@ -34,7 +34,7 @@ public sealed class SearchIndexRestoreHostedService(
       return;
 
     ApiError? error = await _store
-        .RestoreAsync(cancellationToken)
+        .RestoreAsync(indexName: null, cancellationToken)
         .ConfigureAwait(false);
 
     if (error is null)

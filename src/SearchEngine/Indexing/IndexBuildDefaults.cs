@@ -5,11 +5,11 @@
 /// </summary>
 internal static class IndexBuildDefaults
 {
-  /// <param name="parallelProcessingThreshold">
+  /// <summary>
   /// Минимальный размер набора данных, начиная с которого допускается
   /// автоматический переход к параллельной обработке.
   /// По умолчанию автопараллельность отключена, чтобы не увеличивать давление
   /// на память на рабочих и desktop-сценариях.
-  /// </param>
+  /// </summary>
   internal const int _parallelProcessingThreshold = int.MaxValue;
 }
