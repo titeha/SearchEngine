@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Options;
+
+using SearchEngine;
 
 namespace SearchEngine.Service;
 
@@ -11,11 +13,10 @@ namespace SearchEngine.Service;
 /// <param name="options">Настройки поискового сервиса.</param>
 public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> options, SearchIndexSnapshotStorage snapshotStorage)
 {
-  private readonly SingleFlightGate _buildGate = new();
   private readonly SearchEngineServiceOptions _options = options.Value;
   private readonly SearchIndexSnapshotStorage _snapshotStorage = snapshotStorage;
 
-  private SearchIndexSnapshot? _snapshot;
+  private readonly SearchIndexSlot _defaultSlot = new();
 
   /// <summary>
   /// Создаёт хранилище поискового индекса с настройками по умолчанию.
@@ -34,21 +35,7 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
   /// Возвращает текущее состояние поискового индекса.
   /// </summary>
   /// <returns>Состояние поискового индекса.</returns>
-  public IndexStatusResponse GetStatus()
-  {
-    SearchIndexSnapshot? snapshot = Volatile.Read(ref _snapshot);
-    bool isBuilding = _buildGate.IsInProgress;
-
-    if (snapshot is null)
-      return new IndexStatusResponse
-      {
-        State = isBuilding ? IndexState.Building : IndexState.NotBuilt
-      };
-
-    return isBuilding
-        ? snapshot.Status with { State = IndexState.Building }
-        : snapshot.Status;
-  }
+  public IndexStatusResponse GetStatus() => _defaultSlot.GetStatus();
 
   /// <summary>
   /// Полностью перестраивает поисковый индекс.
@@ -95,7 +82,7 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
         Message = "Документы не содержат пригодного для индексации текста."
       };
 
-    if (!_buildGate.TryEnter())
+    if (!_defaultSlot.TryBeginBuild())
       return null;
 
     try
@@ -152,15 +139,13 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
         CreatedAtUtc = createdAtUtc
       };
 
-      SearchIndexSnapshot snapshot = new(search, status);
-
-      Volatile.Write(ref _snapshot, snapshot);
+      _defaultSlot.Publish(search, status);
 
       return null;
     }
     finally
     {
-      _buildGate.Exit();
+      _defaultSlot.EndBuild();
     }
   }
 
@@ -178,7 +163,7 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
         Message = "Восстановление snapshot поискового индекса отключено."
       };
 
-    if (!_buildGate.TryEnter())
+    if (!_defaultSlot.TryBeginBuild())
       return null;
 
     try
@@ -277,15 +262,13 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
         CreatedAtUtc = snapshotFile.CreatedAtUtc
       };
 
-      SearchIndexSnapshot snapshot = new(search, status);
-
-      Volatile.Write(ref _snapshot, snapshot);
+      _defaultSlot.Publish(search, status);
 
       return null;
     }
     finally
     {
-      _buildGate.Exit();
+      _defaultSlot.EndBuild();
     }
   }
 
@@ -296,80 +279,7 @@ public sealed class SearchIndexStore(IOptions<SearchEngineServiceOptions> option
   /// <param name="error">Ошибка поиска, если операция завершилась неуспешно.</param>
   /// <returns>Ответ поиска или <see langword="null"/>, если поиск выполнить не удалось.</returns>
   public SearchQueryResponse? Search(SearchQueryRequest request, out ApiError? error)
-  {
-    if (string.IsNullOrWhiteSpace(request.Query))
-    {
-      error = new ApiError
-      {
-        Code = "EmptyQuery",
-        Message = "Поисковая строка пуста."
-      };
-
-      return null;
-    }
-
-    SearchIndexSnapshot? snapshot = Volatile.Read(ref _snapshot);
-
-    if (snapshot is null)
-    {
-      error = new ApiError
-      {
-        Code = "IndexNotBuilt",
-        Message = "Поисковый индекс ещё не построен."
-      };
-
-      return null;
-    }
-
-    SearchRequest searchRequest = new()
-    {
-      MatchMode = request.MatchMode,
-      SearchType = request.SearchType,
-      SearchLocation = request.SearchLocation,
-      PrecisionSearch = request.PrecisionSearch,
-      AcceptableCountMisprint = request.AcceptableCountMisprint
-    };
-
-    var searchResult = snapshot.Search.FindResult(request.Query, searchRequest);
-
-    if (searchResult.IsFailure)
-    {
-      error = new ApiError
-      {
-        Code = searchResult.Error!.Code.ToString(),
-        Message = searchResult.Error.Message
-      };
-
-      return null;
-    }
-
-    SearchResultBucket[] items =
-    [
-        .. searchResult.Value!.Items
-                .Select(item => new SearchResultBucket
-                {
-                    Key = item.Key,
-                    Ids = [.. item.Value.Items]
-                })
-    ];
-
-    error = null;
-
-    return new SearchQueryResponse
-    {
-      IsHasIndex = searchResult.Value.IsHasIndex,
-      Items = items
-    };
-  }
-
-  /// <summary>
-  /// Готовый снимок поискового индекса.
-  /// </summary>
-  /// <param name="Search">Готовый поисковый индекс.</param>
-  /// <param name="Status">Состояние готового поискового индекса.</param>
-  private sealed record SearchIndexSnapshot(
-      Search<int> Search,
-      IndexStatusResponse Status);
+      => _defaultSlot.Search(request, out error);
 
   /// <summary>
   /// Документ, передаваемый в библиотеку SearchEngine для индексации.
