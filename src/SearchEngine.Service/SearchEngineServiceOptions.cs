@@ -24,6 +24,57 @@ public sealed class SearchEngineServiceOptions
   /// Получает или задаёт заранее настроенные источники данных для построения индекса.
   /// </summary>
   public Dictionary<string, SearchDataSourceOptions> Sources { get; set; } = [];
+
+  /// <summary>
+  /// Получает или задаёт ограничения, защищающие сервис от перегрузки.
+  /// </summary>
+  public SearchEngineServiceLimitsOptions Limits { get; set; } = new();
+}
+
+/// <summary>
+/// Ограничения, защищающие сервис от перегрузки извне.
+/// </summary>
+public sealed class SearchEngineServiceLimitsOptions
+{
+  /// <summary>
+  /// Получает или задаёт максимальный размер тела HTTP-запроса в байтах.
+  /// </summary>
+  /// <remarks>
+  /// Значение по умолчанию — 32 МиБ. При построении очень больших индексов значение
+  /// можно увеличить через конфигурацию.
+  /// </remarks>
+  public long MaxRequestBodyBytes { get; set; } = 33_554_432;
+
+  /// <summary>
+  /// Получает или задаёт настройки ограничения частоты запросов.
+  /// </summary>
+  public RateLimitOptions RateLimit { get; set; } = new();
+}
+
+/// <summary>
+/// Настройки ограничения частоты запросов.
+/// </summary>
+public sealed class RateLimitOptions
+{
+  /// <summary>
+  /// Получает или задаёт признак включения ограничения частоты запросов.
+  /// </summary>
+  public bool IsEnabled { get; set; } = true;
+
+  /// <summary>
+  /// Получает или задаёт максимальное число запросов от одного клиента за окно.
+  /// </summary>
+  public int PermitLimit { get; set; } = 240;
+
+  /// <summary>
+  /// Получает или задаёт длительность окна ограничения в секундах.
+  /// </summary>
+  public int WindowSeconds { get; set; } = 1;
+
+  /// <summary>
+  /// Получает или задаёт число запросов, ожидающих в очереди сверх лимита.
+  /// </summary>
+  public int QueueLimit { get; set; }
 }
 
 /// <summary>

@@ -1,5 +1,7 @@
 ﻿using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
 using SearchEngine;
@@ -12,6 +14,37 @@ if (HealthCheckCommand.IsRequested(args))
 }
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+SearchEngineServiceOptions serviceOptions =
+    builder.Configuration.GetSection("SearchEngineService").Get<SearchEngineServiceOptions>()
+    ?? new SearchEngineServiceOptions();
+
+builder.WebHost.ConfigureKestrel(kestrel =>
+    kestrel.Limits.MaxRequestBodySize = serviceOptions.Limits.MaxRequestBodyBytes);
+
+builder.Services.AddRateLimiter(rateLimiter =>
+{
+  rateLimiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+  rateLimiter.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+  {
+    RateLimitOptions rateLimit = httpContext.RequestServices
+        .GetRequiredService<IOptions<SearchEngineServiceOptions>>()
+        .Value.Limits.RateLimit;
+
+    if (!rateLimit.IsEnabled)
+      return RateLimitPartition.GetNoLimiter("disabled");
+
+    string partitionKey = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+    return RateLimitPartition.GetFixedWindowLimiter(partitionKey, _ => new FixedWindowRateLimiterOptions
+    {
+      PermitLimit = rateLimit.PermitLimit,
+      Window = TimeSpan.FromSeconds(rateLimit.WindowSeconds),
+      QueueLimit = rateLimit.QueueLimit
+    });
+  });
+});
 
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
@@ -32,6 +65,10 @@ builder.Services.AddSingleton<SearchDataSourceProfileValidator>();
 builder.Services.AddSingleton<SearchIndexFromSourceBuilder>();
 
 WebApplication app = builder.Build();
+
+app.UseMiddleware<RequestBodySizeLimitMiddleware>();
+
+app.UseRateLimiter();
 
 app.MapGet("/health", () => Results.Ok(new
 {
